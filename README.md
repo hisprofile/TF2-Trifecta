@@ -1,2 +1,4 @@
 # TF2-Trifecta
 A combination of Wardrobe, Merc Deployer, and Bonemerge
+
+Thank you Unhelpful Git for coining the name "TF2 Trifecta"
