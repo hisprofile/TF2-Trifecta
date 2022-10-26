@@ -1,5 +1,4 @@
 import bpy
-
 from pathlib import Path
 
 from bpy.props import BoolProperty
@@ -10,6 +9,7 @@ asset_libraries = filepaths.asset_libraries
 blend_files = []
 
 global path
+#global classes
 global cln
 cln = ["IK", "FK"]
 path = [i.path for i in asset_libraries]
@@ -28,7 +28,7 @@ def append(a, b): # get a class from TF2-V3
     
     bpy.ops.wm.append(filename=object, directory=directory)
 
-def appendtext(a): # add the .py script to add more control to faces
+def appendtext(a): # add the .py script to add further control to faces
     blendfile = f'{path}/{a}.blend'
     section = "\\Text\\"
     object = f'{a}.py'
@@ -38,11 +38,14 @@ def appendtext(a): # add the .py script to add more control to faces
         bpy.data.texts[f'{a}.py']
         bpy.data.texts[f'{a}.py'].use_fake_user = True
     except:
-        bpy.ops.wm.append(filename=object, directory=directory)
+        try:
+            bpy.ops.wm.append(filename=object, directory=directory)
+        except:
+            return "cancelled"
         try:
             bpy.data.texts[f'{a}.py'].as_module()
         except:
-            return {'CANCELLED'}
+            return "cancelled"
         bpy.data.texts[f'{a}.py'].use_module = True
         bpy.data.texts[f'{a}.py'].use_fake_user = True
     return {'FINISHED'}
@@ -103,7 +106,8 @@ def Collapse(a, b): # merge TF2 BVLG groups
             NoUserNodeGroup(a.node_tree)
     
     return {'FINISHED'}
-class VIEW3D_PT_MERCDEPLOY(bpy.types.Panel):
+#append("scout", "FK")
+class MERCDEPLOY(bpy.types.Panel):
     '''Rolling in the nonsense, deploy the fantasy!'''
     bl_label = "Merc Deployer"
     bl_space_type = 'VIEW_3D'
@@ -128,7 +132,9 @@ class VIEW3D_PT_MERCDEPLOY(bpy.types.Panel):
                 def execute(self, context):
                     bak = GetActiveCol()
                     SetActiveCol()
-                    appendtext(self.merc)
+                    if appendtext(self.merc) == "cancelled":
+                        self.report({'INFO'}, "No Mercs Found!")
+                        return {'CANCELLED'}
                     append(self.merc, self.type)
                     justadded = str(self.merc + self.type) # make a variable targeting the added collection of the character
                     matblacklist = []
