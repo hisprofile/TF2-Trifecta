@@ -2,7 +2,7 @@ bl_info = {
     "name" : "Wardrobe, Merc Deployer, and Bonemerge | The TF2 Trifecta",
     "description" : "Injects cosmetics into your scene, deploy mercenaries, and attach cosmetics.\n\nMake sure you have The TF2 Collection and TF2-V3 added as asset libaries!",
     "author" : "hisanimations",
-    "version" : (1, 0, 1),
+    "version" : (1, 0, 2),
     "blender" : (3, 0, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
@@ -58,11 +58,12 @@ def returnsearch(a):
     cosmetics = json.loads(f.read())
     f.close()
     hits = []
-    for i in files:
-        for ii in cln:
-            for v in cosmetics[i][ii]:
-                if a.casefold() in v.casefold():
-                    hits.append(f'{v}_-_{i}')
+    for key in a:
+        for i in files:
+            for ii in cln:
+                for v in cosmetics[i][ii]:
+                    if key.casefold() in v.casefold():
+                        hits.append(f'{v}_-_{i}')
                     
     return hits
 
@@ -175,6 +176,8 @@ class HISANIM_OT_Search(bpy.types.Operator):
     
     def execute(self, context):
         lookfor = bpy.context.scene.QueryProps.query
+        lookfor = lookfor.split("|")
+        lookfor.sort()
         hits = returnsearch(lookfor)
         class VIEW3D_PT_PART2(bpy.types.Panel):
             bl_label = "Search Results"
