@@ -1,4 +1,5 @@
 import bpy
+
 from pathlib import Path
 
 from bpy.props import BoolProperty
@@ -9,7 +10,6 @@ asset_libraries = filepaths.asset_libraries
 blend_files = []
 
 global path
-#global classes
 global cln
 cln = ["IK", "FK"]
 path = [i.path for i in asset_libraries]
@@ -106,8 +106,7 @@ def Collapse(a, b): # merge TF2 BVLG groups
             NoUserNodeGroup(a.node_tree)
     
     return {'FINISHED'}
-#append("scout", "FK")
-class MERCDEPLOY(bpy.types.Panel):
+class VIEW3D_PT_MERCDEPLOY(bpy.types.Panel):
     '''Rolling in the nonsense, deploy the fantasy!'''
     bl_label = "Merc Deployer"
     bl_space_type = 'VIEW_3D'
