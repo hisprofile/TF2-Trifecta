@@ -2,7 +2,7 @@ bl_info = {
     "name" : "Wardrobe, Merc Deployer, and Bonemerge | The TF2 Trifecta",
     "description" : "Injects cosmetics into your scene, deploy mercenaries, and attach cosmetics.\n\nMake sure you have The TF2 Collection and TF2-V3 added as asset libaries!",
     "author" : "hisanimations",
-    "version" : (1, 0, 2),
+    "version" : (1, 0),
     "blender" : (3, 0, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
@@ -14,9 +14,9 @@ from pathlib import Path
 from bpy.props import BoolProperty
 import importlib, sys
 for filename in [ f for f in os.listdir(os.path.dirname(os.path.realpath(__file__))) if f.endswith(".py") ]:
-	if filename == os.path.basename(__file__): continue
-	module = sys.modules.get("{}.{}".format(__name__,filename[:-3]))
-	if module: importlib.reload(module)
+    if filename == os.path.basename(__file__): continue
+    module = sys.modules.get("{}.{}".format(__name__,filename[:-3]))
+    if module: importlib.reload(module)
 # borrowed from BST
 from . import bonemerge, mercdeployer
 
@@ -62,7 +62,7 @@ def returnsearch(a):
         for i in files:
             for ii in cln:
                 for v in cosmetics[i][ii]:
-                    if key.casefold() in v.casefold():
+                    if key.casefold() in v.casefold() and not f'{v}_-_{i}' in hits:
                         hits.append(f'{v}_-_{i}')
                     
     return hits
