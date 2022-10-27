@@ -2,7 +2,7 @@ bl_info = {
     "name" : "Wardrobe, Merc Deployer, and Bonemerge | The TF2 Trifecta",
     "description" : "Injects cosmetics into your scene, deploy mercenaries, and attach cosmetics.\n\nMake sure you have The TF2 Collection and TF2-V3 added as asset libaries!",
     "author" : "hisanimations",
-    "version" : (1, 0),
+    "version" : (1, 0, 1),
     "blender" : (3, 0, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
