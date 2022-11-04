@@ -439,7 +439,6 @@ classes.append(mercdeployer.VIEW3D_PT_MERCDEPLOY)
 classes.append(bonemerge.HISANIM_OT_ATTACH)
 classes.append(bonemerge.HISANIM_OT_DETACH)
 classes.append(bonemerge.VIEW3D_PT_BONEMERGE)
-classes.append(bonemerge.HISANIM_OT_BINDFACE)
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
