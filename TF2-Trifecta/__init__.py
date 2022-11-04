@@ -1,8 +1,8 @@
 bl_info = {
-    "name" : "Wardrobe, Merc Deployer, and Bonemerge | The TF2 Trifecta",
-    "description" : "Injects cosmetics into your scene, deploy mercenaries, and attach cosmetics.\n\nMake sure you have The TF2 Collection and TF2-V3 added as asset libaries!",
+    "name" : "The TF2 Trifecta",
+    "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge. Ensure you have The TF2 Collection and TF2-V3 installed correctly!",
     "author" : "hisanimations",
-    "version" : (1, 0, 2),
+    "version" : (1, 0),
     "blender" : (3, 0, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
@@ -439,6 +439,7 @@ classes.append(mercdeployer.VIEW3D_PT_MERCDEPLOY)
 classes.append(bonemerge.HISANIM_OT_ATTACH)
 classes.append(bonemerge.HISANIM_OT_DETACH)
 classes.append(bonemerge.VIEW3D_PT_BONEMERGE)
+classes.append(bonemerge.HISANIM_OT_BINDFACE)
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
