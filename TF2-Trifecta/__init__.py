@@ -1,6 +1,6 @@
 bl_info = {
     "name" : "The TF2 Trifecta",
-    "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge. Ensure you have The TF2 Collection and TF2-V3 installed correctly!",
+    "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
     "version" : (1, 0),
     "blender" : (3, 0, 0),
@@ -197,7 +197,6 @@ class HISANIM_OT_Search(bpy.types.Operator):
                     opglob = ops.split("_-_")[0][:55]
                     class opname(bpy.types.Operator):
                         COSNAME = opglob.replace("-", "").replace("!", "").replace(":", "").replace("_", "").replace("\\", "").replace("/", "").replace("(", "").replace(")","").replace("%","").replace(",","").replace(" ", "").replace("'", "").replace(".", "").replace("#", "").casefold()
-                        #f'''{COSNAME}'''
                         # make the name compatible for idname
                         bl_idname = f'''hisanim.{COSNAME}'''
                         bl_label = opglob
@@ -250,6 +249,7 @@ class HISANIM_OT_Search(bpy.types.Operator):
                                                 n.node_tree = D.node_groups['VertexLitGeneric-WDRB']
                                                 RemoveNodeGroups(DELETE)
                                                 PurgeNodeGroups()
+                                                n.inputs['rim * ambient'].default_value = 1
                                 except:
                                     for i in D.objects[cos].data.materials[0].node_tree.nodes:
                                         if i.type == 'GROUP' and 'VertexLitGeneric' in i.node_tree.name:
@@ -277,8 +277,12 @@ class HISANIM_OT_Search(bpy.types.Operator):
                                 
                                 
                             if alreadyin == 1:
+                                D = bpy.data
+                                for i in D.objects[cos].material_slots:
+                                    for n in i.material.node_tree.nodes:
+                                        if n.type == 'GROUP' and 'VertexLitGeneric' in n.node_tree.name:
+                                            n.inputs['rim * ambient'].default_value = 1
                                 list = [i.name for i in bpy.data.objects if not "_ARM" in i.name and cos in i.name]
-
                                 if len(list) > 1:
                                     # use existing materials
                                     justadded = sorted(list)[-1]
@@ -289,7 +293,6 @@ class HISANIM_OT_Search(bpy.types.Operator):
                                         
                                         bpy.data.objects[justadded].data.materials[count] = i
                                         count += 1
-
                                 try:
                                     bpy.data.collections[addn]
                                     bpy.data.collections[addn].objects.link(bpy.data.objects[justadded])
@@ -304,12 +307,11 @@ class HISANIM_OT_Search(bpy.types.Operator):
                                     bpy.data.collections[addn].objects.link(bpy.data.objects[justadded].parent)
                                     bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded].parent)
                                     bpy.data.objects[justadded].parent.use_fake_user = False
-
                                 if len(list) > 1:
                                     # delete materials imported along with the cosmetic
                                     for i in justaddedmats:
                                         RemoveNodeGroups(bpy.data.materials[i].node_tree)
-
+                                        
                                     PurgeNodeGroups()
                                             
                                     PurgeImages()
@@ -320,7 +322,35 @@ class HISANIM_OT_Search(bpy.types.Operator):
                                     
                             # if a Bonemerge compatible rig or mesh parented to one is selected, automatically bind the cosmetic
                             # to the rig.
-                            
+                            if bpy.context.scene.wrdbbluteam:
+                                print("BLU")
+                                try:
+                                    SKIN = bpy.data.objects[justadded]['skin_groups']
+                                    OBJMAT = bpy.data.objects[justadded].material_slots
+                                    for i in SKIN:
+                                        for ii in SKIN[i]:
+                                            if "blu" in ii:
+                                                BLU = i
+                                                print(BLU)
+                                                #break
+                                    counter = 0
+                                    for i in SKIN[BLU]:
+                                        OBJMAT[counter].material = bpy.data.materials[i]
+                                        counter += 1
+                                    del counter, SKIN, OBJMAT
+                                except:
+                                    raise
+                            else:
+                                try:
+                                    SKIN = bpy.data.objects[justadded]['skin_groups']
+                                    OBJMAT = bpy.data.objects[justadded].material_slots
+                                    counter = 0
+                                    for i in SKIN['0']:
+                                        OBJMAT[counter].material = bpy.data.materials[i[-63:]]
+                                        counter += 1
+                                except:
+                                    raise
+                                
                             select = bpy.context.object
                             try:
                                 if select.parent:
@@ -355,8 +385,6 @@ class HISANIM_OT_Search(bpy.types.Operator):
                                     ii.constraints[loc].subtarget = ii.name
                                     ii.constraints[rot].target = select
                                     ii.constraints[rot].subtarget = ii.name
-                            #except:
-                                #pass
                                     
                             PurgeImages()
                             return {'FINISHED'}
@@ -433,12 +461,15 @@ class VIEW3D_PT_PART1(bpy.types.Panel):
         row.operator('hisanim.lightwarps')
         row=layout.row()
         row.operator('hisanim.removelightwarps')
+        row = layout.row()
+        row.prop(context.scene, 'wrdbbluteam')
 
 classes.append(VIEW3D_PT_PART1)
 classes.append(mercdeployer.VIEW3D_PT_MERCDEPLOY)
 classes.append(bonemerge.HISANIM_OT_ATTACH)
 classes.append(bonemerge.HISANIM_OT_DETACH)
 classes.append(bonemerge.VIEW3D_PT_BONEMERGE)
+classes.append(bonemerge.HISANIM_OT_BINDFACE)
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
@@ -451,7 +482,10 @@ def register():
         name="Cosmetic Compatible",
         description="Use cosmetic compatible bodygroups that don't intersect with cosmetics. Disabling will use SFM bodygroups",
         default = True)
-    
+    bpy.types.Scene.wrdbbluteam = BoolProperty(
+        name="Blu Team",
+        description="Swap classes",
+        default = False)
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
