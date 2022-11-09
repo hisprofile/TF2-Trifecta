@@ -4,7 +4,11 @@ loc = "BONEMERGE-ATTACH-LOC"
 rot = "BONEMERGE-ATTACH-ROT"
 
 bpy.types.Scene.target = bpy.props.PointerProperty(type=bpy.types.Object)
-
+def GetRoot(a):
+    for i in a:
+        if i.parent == None:
+            return i
+        
 class VIEW3D_PT_BONEMERGE(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar"""
     bl_label = "Bonemerge"
@@ -27,6 +31,14 @@ class VIEW3D_PT_BONEMERGE(bpy.types.Panel):
         row.operator('hisanim.attachto', icon="LINKED")
         row=layout.row()
         row.operator('hisanim.detachfrom', icon="UNLINKED")
+        row = layout.row()
+        row.label(text='Bind facial cosmetics')
+        row = layout.row()
+        row.operator('hisanim.bindface')
+        row = layout.row()
+        row.label(text='Attempt to fix cosmetic')
+        row = layout.row()
+        row.operator('hisanim.attemptfix')
         
 
 
@@ -94,3 +106,64 @@ class HISANIM_OT_DETACH(bpy.types.Operator):
                     continue
         
         return {'FINISHED'}
+class HISANIM_OT_BINDFACE(bpy.types.Operator):
+    bl_idname = 'hisanim.bindface'
+    bl_label = 'Bind Face Cosmetics'
+    bl_description = 'Bind facial cosmetics to a face'
+    bl_options = {'UNDO'}
+    
+    def execute(self, context):
+        #print('rad')
+        CON = context.selected_objects
+        
+        for i in CON[1].data.shape_keys.key_blocks:
+            find = i.name.casefold()
+            i.slider_min = -10
+            i.slider_max = 10
+            print(i)
+            for ii in CON[0].data.shape_keys.key_blocks:
+                if ii.name.casefold() == find:
+                    val = i.driver_add("value").driver
+                    val.variables.new()
+                    i.driver_add("value").driver.expression = 'var'
+                    val.variables[0].targets[0].id_type = 'KEY'
+                    val.variables[0].targets[0].id = CON[0].data.shape_keys
+                    val.variables[0].targets[0].data_path = f'key_blocks["{ii.name}"].value'
+            
+        
+        return {'FINISHED'}
+class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
+    bl_idname = 'hisanim.attemptfix'
+    bl_label = 'Attempt to Fix Cosmetic'
+    bl_description = 'If a cosmetic appears to be worn incorrectly, this button may fix it'
+    bl_options = {'UNDO'}
+    
+    def execute(self, context):
+        skipbone = context.object.data.bones[0]
+        for i in context.object.pose.bones:
+            if i.name == skipbone.name:
+                continue
+            try:
+                i.constraints[loc].enabled = False
+                i.constraints[rot].enabled = False
+            except:
+                pass
+        return {'FINISHED'}
+        
+'''classes = []
+classes.append(VIEW3D_PT_BONEMERGE)
+classes.append(HISANIM_OT_ATTACH)
+classes.append(HISANIM_OT_DETACH)
+classes.append(HISANIM_OT_BINDFACE)
+classes.append(HISANIM_OT_ATTEMPTFIX)
+
+def register():
+    for cls in classes:
+        bpy.utils.register_class(cls)
+    
+def unregister():
+    for cls in reversed(classes):
+        bpy.utils.unregister_class(cls)
+    
+if __name__ == "__main__":
+    register()'''

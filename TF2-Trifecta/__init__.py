@@ -339,7 +339,7 @@ class HISANIM_OT_Search(bpy.types.Operator):
                                         counter += 1
                                     del counter, SKIN, OBJMAT
                                 except:
-                                    raise
+                                    pass
                             else:
                                 try:
                                     SKIN = bpy.data.objects[justadded]['skin_groups']
@@ -349,7 +349,7 @@ class HISANIM_OT_Search(bpy.types.Operator):
                                         OBJMAT[counter].material = bpy.data.materials[i[-63:]]
                                         counter += 1
                                 except:
-                                    raise
+                                    pass
                                 
                             select = bpy.context.object
                             try:
@@ -385,6 +385,8 @@ class HISANIM_OT_Search(bpy.types.Operator):
                                     ii.constraints[loc].subtarget = ii.name
                                     ii.constraints[rot].target = select
                                     ii.constraints[rot].subtarget = ii.name
+                            #except:
+                                #pass
                                     
                             PurgeImages()
                             return {'FINISHED'}
@@ -470,6 +472,7 @@ classes.append(bonemerge.HISANIM_OT_ATTACH)
 classes.append(bonemerge.HISANIM_OT_DETACH)
 classes.append(bonemerge.VIEW3D_PT_BONEMERGE)
 classes.append(bonemerge.HISANIM_OT_BINDFACE)
+classes.append(bonemerge.HISANIM_OT_ATTEMPTFIX)
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
