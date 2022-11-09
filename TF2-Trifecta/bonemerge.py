@@ -139,8 +139,11 @@ class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
     bl_options = {'UNDO'}
     
     def execute(self, context):
-        skipbone = context.object.data.bones[0]
-        for i in context.object.pose.bones:
+        SELECT = context.object
+        if not SELECT.type == 'ARMATURE':
+            SELECT = SELECT.parent
+        skipbone = SELECT.data.bones[0]
+        for i in SELECT.pose.bones:
             if i.name == skipbone.name:
                 continue
             try:

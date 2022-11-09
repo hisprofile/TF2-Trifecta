@@ -254,6 +254,11 @@ class HISANIM_OT_Search(bpy.types.Operator):
                                     for i in D.objects[cos].data.materials[0].node_tree.nodes:
                                         if i.type == 'GROUP' and 'VertexLitGeneric' in i.node_tree.name:
                                             i.node_tree.name = 'VertexLitGeneric-WDRB'
+                                    for i in D.objects[cos].data.materials:
+                                        try:
+                                            i.node_tree.nodes['VertexLitGeneric'].inputs['rim * ambient'].default_value = 1
+                                        except:
+                                            pass
                                 justadded = cos
                                 
                                 # link the imported cosmetics into one collection for organization purposes.
