@@ -12,14 +12,45 @@ bl_info = {
 import bpy, json, mathutils, os
 from pathlib import Path
 from bpy.props import BoolProperty
+from mathutils import *
 import importlib, sys
 for filename in [ f for f in os.listdir(os.path.dirname(os.path.realpath(__file__))) if f.endswith(".py") ]:
     if filename == os.path.basename(__file__): continue
     module = sys.modules.get("{}.{}".format(__name__,filename[:-3]))
     if module: importlib.reload(module)
+from bpy.app.handlers import persistent
 # borrowed from BST
-from . import bonemerge, mercdeployer
+paints = {"A Color Similar to Slate" : '47 79 79',
+"A Deep Commitment to Purple" : '125 64 113',
+"A Distinctive Lack of Hue" : '20 20 20',
+"A Mann's Mint" : '188 221 179',
+"After Eight" : '45 45 36',
+"Aged Moustache Grey" : '126 126 126',
+"An Air of Debonair" : ['101 71 64', '40 57 77'],
+"An Extraordinary Abundance of Tinge" : '230 230 230',
+"Australium Gold" : '231 181 59',
+"Balaclavas Are Forever" : ['59 31 35', '24 35 61'],
+"Color No. 216-190-216" : '216 190 216',
+"Cream Spirit" : ['195 108 45', '184 128 53'],
+"Dark Salmon Injustice" : '233 150 122',
+"Drably Olive" : '128 128 0',
+"Indubitably Green" : '114 158 66',
+"Mann Co. Orange" : '207 115 54',
+"Muskelmannbraun" : '165 117 69',
+"Noble Hatter's Violet" : '81 56 74',
+"Operator's Overalls" : ['72 56 56', '56 66 72'],
+"Peculiarly Drab Tincture" : '197 175 145',
+"Pink as Hell" : '255 105 180',
+"Radigan Conagher Brown" : '105 77 58',
+"Team Spirit" : ['184 56 59', '88 133 162'],
+"The Bitter Taste of Defeat and Lime" : '50 205 50',
+"The Color of a Gentlemann's Business Pants" : '240 230 140',
+"The Value of Teamwork" : ['128 48 32', '37 109 141'],
+"Waterlogged Lab Coat" : ['168 154 140', '131 159 163'],
+"Ye Olde Rustic Colour" : '124 108 87',
+"Zepheniah's Greed" : '66 79 59'}
 
+from . import bonemerge, mercdeployer
 global loc
 global rot
 loc = "BONEMERGE-ATTACH-LOC"
@@ -52,6 +83,7 @@ def PurgeImages(): # delete unused images
 def returnsearch(a):
     path = str(Path(__file__).parent)
     path = path + "/master.json"
+    #path = r'C:\Users\Javiers\Documents\master.json'
     files = ["scout", "soldier", "pyro", "demo", "heavy", "engineer", "sniper", "medic", "spy", "allclass", "allclass2", "allclass3"]
     cln = ["named", "unnamed"]
     f = open(path)
@@ -168,7 +200,220 @@ classes.append(HISANIM_OT_RemoveLightwarps)
 class QueryProps(bpy.types.PropertyGroup): # keyword to look for
 
     query: bpy.props.StringProperty(default="")
+
+class HISANIM_OT_MATFIX(bpy.types.Operator):
+    bl_idname = 'hisanim.matfix'
+    bl_label = 'Mat'
+    bl_description = 'Attempt to fix a material with sections that are black'
     
+    def execute(self, execute):
+        if bpy.context.object.get('skin_groups') == None:
+            return {'CANCELLED'}
+
+class HISANIM_OT_LOAD(bpy.types.Operator):
+    LOAD: bpy.props.StringProperty(default='')
+    '''CLASS = LOAD.split("_-_")[1]
+    COSMETIC = LOAD.split("_-_")[0]
+    FIND = COSMETIC.replace("-", "").replace("!", "").replace(":", "").replace("_", "").replace("\\", "").replace("/", "").replace("(", "").replace(")","").replace("%","").replace(",","").replace(" ", "").replace("'", "").replace(".", "").replace("#", "").casefold()
+    '''
+    bl_idname = 'hisanim.loadcosmetic'
+    bl_label = 'Cosmetic'
+    bl_description = f'Load this cosmetic into your scene'
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        CLASS = self.LOAD.split("_-_")[1]
+        COSMETIC = self.LOAD.split("_-_")[0]
+        p = PATHS[CLASS] # shortcut to paths. self.CLASS refers to the class folder.
+        cos = COSMETIC
+        
+        # check if the cosmetic already exists. if it does, use the existing assets.
+        # may be deprecated at some point in favor of Merc Deployer's method, which is
+        # to use the same assets but not the same material.
+        
+        try:
+            bpy.data.objects[cos]
+            alreadyin = 1
+        except:
+            alreadyin = 0
+            print('first addition!')
+        with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
+            data_to.objects = [cos]
+
+
+        if alreadyin == 0:
+            
+            # if the wanted cosmetic does not exist yet, prepare the BVLG nodegroup for reusable purposes.
+            
+            D = bpy.data
+            C = bpy.context
+            C.scene.collection.objects.link(bpy.data.objects[cos])
+            D.objects[cos].use_fake_user = False
+            C.scene.collection.objects.link(bpy.data.objects[cos].parent)
+            D.objects[cos].parent.use_fake_user = False
+            
+            D.objects[cos].parent.location = bpy.context.scene.cursor.location
+            
+            # if V.L.G.-WDRB already exists in the material slots of the object, swap V.L.G. for V.L.G.-WDRB.
+            # for the old V.L.G., iterate through every node and node group and delete everything. similar to rm -rf i guess?
+            # finally, delete the old nodegroup
+            
+            try:
+                D.node_groups['VertexLitGeneric-WDRB']
+                for i in D.objects[cos].material_slots:
+                    for n in i.material.node_tree.nodes:
+                        if n.type == 'GROUP' and 'VertexLitGeneric' in n.node_tree.name:
+                            DELETE = n.node_tree
+                            n.node_tree = D.node_groups['VertexLitGeneric-WDRB']
+                            RemoveNodeGroups(DELETE)
+                            PurgeNodeGroups()
+                            n.inputs['rim * ambient'].default_value = 1
+            except:
+                for i in D.objects[cos].data.materials[0].node_tree.nodes:
+                    if i.type == 'GROUP' and 'VertexLitGeneric' in i.node_tree.name:
+                        i.node_tree.name = 'VertexLitGeneric-WDRB'
+                for i in D.objects[cos].data.materials:
+                    try:
+                        i.node_tree.nodes['VertexLitGeneric'].inputs['rim * ambient'].default_value = 1
+                    except:
+                        pass
+            justadded = cos
+            
+            # link the imported cosmetics into one collection for organization purposes.
+                
+            try:
+                bpy.data.collections[addn]
+                bpy.data.collections[addn].objects.link(bpy.data.objects[justadded])
+                bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded])
+                bpy.data.objects[justadded].use_fake_user = False
+                bpy.data.collections[addn].objects.link(bpy.data.objects[justadded].parent)
+                bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded].parent)
+                bpy.data.objects[justadded].parent.use_fake_user = False
+            except:
+                bpy.context.scene.collection.children.link(bpy.data.collections.new(addn))
+                bpy.data.collections[addn].objects.link(bpy.data.objects[justadded])
+                bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded])
+                bpy.data.objects[justadded].use_fake_user = False
+                bpy.data.collections[addn].objects.link(bpy.data.objects[justadded].parent)
+                bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded].parent)
+                bpy.data.objects[justadded].parent.use_fake_user = False
+            
+            
+        if alreadyin == 1:
+            D = bpy.data
+            for i in D.objects[cos].material_slots:
+                for n in i.material.node_tree.nodes:
+                    if n.type == 'GROUP' and 'VertexLitGeneric' in n.node_tree.name:
+                        n.inputs['rim * ambient'].default_value = 1
+            list = [i.name for i in bpy.data.objects if not "_ARM" in i.name and cos in i.name]
+            if len(list) > 1:
+                # use existing materials
+                justadded = sorted(list)[-1]
+                justaddedmats = [i.name for i in bpy.data.objects[justadded].data.materials]
+                firstaboveall = sorted(list)[0]
+                count = 0
+                for i in bpy.data.objects[firstaboveall].data.materials:
+                    
+                    bpy.data.objects[justadded].data.materials[count] = i
+                    count += 1
+            try:
+                bpy.data.collections[addn]
+                bpy.data.collections[addn].objects.link(bpy.data.objects[justadded])
+                bpy.data.objects[justadded].use_fake_user = False
+                bpy.data.collections[addn].objects.link(bpy.data.objects[justadded].parent)
+                bpy.data.objects[justadded].parent.use_fake_user = False
+            except:
+                bpy.context.scene.collection.children.link(bpy.data.collections.new(addn))
+                bpy.data.collections[addn].objects.link(bpy.data.objects[justadded])
+                bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded])
+                bpy.data.objects[justadded].use_fake_user = False
+                bpy.data.collections[addn].objects.link(bpy.data.objects[justadded].parent)
+                bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded].parent)
+                bpy.data.objects[justadded].parent.use_fake_user = False
+            if len(list) > 1:
+                # delete materials imported along with the cosmetic
+                for i in justaddedmats:
+                    RemoveNodeGroups(bpy.data.materials[i].node_tree)
+                    
+                PurgeNodeGroups()
+                        
+                PurgeImages()
+                        
+                for i in justaddedmats:
+                    bpy.data.materials.remove(bpy.data.materials[i])
+                bpy.data.objects[justadded].parent.location = bpy.context.scene.cursor.location
+                
+        # if a Bonemerge compatible rig or mesh parented to one is selected, automatically bind the cosmetic
+        # to the rig.
+        if bpy.context.scene.wrdbbluteam:
+            print("BLU")
+            try:
+                SKIN = bpy.data.objects[justadded]['skin_groups']
+                OBJMAT = bpy.data.objects[justadded].material_slots
+                for i in SKIN:
+                    for ii in SKIN[i]:
+                        if "blu" in ii:
+                            BLU = i
+                            print(BLU)
+                            #break
+                counter = 0
+                for i in SKIN[BLU]:
+                    OBJMAT[counter].material = bpy.data.materials[i]
+                    counter += 1
+                del counter, SKIN, OBJMAT
+            except:
+                pass
+        else:
+            try:
+                SKIN = bpy.data.objects[justadded]['skin_groups']
+                OBJMAT = bpy.data.objects[justadded].material_slots
+                counter = 0
+                for i in SKIN['0']:
+                    OBJMAT[counter].material = bpy.data.materials[i[-63:]]
+                    counter += 1
+            except:
+                pass
+            
+        select = bpy.context.object
+        try:
+            if select.parent:
+                select = select.parent
+        except:
+            pass
+        try:
+            select['BMBCOMPATIBLE']
+            var = 1
+        except:
+            var = 0
+        
+        if var == 1:
+    
+            for ii in bpy.data.objects[justadded].parent.pose.bones:
+                print(ii.name)
+                try:
+                    bpy.data.objects[select.name].pose.bones[ii.name]
+                    print('found matching bone!')
+                except:
+                    continue
+                
+                try:
+                    ii.constraints[loc]
+                    pass
+                except:
+                    ii.constraints.new('COPY_LOCATION').name = loc
+                    ii.constraints.new('COPY_ROTATION').name = rot
+                
+                
+                ii.constraints[loc].target = select
+                ii.constraints[loc].subtarget = ii.name
+                ii.constraints[rot].target = select
+                ii.constraints[rot].subtarget = ii.name
+        #except:
+            #pass
+                
+        PurgeImages()
+        return {'FINISHED'}
+classes.append(HISANIM_OT_LOAD)
 class HISANIM_OT_Search(bpy.types.Operator):
     bl_idname = 'hisanim.search'
     bl_label = 'Search for cosmetics'
@@ -187,235 +432,21 @@ class HISANIM_OT_Search(bpy.types.Operator):
             bl_icon = "MOD_CLOTH"
             global operators
             operators = hits
-            if len(hits) > 0:
-                for ops in hits:
-                    #global variables to use inside of classes. otherwise, they would be local.
-                    global opglob
-                    global opp1
-                    opp1 = ops.split("_-_")[1]
-                    opname = ops.split("_-_")[0]
-                    opglob = ops.split("_-_")[0][:55]
-                    class opname(bpy.types.Operator):
-                        COSNAME = opglob.replace("-", "").replace("!", "").replace(":", "").replace("_", "").replace("\\", "").replace("/", "").replace("(", "").replace(")","").replace("%","").replace(",","").replace(" ", "").replace("'", "").replace(".", "").replace("#", "").casefold()
-                        # make the name compatible for idname
-                        bl_idname = f'''hisanim.{COSNAME}'''
-                        bl_label = opglob
-                        bl_options = {'UNDO'}
-                        bl_description = f'Add "{opglob}" into your scene'
-                        opp = opglob
-                        opp2 = opp1
-                        
-                        def execute(self, context):
-                            p = PATHS[self.opp2] # shortcut to paths. self.opp2 refers to the class folder.
-                            cos = self.opp
-                            
-                            # check if the cosmetic already exists. if it does, use the existing assets.
-                            # may be deprecated at some point in favor of Merc Deployer's method, which is
-                            # to use the same assets but not the same material.
-                            
-                            try:
-                                bpy.data.objects[cos]
-                                alreadyin = 1
-                            except:
-                                alreadyin = 0
-                                print('first addition!')
-                            with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
-                                data_to.objects = [cos]
-
-
-                            if alreadyin == 0:
-                                
-                                # if the wanted cosmetic does not exist yet, prepare the BVLG nodegroup for reusable purposes.
-                                
-                                D = bpy.data
-                                C = bpy.context
-                                C.scene.collection.objects.link(bpy.data.objects[cos])
-                                D.objects[cos].use_fake_user = False
-                                C.scene.collection.objects.link(bpy.data.objects[cos].parent)
-                                D.objects[cos].parent.use_fake_user = False
-                                
-                                D.objects[cos].parent.location = bpy.context.scene.cursor.location
-                                
-                                # if V.L.G.-WDRB already exists in the material slots of the object, swap V.L.G. for V.L.G.-WDRB.
-                                # for the old V.L.G., iterate through every node and node group and delete everything. similar to rm -rf i guess?
-                                # finally, delete the old nodegroup
-                                
-                                try:
-                                    D.node_groups['VertexLitGeneric-WDRB']
-                                    for i in D.objects[cos].material_slots:
-                                        for n in i.material.node_tree.nodes:
-                                            if n.type == 'GROUP' and 'VertexLitGeneric' in n.node_tree.name:
-                                                DELETE = n.node_tree
-                                                n.node_tree = D.node_groups['VertexLitGeneric-WDRB']
-                                                RemoveNodeGroups(DELETE)
-                                                PurgeNodeGroups()
-                                                n.inputs['rim * ambient'].default_value = 1
-                                except:
-                                    for i in D.objects[cos].data.materials[0].node_tree.nodes:
-                                        if i.type == 'GROUP' and 'VertexLitGeneric' in i.node_tree.name:
-                                            i.node_tree.name = 'VertexLitGeneric-WDRB'
-                                    for i in D.objects[cos].data.materials:
-                                        try:
-                                            i.node_tree.nodes['VertexLitGeneric'].inputs['rim * ambient'].default_value = 1
-                                        except:
-                                            pass
-                                justadded = cos
-                                
-                                # link the imported cosmetics into one collection for organization purposes.
-                                 
-                                try:
-                                    bpy.data.collections[addn]
-                                    bpy.data.collections[addn].objects.link(bpy.data.objects[justadded])
-                                    bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded])
-                                    bpy.data.objects[justadded].use_fake_user = False
-                                    bpy.data.collections[addn].objects.link(bpy.data.objects[justadded].parent)
-                                    bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded].parent)
-                                    bpy.data.objects[justadded].parent.use_fake_user = False
-                                except:
-                                    bpy.context.scene.collection.children.link(bpy.data.collections.new(addn))
-                                    bpy.data.collections[addn].objects.link(bpy.data.objects[justadded])
-                                    bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded])
-                                    bpy.data.objects[justadded].use_fake_user = False
-                                    bpy.data.collections[addn].objects.link(bpy.data.objects[justadded].parent)
-                                    bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded].parent)
-                                    bpy.data.objects[justadded].parent.use_fake_user = False
-                                
-                                
-                            if alreadyin == 1:
-                                D = bpy.data
-                                for i in D.objects[cos].material_slots:
-                                    for n in i.material.node_tree.nodes:
-                                        if n.type == 'GROUP' and 'VertexLitGeneric' in n.node_tree.name:
-                                            n.inputs['rim * ambient'].default_value = 1
-                                list = [i.name for i in bpy.data.objects if not "_ARM" in i.name and cos in i.name]
-                                if len(list) > 1:
-                                    # use existing materials
-                                    justadded = sorted(list)[-1]
-                                    justaddedmats = [i.name for i in bpy.data.objects[justadded].data.materials]
-                                    firstaboveall = sorted(list)[0]
-                                    count = 0
-                                    for i in bpy.data.objects[firstaboveall].data.materials:
-                                        
-                                        bpy.data.objects[justadded].data.materials[count] = i
-                                        count += 1
-                                try:
-                                    bpy.data.collections[addn]
-                                    bpy.data.collections[addn].objects.link(bpy.data.objects[justadded])
-                                    bpy.data.objects[justadded].use_fake_user = False
-                                    bpy.data.collections[addn].objects.link(bpy.data.objects[justadded].parent)
-                                    bpy.data.objects[justadded].parent.use_fake_user = False
-                                except:
-                                    bpy.context.scene.collection.children.link(bpy.data.collections.new(addn))
-                                    bpy.data.collections[addn].objects.link(bpy.data.objects[justadded])
-                                    bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded])
-                                    bpy.data.objects[justadded].use_fake_user = False
-                                    bpy.data.collections[addn].objects.link(bpy.data.objects[justadded].parent)
-                                    bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded].parent)
-                                    bpy.data.objects[justadded].parent.use_fake_user = False
-                                if len(list) > 1:
-                                    # delete materials imported along with the cosmetic
-                                    for i in justaddedmats:
-                                        RemoveNodeGroups(bpy.data.materials[i].node_tree)
-                                        
-                                    PurgeNodeGroups()
-                                            
-                                    PurgeImages()
-                                            
-                                    for i in justaddedmats:
-                                        bpy.data.materials.remove(bpy.data.materials[i])
-                                    bpy.data.objects[justadded].parent.location = bpy.context.scene.cursor.location
-                                    
-                            # if a Bonemerge compatible rig or mesh parented to one is selected, automatically bind the cosmetic
-                            # to the rig.
-                            if bpy.context.scene.wrdbbluteam:
-                                print("BLU")
-                                try:
-                                    SKIN = bpy.data.objects[justadded]['skin_groups']
-                                    OBJMAT = bpy.data.objects[justadded].material_slots
-                                    for i in SKIN:
-                                        for ii in SKIN[i]:
-                                            if "blu" in ii:
-                                                BLU = i
-                                                print(BLU)
-                                                #break
-                                    counter = 0
-                                    for i in SKIN[BLU]:
-                                        OBJMAT[counter].material = bpy.data.materials[i]
-                                        counter += 1
-                                    del counter, SKIN, OBJMAT
-                                except:
-                                    pass
-                            else:
-                                try:
-                                    SKIN = bpy.data.objects[justadded]['skin_groups']
-                                    OBJMAT = bpy.data.objects[justadded].material_slots
-                                    counter = 0
-                                    for i in SKIN['0']:
-                                        OBJMAT[counter].material = bpy.data.materials[i[-63:]]
-                                        counter += 1
-                                except:
-                                    pass
-                                
-                            select = bpy.context.object
-                            try:
-                                if select.parent:
-                                    select = select.parent
-                            except:
-                                pass
-                            try:
-                                select['BMBCOMPATIBLE']
-                                var = 1
-                            except:
-                                var = 0
-                            
-                            if var == 1:
-                        
-                                for ii in bpy.data.objects[justadded].parent.pose.bones:
-                                    print(ii.name)
-                                    try:
-                                        bpy.data.objects[select.name].pose.bones[ii.name]
-                                        print('found matching bone!')
-                                    except:
-                                        continue
-                                    
-                                    try:
-                                        ii.constraints[loc]
-                                        pass
-                                    except:
-                                        ii.constraints.new('COPY_LOCATION').name = loc
-                                        ii.constraints.new('COPY_ROTATION').name = rot
-                                    
-                                    
-                                    ii.constraints[loc].target = select
-                                    ii.constraints[loc].subtarget = ii.name
-                                    ii.constraints[rot].target = select
-                                    ii.constraints[rot].subtarget = ii.name
-                            #except:
-                                #pass
-                                    
-                            PurgeImages()
-                            return {'FINISHED'}
-                    bpy.utils.register_class(opname)
-                    #register the new cosmetic operator class
+            def draw(self, context):
+                layout = self.layout
+                row = layout.row()
+                if len(hits) == 1:
+                    row.label(text=f'{len(hits)} Result')
+                else:
+                    row.label(text=f'{len(hits)} Results')
                 
-                def draw(self, context):
-                    layout = self.layout
-                    row = layout.row()
-                    if len(hits) == 1:
-                        row.label(text=f'{len(hits)} Result')
-                    else:
-                        row.label(text=f'{len(hits)} Results')
-                    
-                    for ops in hits:
-                        # draw the search results as buttons
-                        row=layout.row()
-                        row.label(text=ops.split("_-_")[1])
-                        BACKS = '\\'
-                        ops = ops.split("_-_")[0]
-                        ops = ops[:55]
-                        
-                        ops = ops.replace("-", "").replace("!", "").replace(":", "").replace("_", "").replace("\\", "").replace("/", "").replace("(", "").replace(")","").replace("%","").replace(",","").replace(" ", "").replace("'", "").replace(".", "").replace("#", "").casefold()
-                        row.operator(f'''hisanim.{ops}''')
+                for ops in hits:
+                    # draw the search results as buttons
+                    row=layout.row()
+                    row.label(text=ops.split("_-_")[1])
+                    BACKS = '\\'
+                    OPER = row.operator('hisanim.loadcosmetic', text=ops.split('_-_')[0])
+                    OPER.LOAD = ops
             if len(hits) == 0:
                 def draw(self, context):
                     layout = self.layout
@@ -432,7 +463,7 @@ class HISANIM_OT_ClearSearch(bpy.types.Operator):
     bl_description = 'Clear your search history'
     
     def execute(self, context):
-        print('hi')
+        
         try:
             bpy.utils.unregister_class(bpy.types.VIEW3D_PT_PART2)
             return {'FINISHED'}
@@ -442,7 +473,58 @@ class HISANIM_OT_ClearSearch(bpy.types.Operator):
 classes.append(HISANIM_OT_ClearSearch)
 classes.append(QueryProps)
 
+class HISANIM_OT_MATFIX(bpy.types.Operator):
+    bl_idname = 'hisanim.materialfix'
+    bl_label = 'Fix Materials'
+    bl_description = 'Fix Material'
+    bl_options = {'UNDO'}
+    
+    MAT: bpy.props.StringProperty(default='')
+    
+    def execute(self, context):
+        try:
+            bpy.data.materials[self.MAT].node_tree.nodes['WRDB-MIX']
+            return {'CANCELLED'}
+        except:
+            MAT = bpy.data.materials[self.MAT]
+            NODEMIX = MAT.node_tree.nodes.new('ShaderNodeMixRGB')
+            NODEMIX.name = 'WRDB-MIX'
+            NODEMIX.location = Vector((-400, 210))
+            NODEGAMMA = MAT.node_tree.nodes.new('ShaderNodeGamma')
+            NODEGAMMA.name = 'WRDB-GAMMA'
+            NODEGAMMA.location = Vector((-780, 110))
+            NODEGAMMA.inputs[0].default_value = list(MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value)
+            MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = [1, 1, 1, 1]
+            NODEGAMMA.inputs[1].default_value = 2.2
+            MATLINK = MAT.node_tree.links
+            MATLINK.new(MAT.node_tree.nodes['$basetexture'].outputs['Alpha'], NODEMIX.inputs[0])
+            MATLINK.new(MAT.node_tree.nodes['$basetexture'].outputs['Color'], NODEMIX.inputs[1])
+            MATLINK.new(NODEGAMMA.outputs[0], NODEMIX.inputs[2])
+            MATLINK.new(NODEMIX.outputs[0], MAT.node_tree.nodes['VertexLitGeneric'].inputs['$basetexture [texture]'])
+            return {'FINISHED'}
+classes.append(HISANIM_OT_MATFIX)
 
+class HISANIM_OT_PAINTS(bpy.types.Operator):
+    bl_idname = 'hisanim.paint'
+    bl_label = 'Paint'
+    bl_description = 'Use this paint on cosmetic'
+    bl_options = {'UNDO'}
+
+    PAINT: bpy.props.StringProperty(default='')
+
+    def execute(self, context):
+        paintvalue = self.PAINT.split(' ')
+        paintlist = [int(i)/255 for i in paintvalue]
+        paintlist.append(1.0)
+        for i in context.selected_objects:
+            print(i.name)
+            for MAT in i.material_slots:
+                try:
+                    MAT.material.node_tree.nodes['WRDB-GAMMA'].inputs[0].default_value = paintlist
+                except:
+                    MAT.material.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = paintlist
+        return {'FINISHED'}
+classes.append(HISANIM_OT_PAINTS)
 
 class VIEW3D_PT_PART1(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar"""
@@ -470,8 +552,66 @@ class VIEW3D_PT_PART1(bpy.types.Panel):
         row.operator('hisanim.removelightwarps')
         row = layout.row()
         row.prop(context.scene, 'wrdbbluteam')
+        row = layout.row()
+
+class VIEW3D_PT_PART3(bpy.types.Panel):
+    bl_label = 'Material Fixer'
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = addn
+    bl_icon = "MOD_CLOTH"
+    @classmethod
+    def poll(cls, context):
+        try:
+            return True if not context.object.get('skin_groups') == None else False
+        except:
+            return False
+    def draw(self, context):
+        if not context.object.get('skin_groups') == None:
+            layout = self.layout
+            layout.label(text='Attempt to fix material')
+            box = self.layout.box()      
+            for i in [i.material.name for i in context.object.material_slots]:
+                row = box.row()
+                MATFIX = row.operator('hisanim.materialfix', text=i)
+                MATFIX.MAT = i
+
+class VIEW3D_PT_PART4(bpy.types.Panel):
+    bl_label = 'Paints'
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = addn
+    #print(bpy.context.object)
+    #if not bpy.context.object.get('skin_groups') == None:
+    @classmethod
+    def poll(cls, context):
+        try:
+            return True if not context.object.get('skin_groups') == None else False
+        except:
+            return False
+    def draw(self, context):
+        if not context.object.get('skin_groups') == None:
+            layout = self.layout
+            for i in paints:
+                if type(paints[i]) == str:
+                    row = layout.row()
+                    oper = row.operator('hisanim.paint', text = i)
+                    oper.PAINT = paints[i]
+                if type(paints[i]) == list:
+                    box = layout.box()
+                    teamcount = 0
+                    for ii in paints[i]:
+                        row = box.row()
+                        oper = row.operator('hisanim.paint', text=i + " " + ('BLU' if teamcount == 1 else 'RED'))
+                        oper.PAINT = ii
+                        teamcount = 1
+        #pass
+                        
+
 
 classes.append(VIEW3D_PT_PART1)
+classes.append(VIEW3D_PT_PART3)
+classes.append(VIEW3D_PT_PART4)
 classes.append(mercdeployer.VIEW3D_PT_MERCDEPLOY)
 classes.append(bonemerge.HISANIM_OT_ATTACH)
 classes.append(bonemerge.HISANIM_OT_DETACH)
@@ -494,6 +634,7 @@ def register():
         name="Blu Team",
         description="Swap classes",
         default = False)
+    #bpy.app.handlers.load_post.append(PERSIST)
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
