@@ -503,7 +503,7 @@ class HISANIM_OT_MATFIX(bpy.types.Operator):
             MATLINK.new(NODEMIX.outputs[0], MAT.node_tree.nodes['VertexLitGeneric'].inputs['$basetexture [texture]'])
             return {'FINISHED'}
 classes.append(HISANIM_OT_MATFIX)
-
+#bpy.types.Panel.layout.
 class HISANIM_OT_PAINTS(bpy.types.Operator):
     bl_idname = 'hisanim.paint'
     bl_label = 'Paint'
@@ -575,7 +575,7 @@ class VIEW3D_PT_PART3(bpy.types.Panel):
                 row = box.row()
                 MATFIX = row.operator('hisanim.materialfix', text=i)
                 MATFIX.MAT = i
-
+#bpy.types.Panel.layout.
 class VIEW3D_PT_PART4(bpy.types.Panel):
     bl_label = 'Paints'
     bl_space_type = 'VIEW_3D'
@@ -595,7 +595,7 @@ class VIEW3D_PT_PART4(bpy.types.Panel):
             for i in paints:
                 if type(paints[i]) == str:
                     row = layout.row()
-                    oper = row.operator('hisanim.paint', text = i)
+                    oper = row.operator('hisanim.paint', icon='PROPERTIES', text = i)
                     oper.PAINT = paints[i]
                 if type(paints[i]) == list:
                     box = layout.box()
