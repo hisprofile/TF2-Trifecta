@@ -53,7 +53,7 @@ paints = {"A Color Similar to Slate" : '47 79 79',
 "Ye Olde Rustic Colour" : '124 108 87',
 "Zepheniah's Greed" : '66 79 59'}
 
-from . import bonemerge, mercdeployer, uilist
+from . import bonemerge, mercdeployer, uilist, icons
 global loc
 global rot
 loc = "BONEMERGE-ATTACH-LOC"
@@ -593,7 +593,7 @@ class VIEW3D_PT_PART4(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         row = layout.row()
-        row.template_list('UI_PAINTLIST', "Paints", context.scene, "paintlist", context.scene, "paintindex")
+        row.template_list('HISANIM_UL_PAINTLIST', "Paints", context.scene, "paintlist", context.scene, "paintindex")
         row=layout.row()
         oper = row.operator('hisanim.paint', text = 'Add Paint')
         oper.PAINT = uilist.paints[context.scene.paintlist[context.scene.paintindex].name]
@@ -610,7 +610,7 @@ classes.append(VIEW3D_PT_PART1)
 classes.append(VIEW3D_PT_PART3)
 classes.append(VIEW3D_PT_PART4)
 classes.append(uilist.PaintList)
-classes.append(uilist.UI_PAINTLIST)
+classes.append(uilist.HISANIM_UL_PAINTLIST)
 classes.append(mercdeployer.VIEW3D_PT_MERCDEPLOY)
 classes.append(bonemerge.HISANIM_OT_ATTACH)
 classes.append(bonemerge.HISANIM_OT_DETACH)
@@ -635,6 +635,7 @@ def register():
         default = False)
     bpy.types.Scene.paintlist = CollectionProperty(type = uilist.PaintList)#, item = paintnames)
     bpy.types.Scene.paintindex = IntProperty(name='Paint Index', default = 0)
+    icons.register()
     #bpy.app.handlers.load_post.append(PERSIST)
 def unregister():
     for cls in reversed(classes):

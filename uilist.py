@@ -2,7 +2,7 @@ import bpy
 from bpy.props import *
 from bpy.types import *
 #from bpy.utils import *
-
+from . import icons
 paints = {"A Color Similar to Slate" : '47 79 79',
     "A Deep Commitment to Purple" : '125 64 113',
     "A Distinctive Lack of Hue" : '20 20 20',
@@ -55,14 +55,14 @@ class PaintList(bpy.types.PropertyGroup):
         description='',
         default='')
 
-class UI_PAINTLIST(bpy.types.UIList):
+class HISANIM_UL_PAINTLIST(bpy.types.UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         #self.items = ['fart', 'penis']
         #ob = ['bigfart']
         #self.icon = 'PROPERTIES'
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            layout.label(text=item.name)
+            layout.label(text=item.name, icon_value= icons.id(item.name))
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
