@@ -11,8 +11,11 @@ bl_info = {
 
 import bpy, json, mathutils, os
 from pathlib import Path
-from bpy.props import BoolProperty
+#from bpy.props import BoolProperty
+from bpy.props import *
+from bpy.types import *
 from mathutils import *
+from bpy.app.handlers import persistent
 import importlib, sys
 for filename in [ f for f in os.listdir(os.path.dirname(os.path.realpath(__file__))) if f.endswith(".py") ]:
     if filename == os.path.basename(__file__): continue
@@ -50,7 +53,7 @@ paints = {"A Color Similar to Slate" : '47 79 79',
 "Ye Olde Rustic Colour" : '124 108 87',
 "Zepheniah's Greed" : '66 79 59'}
 
-from . import bonemerge, mercdeployer
+from . import bonemerge, mercdeployer, uilist
 global loc
 global rot
 loc = "BONEMERGE-ATTACH-LOC"
@@ -523,6 +526,7 @@ class HISANIM_OT_PAINTS(bpy.types.Operator):
                     MAT.material.node_tree.nodes['WRDB-GAMMA'].inputs[0].default_value = paintlist
                 except:
                     MAT.material.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = paintlist
+        #print(self.PAINT)
         return {'FINISHED'}
 classes.append(HISANIM_OT_PAINTS)
 
@@ -575,14 +579,11 @@ class VIEW3D_PT_PART3(bpy.types.Panel):
                 row = box.row()
                 MATFIX = row.operator('hisanim.materialfix', text=i)
                 MATFIX.MAT = i
-#bpy.types.Panel.layout.
 class VIEW3D_PT_PART4(bpy.types.Panel):
     bl_label = 'Paints'
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = addn
-    #print(bpy.context.object)
-    #if not bpy.context.object.get('skin_groups') == None:
     @classmethod
     def poll(cls, context):
         try:
@@ -590,28 +591,26 @@ class VIEW3D_PT_PART4(bpy.types.Panel):
         except:
             return False
     def draw(self, context):
-        if not context.object.get('skin_groups') == None:
-            layout = self.layout
-            for i in paints:
-                if type(paints[i]) == str:
-                    row = layout.row()
-                    oper = row.operator('hisanim.paint', icon='PROPERTIES', text = i)
-                    oper.PAINT = paints[i]
-                if type(paints[i]) == list:
-                    box = layout.box()
-                    teamcount = 0
-                    for ii in paints[i]:
-                        row = box.row()
-                        oper = row.operator('hisanim.paint', text=i + " " + ('BLU' if teamcount == 1 else 'RED'))
-                        oper.PAINT = ii
-                        teamcount = 1
-        #pass
-                        
+        layout = self.layout
+        row = layout.row()
+        row.template_list('UI_PAINTLIST', "Paints", context.scene, "paintlist", context.scene, "paintindex")
+        row=layout.row()
+        oper = row.operator('hisanim.paint', text = 'Add Paint')
+        oper.PAINT = uilist.paints[context.scene.paintlist[context.scene.paintindex].name]
+@persistent
+def load_handler(dummy):
+    bpy.context.scene.paintlist.clear()
+    for i in uilist.paints:
+        item = bpy.context.scene.paintlist.add()
+        item.name = i
+bpy.app.handlers.load_post.append(load_handler)
 
-
+paintnames = uilist.paintnames
 classes.append(VIEW3D_PT_PART1)
 classes.append(VIEW3D_PT_PART3)
 classes.append(VIEW3D_PT_PART4)
+classes.append(uilist.PaintList)
+classes.append(uilist.UI_PAINTLIST)
 classes.append(mercdeployer.VIEW3D_PT_MERCDEPLOY)
 classes.append(bonemerge.HISANIM_OT_ATTACH)
 classes.append(bonemerge.HISANIM_OT_DETACH)
@@ -634,12 +633,16 @@ def register():
         name="Blu Team",
         description="Swap classes",
         default = False)
+    bpy.types.Scene.paintlist = CollectionProperty(type = uilist.PaintList)#, item = paintnames)
+    bpy.types.Scene.paintindex = IntProperty(name='Paint Index', default = 0)
     #bpy.app.handlers.load_post.append(PERSIST)
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     del bpy.types.Scene.bluteam
     del bpy.types.Scene.cosmeticcompatibility
+    del bpy.types.Scene.paintlist
+    del bpy.types.Scene.paintindex
     
 if __name__ == "__main__":
     register()
