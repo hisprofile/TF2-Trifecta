@@ -23,36 +23,6 @@ for filename in [ f for f in os.listdir(os.path.dirname(os.path.realpath(__file_
     if module: importlib.reload(module)
 from bpy.app.handlers import persistent
 # borrowed from BST
-paints = {"A Color Similar to Slate" : '47 79 79',
-"A Deep Commitment to Purple" : '125 64 113',
-"A Distinctive Lack of Hue" : '20 20 20',
-"A Mann's Mint" : '188 221 179',
-"After Eight" : '45 45 36',
-"Aged Moustache Grey" : '126 126 126',
-"An Air of Debonair" : ['101 71 64', '40 57 77'],
-"An Extraordinary Abundance of Tinge" : '230 230 230',
-"Australium Gold" : '231 181 59',
-"Balaclavas Are Forever" : ['59 31 35', '24 35 61'],
-"Color No. 216-190-216" : '216 190 216',
-"Cream Spirit" : ['195 108 45', '184 128 53'],
-"Dark Salmon Injustice" : '233 150 122',
-"Drably Olive" : '128 128 0',
-"Indubitably Green" : '114 158 66',
-"Mann Co. Orange" : '207 115 54',
-"Muskelmannbraun" : '165 117 69',
-"Noble Hatter's Violet" : '81 56 74',
-"Operator's Overalls" : ['72 56 56', '56 66 72'],
-"Peculiarly Drab Tincture" : '197 175 145',
-"Pink as Hell" : '255 105 180',
-"Radigan Conagher Brown" : '105 77 58',
-"Team Spirit" : ['184 56 59', '88 133 162'],
-"The Bitter Taste of Defeat and Lime" : '50 205 50',
-"The Color of a Gentlemann's Business Pants" : '240 230 140',
-"The Value of Teamwork" : ['128 48 32', '37 109 141'],
-"Waterlogged Lab Coat" : ['168 154 140', '131 159 163'],
-"Ye Olde Rustic Colour" : '124 108 87',
-"Zepheniah's Greed" : '66 79 59'}
-
 from . import bonemerge, mercdeployer, uilist, icons
 global loc
 global rot
@@ -478,7 +448,7 @@ classes.append(QueryProps)
 
 class HISANIM_OT_MATFIX(bpy.types.Operator):
     bl_idname = 'hisanim.materialfix'
-    bl_label = 'Fix Materials'
+    bl_label = 'Fix Material'
     bl_description = 'Fix Material'
     bl_options = {'UNDO'}
     
@@ -519,17 +489,51 @@ class HISANIM_OT_PAINTS(bpy.types.Operator):
         paintvalue = self.PAINT.split(' ')
         paintlist = [int(i)/255 for i in paintvalue]
         paintlist.append(1.0)
-        for i in context.selected_objects:
-            print(i.name)
-            for MAT in i.material_slots:
-                try:
-                    MAT.material.node_tree.nodes['WRDB-GAMMA'].inputs[0].default_value = paintlist
-                except:
-                    MAT.material.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = paintlist
+        MAT = context.object.active_material
+        if MAT.node_tree.nodes.get('DEFAULTPAINT') == None:
+            RGBBAK = MAT.node_tree.nodes.new(type='ShaderNodeRGB')
+            RGBBAK.name = 'DEFAULTPAINT'
+            RGBBAK.location = Vector((-650, -550))
+            RGBBAK.label = 'DEFAULTPAINT'
+            if not MAT.node_tree.nodes.get('WRDB-GAMMA') == None:
+                RGBBAK.outputs[0].default_value = list(MAT.node_tree.nodes['WRDB-GAMMA'].inputs[0].default_value)
+            else:
+                RGBBAK.outputs[0].default_value = list(MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value)
+        try:
+            MAT.node_tree.nodes['WRDB-GAMMA'].inputs[0].default_value = paintlist
+        except:
+            MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = paintlist
         #print(self.PAINT)
         return {'FINISHED'}
-classes.append(HISANIM_OT_PAINTS)
+class HISANIM_OT_PAINTCLEAR(bpy.types.Operator):
+    bl_idname = 'hisanim.paintclear'
+    bl_label = 'Clear Paint'
+    bl_description = 'Clear Paint'
+    bl_options = {'UNDO'}
 
+    def execute(self, context):
+        MAT = context.object.active_material.node_tree
+        if MAT.nodes.get('DEFAULTPAINT') == None:
+            return {'CANCELLED'}
+        if not MAT.nodes.get('WRDB-GAMMA') == None:
+            MAT.nodes['WRDB-GAMMA'].inputs[0].default_value = list(MAT.nodes['DEFAULTPAINT'].outputs[0].default_value)
+        else:
+            MAT.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = list(MAT.nodes['DEFAULTPAINT'].outputs[0].default_value)
+        MAT.nodes.remove(MAT.nodes['DEFAULTPAINT'])
+        return {'FINISHED'}
+'''class HISANIM_OT_REFRESHMATS(bpy.types.Operator):
+    bl_idname = 'hisanim.refreshmats'
+    bl_label = 'Refresh Object Materials'
+    bl_description = 'Click to show materials to in the Material Fixer'
+    
+    def execute(self, context):
+        context.scene.hisamatlist.clear()
+        for i in context.object.material_slots:
+            item = context.scene.hisamatlist.add()
+            item.name = i.material.name
+        return {'FINISHED'}'''
+
+classes.append(HISANIM_OT_PAINTS)
 class VIEW3D_PT_PART1(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar"""
     bl_label = addn
@@ -559,7 +563,7 @@ class VIEW3D_PT_PART1(bpy.types.Panel):
         row = layout.row()
 
 class VIEW3D_PT_PART3(bpy.types.Panel):
-    bl_label = 'Material Fixer'
+    bl_label = 'Material Fixer/Selector'
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = addn
@@ -567,10 +571,25 @@ class VIEW3D_PT_PART3(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         try:
-            return True if not context.object.get('skin_groups') == None else False
+            return True if not context.object.get('skin_groups') == None and len(context.selected_objects) > 0 else False
         except:
             return False
     def draw(self, context):
+        if not context.object.get('skin_groups') == None:
+            layout = self.layout
+            ob = context.object
+            layout.label(text='Attempt to fix material')
+            row = layout.row()
+            #row.template_list('HISANIM_UL_MATERIALLIST', "Materials", context.scene, "hisamatlist", context.scene, "hisamatindex")
+            row.template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
+            #row = layout.row()
+            #row.operator('hisanim.refreshmats')
+            row = layout.row(align=True)
+            oper = row.operator('hisanim.materialfix')
+            oper.MAT = context.object.active_material.name
+                
+
+    '''def draw(self, context):
         if not context.object.get('skin_groups') == None:
             layout = self.layout
             layout.label(text='Attempt to fix material')
@@ -578,16 +597,19 @@ class VIEW3D_PT_PART3(bpy.types.Panel):
             for i in [i.material.name for i in context.object.material_slots]:
                 row = box.row()
                 MATFIX = row.operator('hisanim.materialfix', text=i)
-                MATFIX.MAT = i
+                MATFIX.MAT = i'''
+
+#panelspace for paints
 class VIEW3D_PT_PART4(bpy.types.Panel):
     bl_label = 'Paints'
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = addn
+    #check if the panel can be displayed
     @classmethod
     def poll(cls, context):
         try:
-            return True if not context.object.get('skin_groups') == None else False
+            return True if not context.object.get('skin_groups') == None and len(context.selected_objects) > 0 else False
         except:
             return False
     def draw(self, context):
@@ -597,6 +619,8 @@ class VIEW3D_PT_PART4(bpy.types.Panel):
         row=layout.row()
         oper = row.operator('hisanim.paint', text = 'Add Paint')
         oper.PAINT = uilist.paints[context.scene.paintlist[context.scene.paintindex].name]
+        row = layout.row()
+        row.operator('hisanim.paintclear')
 @persistent
 def load_handler(dummy):
     bpy.context.scene.paintlist.clear()
@@ -611,12 +635,15 @@ classes.append(VIEW3D_PT_PART3)
 classes.append(VIEW3D_PT_PART4)
 classes.append(uilist.PaintList)
 classes.append(uilist.HISANIM_UL_PAINTLIST)
+classes.append(uilist.MaterialList)
+classes.append(uilist.HISANIM_UL_MATERIALLIST)
 classes.append(mercdeployer.VIEW3D_PT_MERCDEPLOY)
 classes.append(bonemerge.HISANIM_OT_ATTACH)
 classes.append(bonemerge.HISANIM_OT_DETACH)
 classes.append(bonemerge.VIEW3D_PT_BONEMERGE)
 classes.append(bonemerge.HISANIM_OT_BINDFACE)
 classes.append(bonemerge.HISANIM_OT_ATTEMPTFIX)
+classes.append(HISANIM_OT_PAINTCLEAR)
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
@@ -633,8 +660,10 @@ def register():
         name="Blu Team",
         description="Swap classes",
         default = False)
-    bpy.types.Scene.paintlist = CollectionProperty(type = uilist.PaintList)#, item = paintnames)
+    bpy.types.Scene.paintlist = CollectionProperty(type = uilist.PaintList)
+    bpy.types.Scene.hisamatlist = CollectionProperty(type = uilist.MaterialList)
     bpy.types.Scene.paintindex = IntProperty(name='Paint Index', default = 0)
+    bpy.types.Scene.hisamatindex = IntProperty(name='Selected Material Index', default = 0)
     icons.register()
     #bpy.app.handlers.load_post.append(PERSIST)
 def unregister():
@@ -644,6 +673,8 @@ def unregister():
     del bpy.types.Scene.cosmeticcompatibility
     del bpy.types.Scene.paintlist
     del bpy.types.Scene.paintindex
+    del bpy.types.Scene.hisamatlist
+    del bpy.types.Scene.hisamatindex
     
 if __name__ == "__main__":
     register()

@@ -55,6 +55,17 @@ class PaintList(bpy.types.PropertyGroup):
         description='',
         default='')
 
+class MaterialList(bpy.types.PropertyGroup):
+    name: StringProperty(
+        name="Name",
+        description='A name for this item',
+        default='untitled')
+
+    random_prop: StringProperty(
+        name='some property',
+        description='',
+        default='')
+
 class HISANIM_UL_PAINTLIST(bpy.types.UIList):
 
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
@@ -67,9 +78,22 @@ class HISANIM_UL_PAINTLIST(bpy.types.UIList):
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
             layout.label(text='')
-        '''if self.layout_type in {'DEFAULT', 'COMPACT'}:
 
-            layout.prop(ob, "name", text="", emboss=False)#, icon_value=layout.icon(item))'''
+class HISANIM_UL_MATERIALLIST(bpy.types.UIList):
+
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        #self.items = ['fart', 'penis']
+        #ob = ['bigfart']
+        #self.icon = 'PROPERTIES'
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.label(text=item.name, icon='MATERIAL')
+
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label(text='')
+'''if self.layout_type in {'DEFAULT', 'COMPACT'}:
+
+    layout.prop(ob, "name", text="", emboss=False)#, icon_value=layout.icon(item))'''
 '''def register():
     bpy.types.Scene.paintlist = CollectionProperty(type = PaintList)
     bpy.types.Scene.paintindex = IntProperty(name='Paint Index', default = 0)
