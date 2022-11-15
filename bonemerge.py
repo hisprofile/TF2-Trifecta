@@ -9,7 +9,7 @@ def GetRoot(a):
         if i.parent == None:
             return i
         
-class VIEW3D_PT_BONEMERGE(bpy.types.Panel):
+class BM_PT_BONEMERGE(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar"""
     bl_label = "Bonemerge"
     bl_space_type = 'VIEW_3D'
@@ -152,21 +152,3 @@ class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
             except:
                 pass
         return {'FINISHED'}
-        
-'''classes = []
-classes.append(VIEW3D_PT_BONEMERGE)
-classes.append(HISANIM_OT_ATTACH)
-classes.append(HISANIM_OT_DETACH)
-classes.append(HISANIM_OT_BINDFACE)
-classes.append(HISANIM_OT_ATTEMPTFIX)
-
-def register():
-    for cls in classes:
-        bpy.utils.register_class(cls)
-    
-def unregister():
-    for cls in reversed(classes):
-        bpy.utils.unregister_class(cls)
-    
-if __name__ == "__main__":
-    register()'''

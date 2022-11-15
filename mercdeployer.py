@@ -3,7 +3,6 @@ import bpy
 from pathlib import Path
 
 from bpy.props import BoolProperty
-
 prefs = bpy.context.preferences
 filepaths = prefs.filepaths
 asset_libraries = filepaths.asset_libraries
@@ -70,7 +69,6 @@ def NoUserNodeGroup(a): # remove fake users from node groups
                 i.use_fake_user = False
             except:
                 pass
-                
 def PurgeNodeGroups(): # delete unused node groups from the .blend file
     for i in bpy.data.node_groups:
             if i.users == 0:
@@ -100,13 +98,33 @@ def Collapse(a, b): # merge TF2 BVLG groups
         try:
             bpy.data.node_groups[c]
             a.node_tree = bpy.data.node_groups[c]
-            RemoveNodeGroups(bpy.data.node_groups[DELETE])
+            RemoveNodeGroups(bpy.data.node_groups[DELETE]) # i don't remember what this was for, but an error will always be raised, and it doesn't matter cause of the PurgeNodeGroups function
         except:
+            #raise
             a.node_tree.name = c
             NoUserNodeGroup(a.node_tree)
     
     return {'FINISHED'}
-class VIEW3D_PT_MERCDEPLOY(bpy.types.Panel):
+
+def ReuseImage(a):
+    if ".0" in a.image.name:
+        try:
+            lookfor = a.image.name[:a.image.name.rindex(".")]
+            print(f'looking for {lookfor}..')
+            a.image = bpy.data.images[lookfor]
+            print("found!")
+            a.image.use_fake_user = False
+        except:
+            print(f"no original match found for {a.image.name}!")
+            print("RENAMING")
+            old = a.image.name
+            new = a.image.name[:a.image.name.rindex(".")]
+            print(f'{old} --> {new}')
+            a.image.name = new
+            a.image.use_fake_user = False
+            return "continue"
+            
+class MD_PT_MERCDEPLOY(bpy.types.Panel):
     '''Rolling in the nonsense, deploy the fantasy!'''
     bl_label = "Merc Deployer"
     bl_space_type = 'VIEW_3D'
@@ -188,7 +206,9 @@ class VIEW3D_PT_MERCDEPLOY(bpy.types.Panel):
                                 #use existing images
                                 
                                 if NODE.type == 'TEX_IMAGE':
-                                    if ".0" in NODE.image.name:
+                                    if ReuseImage(NODE) == "continue":
+                                        continue
+                                    '''if ".0" in NODE.image.name:
                                         try:
                                             lookfor = NODE.image.name[:NODE.image.name.rindex(".")]
                                             print(f'looking for {lookfor}..')
@@ -203,7 +223,7 @@ class VIEW3D_PT_MERCDEPLOY(bpy.types.Panel):
                                             print(f'{old} --> {new}')
                                             NODE.image.name = new
                                             NODE.image.use_fake_user = False
-                                            continue
+                                            continue'''
                                         
                             if mat in matblacklist:
                                 continue
