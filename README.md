@@ -3,3 +3,7 @@
 A combination of Wardrobe, Merc Deployer, and Bonemerge
 
 Thank you Unhelpful Git for coining the name "TF2 Trifecta"
+
+Using library "dload" to download file from tf2 collection repository.
+
+https://github.com/x011/dload

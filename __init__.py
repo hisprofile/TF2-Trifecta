@@ -22,7 +22,7 @@ for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__
     if module: importlib.reload(module)
 from bpy.app.handlers import persistent
 # borrowed from BST
-from . import bonemerge, mercdeployer, uilist, icons
+from . import bonemerge, mercdeployer, uilist, icons, button
 global loc
 global rot
 loc = bonemerge.loc
@@ -578,6 +578,7 @@ def register():
     bpy.types.Scene.paintindex = IntProperty(name='Paint Index', default = 0)
     bpy.types.Scene.hisamatindex = IntProperty(name='Selected Material Index', default = 0)
     icons.register()
+    button.register()
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
@@ -588,6 +589,7 @@ def unregister():
     del bpy.types.Scene.paintindex
     del bpy.types.Scene.hisamatlist
     del bpy.types.Scene.hisamatindex
+    button.unregister()
     
 if __name__ == "__main__":
     register()
