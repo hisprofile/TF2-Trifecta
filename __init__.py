@@ -22,7 +22,8 @@ for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__
     if module: importlib.reload(module)
 from bpy.app.handlers import persistent
 # borrowed from BST
-from . import bonemerge, mercdeployer, uilist, icons, button
+from . import bonemerge, mercdeployer, uilist, icons, button, PATHS
+global PATHS
 global loc
 global rot
 loc = bonemerge.loc
@@ -74,53 +75,6 @@ def Collapse(a, b): # merge TF2 BVLG groups
             a.node_tree.name = c
             mercdeployer.NoUserNodeGroup(a.node_tree)
 
-prefs = bpy.context.preferences
-filepaths = prefs.filepaths
-asset_libraries = filepaths.asset_libraries
-blend_files = []
-for asset_library in asset_libraries:
-    library_name = asset_library.path
-    library_path = Path(asset_library.path)
-    blend_files.append(str([fp for fp in library_path.glob("**/*.blend")]))# if fp.is_file()]
-# taken from https://blender.stackexchange.com/questions/244971/how-do-i-get-all-assets-in-a-given-userassetlibrary-with-the-python-api
-global PATHS
-PATHS = {}
-files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
-for i in files: # add paths to definitoin
-    for ii in blend_files:
-        try:
-            ii = str(ii)[str(ii).index("('") + 2:str(ii).index("')")]
-            if i in ii and not "V3" in ii: # skip TF2-V3 
-                PATHS[i] = ii
-        except:
-            continue
-            
-for i in blend_files: # for allclass folders
-    try:
-        i = str(i)[str(i).index("('") + 2:str(i).index("')")]
-        if 'allclass.b' in i:
-            PATHS['allclass'] = i
-    except:
-        print(i, " is an invalid path!")
-        continue
-        
-for i in blend_files:
-    try:
-        i = str(i)[str(i).index("('") + 2:str(i).index("')")]
-        if 'allclass2' in i:
-            PATHS['allclass2'] = i
-    except:
-        print(i, " is an invalid path!")
-        continue
-
-for i in blend_files:
-    try:
-        i = str(i)[str(i).index("('") + 2:str(i).index("')")]
-        if 'allclass3' in i:
-            PATHS['allclass3'] = i
-    except:
-        print(i, " is an invalid path!")
-        continue
 
 class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with a button
     bl_idname = 'hisanim.lightwarps'
@@ -187,16 +141,63 @@ class HISANIM_OT_MATFIX(bpy.types.Operator):
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')
+    #FILELOC: bpy.props.StringProperty(default='')
     bl_idname = 'hisanim.loadcosmetic'
     bl_label = 'Cosmetic'
     bl_description = f'Load this cosmetic into your scene'
     bl_options = {'UNDO'}
 
     def execute(self, context):
+        blend_files = []
+        prefs = bpy.context.preferences
+        filepaths = prefs.filepaths
+        asset_libraries = filepaths.asset_libraries
+        for asset_library in asset_libraries:
+            library_name = asset_library.path
+            library_path = Path(asset_library.path)
+            blend_files.append(str([fp for fp in library_path.glob("**/*.blend")]))
+        # taken from https://blender.stackexchange.com/questions/244971/how-do-i-get-all-assets-in-a-given-userassetlibrary-with-the-python-api
+        PATHS.FPATHS = {}
+        files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
+        for i in files: # add paths to definitoin
+            for ii in blend_files:
+                try:
+                    ii = str(ii)[str(ii).index("('") + 2:str(ii).index("')")]
+                    if i in ii and not "V3" in ii: # skip TF2-V3 
+                        PATHS.FPATHS[i] = ii
+                except:
+                    continue
+                    
+        for i in blend_files: # for allclass folders
+            try:
+                i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+                if 'allclass.b' in i:
+                    PATHS.FPATHS['allclass'] = i
+            except:
+                print(i, " is an invalid path!")
+                continue
+                
+        for i in blend_files:
+            try:
+                i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+                if 'allclass2' in i:
+                    PATHS.FPATHS['allclass2'] = i
+            except:
+                print(i, " is an invalid path!")
+                continue
+
+        for i in blend_files:
+            try:
+                i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+                if 'allclass3' in i:
+                    PATHS.FPATHS['allclass3'] = i
+            except:
+                print(i, " is an invalid path!")
+                continue
         D = bpy.data
         CLASS = self.LOAD.split("_-_")[1]
         COSMETIC = self.LOAD.split("_-_")[0]
-        p = PATHS[CLASS] # shortcut to paths. self.CLASS refers to the class folder.
+        p = PATHS.FPATHS[CLASS] # shortcut to paths. self.CLASS refers to the class folder.
         cos = COSMETIC
         
         # check if the cosmetic already exists. if it does, use the existing assets.
@@ -336,6 +337,8 @@ class HISANIM_OT_Search(bpy.types.Operator):
         lookfor = lookfor.split("|")
         lookfor.sort()
         hits = returnsearch(lookfor)
+        #bpy.utils.unregister_class(HISANIM_OT_LOAD)
+        #bpy.utils.register_class(HISANIM_OT_LOAD)
         class WDRB_PT_PART2(bpy.types.Panel):
             bl_label = "Search Results"
             bl_space_type = 'VIEW_3D'
@@ -359,6 +362,7 @@ class HISANIM_OT_Search(bpy.types.Operator):
                     BACKS = '\\'
                     OPER = row.operator('hisanim.loadcosmetic', text=ops.split('_-_')[0])
                     OPER.LOAD = ops
+                    #OPER.FILELOC = PATHS.FPATHS[ops.split("_-_")[1]]
             if len(hits) == 0:
                 def draw(self, context):
                     layout = self.layout
