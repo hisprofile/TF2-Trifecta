@@ -10,7 +10,7 @@ def id(identifier):
     global pcoll
 
     #try:
-    return pcoll[identifier.replace(' ','').casefold().replace('png','')].icon_id
+    return pcoll[identifier.replace(' ','').casefold().replace('png','').replace('svg','')].icon_id
 
     #except:
         #return pcoll['missing'].icon_id
@@ -22,8 +22,8 @@ def register():
     directory = os.path.dirname(__file__)
 
     for filename in os.listdir(directory):
-        if filename.lower().endswith('.png'):
-            name = filename.lower().replace('.png','')
+        if filename.lower().endswith('.png') or filename.lower().endswith('.svg'):
+            name = filename.lower().replace('.png','').replace('.svg','')
             path = os.path.join(directory, filename)
             pcoll.load(name, path, 'IMAGE')
 

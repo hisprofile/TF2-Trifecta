@@ -23,7 +23,7 @@ for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__
 from bpy.app.handlers import persistent
 # borrowed from BST
 from . import bonemerge, mercdeployer, uilist, icons, button, PATHS
-global PATHS
+#global PATHS
 global loc
 global rot
 loc = bonemerge.loc
@@ -32,6 +32,59 @@ global addn
 addn = "Wardrobe" # addon name
 classes = []
 global select
+global blend_files
+blend_files = []
+# = {}
+def RefreshPaths():
+    blend_files = []
+    prefs = bpy.context.preferences
+    filepaths = prefs.filepaths
+    asset_libraries = filepaths.asset_libraries
+    for asset_library in asset_libraries:
+        library_name = asset_library.path
+        library_path = Path(asset_library.path)
+        blend_files.append(str([fp for fp in library_path.glob("**/*.blend")]))
+    # taken from https://blender.stackexchange.com/questions/244971/how-do-i-get-all-assets-in-a-given-userassetlibrary-with-the-python-api
+    PATHS.FPATHS = {}
+    files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
+    for i in files: # add paths to definitoin
+        for ii in blend_files:
+            try:
+                ii = str(ii)[str(ii).index("('") + 2:str(ii).index("')")]
+                if i in ii and not "V3" in ii: # skip TF2-V3 
+                    PATHS.FPATHS[i] = ii
+            except:
+                continue
+                
+    for i in blend_files: # for allclass folders
+        try:
+            i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+            if 'allclass.b' in i:
+                PATHS.FPATHS['allclass'] = i
+        except:
+            print(i, " is an invalid path!")
+            continue
+            
+    for i in blend_files:
+        try:
+            i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+            if 'allclass2' in i:
+                PATHS.FPATHS['allclass2'] = i
+        except:
+            print(i, " is an invalid path!")
+            continue
+
+    for i in blend_files:
+        try:
+            i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+            if 'allclass3' in i:
+                PATHS.FPATHS['allclass3'] = i
+        except:
+            print(i, " is an invalid path!")
+            continue
+
+RefreshPaths()
+
 def RemoveNodeGroups(a): # iterate through every node and node group by using the "tree" method and removing said nodes
     for i in a.nodes:
         if i.type == 'GROUP':
@@ -148,7 +201,8 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     def execute(self, context):
-        blend_files = []
+        RefreshPaths()
+        '''blend_files = []
         prefs = bpy.context.preferences
         filepaths = prefs.filepaths
         asset_libraries = filepaths.asset_libraries
@@ -193,7 +247,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                     PATHS.FPATHS['allclass3'] = i
             except:
                 print(i, " is an invalid path!")
-                continue
+                continue'''
         D = bpy.data
         CLASS = self.LOAD.split("_-_")[1]
         COSMETIC = self.LOAD.split("_-_")[0]
