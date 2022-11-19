@@ -1,19 +1,7 @@
-import bpy, os, shutil
+import bpy, os, shutil, shutil
 from pathlib import Path
-from . import dload, icons
-import zipfile, time
-#import google.auth
-#from .google import auth
-#from . import auth
-#from . import gdown
-#from .google_drive_downloader import GoogleDriveDownloader as gdd
-#from .pydrive2.auth import GoogleAuth
-#from .pydrive2.drive import GoogleDrive
-from . import dload, mercdeployer
-#gauth = GoogleAuth()
-#gauth.LocalWebserverAuth()
-from . import PATHS
-#drive = GoogleDrive(gauth)
+from . import dload, icons, mercdeployer, PATHS
+import zipfile
 global blend_files
 def RefreshPaths():
     blend_files = []
@@ -64,13 +52,11 @@ def RefreshPaths():
             continue
 classes = mercdeployer.classes
 allclasses = ['allclass', 'allclass2', 'allclass3']
-class HISANIM_PT_UPDATER(bpy.types.Panel):
+class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Updater
     bl_label = "TF2 Trifecta Updater"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'scene'
-    #vs_icon = icons.id('tfupdater')
-    #bl_category = "Bonemerge"
 
     def draw(self, context):
         layout = self.layout
@@ -81,7 +67,6 @@ class HISANIM_PT_UPDATER(bpy.types.Panel):
             OPER = row.operator('hisanim.clsupdate', text='Update ' + i, icon_value=icons.id('tfupdater'))
             OPER.UPDATE = i
             row = layout.row()
-        #row = layout.row()
         layout.label(text='Update Allclass Cosmetics')
         row = layout.row()
         for i in allclasses:
@@ -96,15 +81,26 @@ class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_description = 'Press to update class'
     UPDATE: bpy.props.StringProperty(default='')
     def execute(self, context):
-        RefreshPaths()
+        RefreshPaths() # refresh paths, just cause
         switch = False
         try:
             GET = PATHS.FPATHS[self.UPDATE]
         except:
+            print(f'No existing .blend file found for {self.UPDATE}!')
             try:
-                PATHS.FPATHS[self.UPDATE] = bpy.context.preferences.filepaths.asset_libraries['scout'].path.replace(r'\\', '/') + "/"
+                x = [i.name for i in context.preferences.filepaths.asset_libraries]
+                print(x)
+                print('Attempting to find existing directory...')
+                assetpath = context.preferences.filepaths.asset_libraries
+                for i in assetpath:
+                    if self.UPDATE in i.path.casefold():
+                        FINDPATH = i.name
+                        print(f'Directory found at {i.path}!')
+                        break
+                PATHS.FPATHS[self.UPDATE] = context.preferences.filepaths.asset_libraries[FINDPATH].path.replace(r'\\', '/') + "/"
                 GET = PATHS.FPATHS[self.UPDATE]
                 print(GET)
+                del FINDPATH
                 switch = True
             except:
                 self.report({'INFO'}, f"Cannot find a directory for {self.UPDATE}!")

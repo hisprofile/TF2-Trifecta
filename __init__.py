@@ -22,7 +22,7 @@ for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__
     if module: importlib.reload(module)
 from bpy.app.handlers import persistent
 # borrowed from BST
-from . import bonemerge, mercdeployer, uilist, icons, button, PATHS
+from . import bonemerge, mercdeployer, uilist, icons, PATHS, updater
 #global PATHS
 global loc
 global rot
@@ -183,18 +183,8 @@ class hisanimsearchs(bpy.types.PropertyGroup): # keyword to look for
 
     query: bpy.props.StringProperty(default="")
 
-class HISANIM_OT_MATFIX(bpy.types.Operator):
-    bl_idname = 'hisanim.matfix'
-    bl_label = 'Mat'
-    bl_description = 'Attempt to fix a material with sections that are black'
-    
-    def execute(self, execute):
-        if bpy.context.object.get('skin_groups') == None:
-            return {'CANCELLED'}
-
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')
-    #FILELOC: bpy.props.StringProperty(default='')
     bl_idname = 'hisanim.loadcosmetic'
     bl_label = 'Cosmetic'
     bl_description = f'Load this cosmetic into your scene'
@@ -202,52 +192,6 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
 
     def execute(self, context):
         RefreshPaths()
-        '''blend_files = []
-        prefs = bpy.context.preferences
-        filepaths = prefs.filepaths
-        asset_libraries = filepaths.asset_libraries
-        for asset_library in asset_libraries:
-            library_name = asset_library.path
-            library_path = Path(asset_library.path)
-            blend_files.append(str([fp for fp in library_path.glob("**/*.blend")]))
-        # taken from https://blender.stackexchange.com/questions/244971/how-do-i-get-all-assets-in-a-given-userassetlibrary-with-the-python-api
-        PATHS.FPATHS = {}
-        files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
-        for i in files: # add paths to definitoin
-            for ii in blend_files:
-                try:
-                    ii = str(ii)[str(ii).index("('") + 2:str(ii).index("')")]
-                    if i in ii and not "V3" in ii: # skip TF2-V3 
-                        PATHS.FPATHS[i] = ii
-                except:
-                    continue
-                    
-        for i in blend_files: # for allclass folders
-            try:
-                i = str(i)[str(i).index("('") + 2:str(i).index("')")]
-                if 'allclass.b' in i:
-                    PATHS.FPATHS['allclass'] = i
-            except:
-                print(i, " is an invalid path!")
-                continue
-                
-        for i in blend_files:
-            try:
-                i = str(i)[str(i).index("('") + 2:str(i).index("')")]
-                if 'allclass2' in i:
-                    PATHS.FPATHS['allclass2'] = i
-            except:
-                print(i, " is an invalid path!")
-                continue
-
-        for i in blend_files:
-            try:
-                i = str(i)[str(i).index("('") + 2:str(i).index("')")]
-                if 'allclass3' in i:
-                    PATHS.FPATHS['allclass3'] = i
-            except:
-                print(i, " is an invalid path!")
-                continue'''
         D = bpy.data
         CLASS = self.LOAD.split("_-_")[1]
         COSMETIC = self.LOAD.split("_-_")[0]
@@ -391,8 +335,6 @@ class HISANIM_OT_Search(bpy.types.Operator):
         lookfor = lookfor.split("|")
         lookfor.sort()
         hits = returnsearch(lookfor)
-        #bpy.utils.unregister_class(HISANIM_OT_LOAD)
-        #bpy.utils.register_class(HISANIM_OT_LOAD)
         class WDRB_PT_PART2(bpy.types.Panel):
             bl_label = "Search Results"
             bl_space_type = 'VIEW_3D'
@@ -416,7 +358,6 @@ class HISANIM_OT_Search(bpy.types.Operator):
                     BACKS = '\\'
                     OPER = row.operator('hisanim.loadcosmetic', text=ops.split('_-_')[0])
                     OPER.LOAD = ops
-                    #OPER.FILELOC = PATHS.FPATHS[ops.split("_-_")[1]]
             if len(hits) == 0:
                 def draw(self, context):
                     layout = self.layout
@@ -569,7 +510,7 @@ class WDRB_PT_PART3(bpy.types.Panel): # for the material fixer and selector segm
             oper = row.operator('hisanim.materialfix')
             oper.MAT = context.object.active_material.name
 
-#panelspace for paints
+#panel space for paints
 class WDRB_PT_PART4(bpy.types.Panel):
     bl_label = 'Paints'
     bl_space_type = 'VIEW_3D'
@@ -636,7 +577,7 @@ def register():
     bpy.types.Scene.paintindex = IntProperty(name='Paint Index', default = 0)
     bpy.types.Scene.hisamatindex = IntProperty(name='Selected Material Index', default = 0)
     icons.register()
-    button.register()
+    updater.register()
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
@@ -647,7 +588,7 @@ def unregister():
     del bpy.types.Scene.paintindex
     del bpy.types.Scene.hisamatlist
     del bpy.types.Scene.hisamatindex
-    button.unregister()
+    updater.unregister()
     
 if __name__ == "__main__":
     register()
