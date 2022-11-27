@@ -40,10 +40,7 @@ paints = {"A Color Similar to Slate" : '47 79 79',
     "Ye Olde Rustic Colour" : '124 108 87',
     "Zepheniah's Greed" : '66 79 59'}
 
-#paintnames = [i for i in paints]
 paintnames = list(paints.keys())
-#print(paintnames)
-#print("FART")
 class PaintList(bpy.types.PropertyGroup):
     name: StringProperty(
         name="Name",

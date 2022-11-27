@@ -3,18 +3,19 @@ from pathlib import Path
 from . import dload, icons, mercdeployer, PATHS
 import zipfile
 global blend_files
+global files
+files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
 def RefreshPaths():
     blend_files = []
     prefs = bpy.context.preferences
     filepaths = prefs.filepaths
     asset_libraries = filepaths.asset_libraries
     for asset_library in asset_libraries:
-        library_name = asset_library.path
         library_path = Path(asset_library.path)
         blend_files.append(str([fp for fp in library_path.glob("**/*.blend")]))
     # taken from https://blender.stackexchange.com/questions/244971/how-do-i-get-all-assets-in-a-given-userassetlibrary-with-the-python-api
     PATHS.FPATHS = {}
-    files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
+    #files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
     for i in files: # add paths to definitoin
         for ii in blend_files:
             try:
@@ -53,6 +54,7 @@ def RefreshPaths():
 classes = mercdeployer.classes
 allclasses = ['allclass', 'allclass2', 'allclass3']
 class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Updater
+    #bpy.ops.wm.console_toggle()
     bl_label = "TF2 Trifecta Updater"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -74,6 +76,14 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
             OPER.UPDATE = i
             row = layout.row()
         layout.label(text='Note! Allclass will take much longer!')
+        row = layout.row()
+        layout.label(text='Update/Replace TF2-V3 Rigs')  
+        row = layout.row()
+        row.operator('hisanim.mercupdate', text='Standard Rigs')
+        row = layout.row()
+        row.operator('hisanim.hectorisupdate')
+        layout.label(text='Face Panel + Phonemes Rigs by Hectoris919')
+        layout.label(text='Open the console to view progress!')
 
 class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_idname = 'hisanim.clsupdate'
@@ -81,15 +91,15 @@ class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_description = 'Press to update class'
     UPDATE: bpy.props.StringProperty(default='')
     def execute(self, context):
+        #dload.save('https://gitlab.com/hisprofile/the-tf2-collection/-/raw/main/electraceyrig2.blend')
         RefreshPaths() # refresh paths, just cause
         switch = False
         try:
             GET = PATHS.FPATHS[self.UPDATE]
-        except:
+        except: # if the addon cannot find an existing .blend, it will go through your asset paths..
+            # The rest can be understood by reading the print lines.
             print(f'No existing .blend file found for {self.UPDATE}!')
             try:
-                x = [i.name for i in context.preferences.filepaths.asset_libraries]
-                print(x)
                 print('Attempting to find existing directory...')
                 assetpath = context.preferences.filepaths.asset_libraries
                 for i in assetpath:
@@ -113,12 +123,12 @@ class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
                 print('Deleted!')
             else:
                 print("Nothing to delete!")
-        LINK = f'https://bitbucket.org/hisanimations/tf2collection/raw/main/{self.UPDATE}cosmetics.zip'
-        print(f'Downloading {self.UPDATE} from BitBucket...')
+        LINK = f'https://gitlab.com/hisprofile/the-tf2-collection/raw/main/{self.UPDATE}cosmetics.zip'
+        print(f'Downloading {self.UPDATE} from Gitlab...')
         dload.save(LINK)
         print(f'{self.UPDATE}.zip downloaded!')
         print('Updating master.json...')
-        dload.save('https://bitbucket.org/hisanimations/tf2collection/raw/main/master.json', overwrite=True)#, DLOADTO)
+        dload.save('https://gitlab.com/hisprofile/the-tf2-collection/raw/main/master.json', overwrite=True)#, DLOADTO)
         print('Updated!')
         print('Moving to asset library path...')
         shutil.move(str(Path(__file__).parent) + f"/{self.UPDATE}cosmetics.zip", DLOADTO)
@@ -130,6 +140,7 @@ class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
         os.remove(DLOADTO+f'{self.UPDATE}cosmetics.zip')
         print('Removed!')
         print(f'Updating {self.UPDATE} complete!')
+        #bpy.ops.wm.console_toggle()
         return {'FINISHED'}
 
 class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
@@ -142,11 +153,21 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
         switch = False
         try:
             GET = PATHS.FPATHS[self.UPDATE]
-        except:
+        except: # if the addon cannot find an existing .blend, it will go through your asset paths..
+            # The rest can be understood by reading the print lines.
+            print(f'No existing .blend file found for {self.UPDATE}!')
             try:
-                PATHS.FPATHS[self.UPDATE] = bpy.context.preferences.filepaths.asset_libraries['scout'].path.replace(r'\\', '/') + "/"
+                print('Attempting to find existing directory...')
+                assetpath = context.preferences.filepaths.asset_libraries
+                for i in assetpath:
+                    if self.UPDATE in i.path.casefold():
+                        FINDPATH = i.name
+                        print(f'Directory found at {i.path}!')
+                        break
+                PATHS.FPATHS[self.UPDATE] = context.preferences.filepaths.asset_libraries[FINDPATH].path.replace(r'\\', '/') + "/"
                 GET = PATHS.FPATHS[self.UPDATE]
                 print(GET)
+                del FINDPATH
                 switch = True
             except:
                 self.report({'INFO'}, f"Cannot find a directory for {self.UPDATE}!")
@@ -159,12 +180,12 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
                 print('Deleted!')
             else:
                 print("Nothing to delete!")
-        LINK = f'https://bitbucket.org/hisanimations/tf2collection/raw/main/{self.UPDATE}.zip'
-        print(f'Downloading {self.UPDATE} from BitBucket...')
+        LINK = f'https://gitlab.com/hisprofile/the-tf2-collection/raw/main/{self.UPDATE}.zip'
+        print(f'Downloading {self.UPDATE} from Gitlab...')
         dload.save(LINK)
         print(f'{self.UPDATE}.zip downloaded!')
         print('Updating master.json...')
-        dload.save('https://bitbucket.org/hisanimations/tf2collection/raw/main/master.json', overwrite=True)#, DLOADTO)
+        dload.save('https://gitlab.com/hisprofile/the-tf2-collection/raw/main/master.json', overwrite=True)#, DLOADTO)
         print('Updated!')
         print('Moving to asset library path...')
         shutil.move(str(Path(__file__).parent) + f"/{self.UPDATE}.zip", DLOADTO)
@@ -178,12 +199,54 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
         print(f'Updating {self.UPDATE} complete!')
         return {'FINISHED'}
 
+class HISANIM_OT_MERCUPDATE(bpy.types.Operator):
+    bl_idname = 'hisanim.mercupdate'
+    bl_label = 'Standard Mercs'
+    bl_description = "Download hisanimations' TF2 rigs, the default rigs to use"
+
+    def execute(self, execute):
+        DLOADTO = bpy.context.preferences.filepaths.asset_libraries['TF2-V3'].path + "/"
+        print('Deleting old .blend files...')
+        for i in files:
+            try:
+                os.remove(f'{DLOADTO + i}.blend')
+                print(f'Deleted {i}.blend')
+            except:
+                print(f'Could not delete {i}.blend!')
+        
+        print(f"Downloading hisanimations' TF2-V3 port...")
+        dload.save('https://gitlab.com/hisprofile/the-tf2-collection/raw/main/TF2-V3.zip')
+        print('''hisanimations' port downloaded!''')
+        print('Moving to asset library path...')
+        shutil.move(str(Path(__file__).parent) + f"/TF2-V3.zip", DLOADTO)
+        print('Moved!')
+        print('Extracting .zip file...')
+        zipfile.ZipFile(DLOADTO+'TF2-V3.zip', 'r').extractall(DLOADTO)
+        print('Extracted!')
+        print('Removing .zip flie...')
+        os.remove(DLOADTO+'TF2-V3.zip')
+        print('Removed!')
+        print("Downloaded hisanimations' port!")
+        return {'FINISHED'}
+
+class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
+    bl_idname = 'hisanim.hectorisupdate'
+    bl_label = 'Face Panel + Phonemes Rigs'
+    bl_description = "Download Hectoris919's version of hisanimation's port, complete with a face rig and phonemes"
+
+    def execute(self, execute):
+        print("WOW")
+        return {'FINISHED'}
 
 def register():
     bpy.utils.register_class(HISANIM_PT_UPDATER)
     bpy.utils.register_class(HISANIM_OT_CLSUPDATE)
     bpy.utils.register_class(HISANIM_OT_ALLCLSUPDATE)
+    bpy.utils.register_class(HISANIM_OT_MERCUPDATE)
+    bpy.utils.register_class(HISANIM_OT_HECTORISUPDATE)
 def unregister():
     bpy.utils.unregister_class(HISANIM_PT_UPDATER)
     bpy.utils.unregister_class(HISANIM_OT_CLSUPDATE)
     bpy.utils.unregister_class(HISANIM_OT_ALLCLSUPDATE)
+    bpy.utils.unregister_class(HISANIM_OT_MERCUPDATE)
+    bpy.utils.unregister_class(HISANIM_OT_HECTORISUPDATE)
