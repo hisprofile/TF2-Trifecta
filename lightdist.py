@@ -3,11 +3,15 @@ from bpy.types import *
 from mathutils import *
 class HISANIM_PT_LIGHTDIST(bpy.types.Panel):
     bl_label = "Light Optimizer"
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = 'scene'
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_context = ''#.objectmode'
+    bl_category = 'Tool'
+
+    #framemodulo = bpy.props.IntProperty(default=1, min=1)
 
     def draw(self, context):
+        s = self
         layout = self.layout
         layout.label(text='Optimize lights in a scene by disabling them based on how far away they are from the scene camera.')
         row = layout.row()
@@ -23,20 +27,33 @@ class HISANIM_PT_LIGHTDIST(bpy.types.Panel):
         row.operator('hisanim.revertlights')
         row.enabled = False if context.scene.hisaenablelightdist else True
         row = layout.row()
+        row.prop(context.scene, 'hisanimenablespread', text='Slower, Better Performing')
+        row=layout.row()
+        row.prop(context.scene, 'hisanimframemodulo')
+        row.enabled = True if context.scene.hisanimenablespread else False
         layout.label(text=f'Active Lights: {GetActiveLights("ACTIVE")}/128 Max')
         layout.label(text=f'{GetActiveLights("OVERRIDDEN")} Overridden lights')
 
-def GetActiveLights(stats):
-    lightcounter = 0
-    if stats == 'ACTIVE':
-        for i in bpy.data.lights:
-            if bpy.data.objects[i.name].hide_get() == False:
-                lightcounter += 1
+IsLight = lambda a: a.type=='LIGHT'
+
+def IsHidden(a):
+    if bpy.data.objects[a.name].hide_get() == True:
+        return False
     else:
-        for i in bpy.data.lights:
-            if i.get('LIGHTOVERRIDE') != None:
-                lightcounter += 1
-    return lightcounter
+        return True
+
+def IsOverriden(a):
+    if a.get('LIGHTOVERRIDE') != None:
+        return True
+    else:
+        return False
+
+def GetActiveLights(stats):
+    if stats == 'ACTIVE':
+        return len(list(filter(IsHidden, list(filter(IsLight, bpy.data.objects)))))
+    else:
+        return len(list(filter(IsOverriden, list(filter(IsLight, bpy.data.objects)))))
+
 
 
 class HISANIM_OT_DRAGSUBSCRIBE(bpy.types.Operator):
@@ -57,20 +74,47 @@ class HISANIM_OT_DRAGSUBSCRIBE(bpy.types.Operator):
         self.stop = False
         context.window_manager.modal_handler_add(self)
         return {'RUNNING_MODAL'}
+#l[int((f() % t())*(len(l) / t())) : None if int(((f() + 1) % t())*(len(l) / t()))== 0 else int(((f() + 1) % t())*(len(l) / t())) ]
+
+
+
+def f():
+    return bpy.context.scene.frame_current
+
+def t():
+    return bpy.context.scene.hisanimframemodulo
 
 def OptimizeLights(self = None, context = None):
-    DO = bpy.data.objects
     if bpy.context.scene.hisaenablelightdist == False:
         return None
-    for i in bpy.data.lights:
-        if i.get('LIGHTOVERRIDE'):
-            continue
-        if math.dist(bpy.context.scene.camera.location, DO[i.name].location) > bpy.context.scene.hisanimdrag.value*2 and not i.type == 'SUN':
-            DO[i.name].hide_set(True)
-            DO[i.name].hide_render = True
-        else:
-            DO[i.name].hide_set(False)
-            DO[i.name].hide_render = False
+    LIGHTS = list(filter(IsLight, bpy.data.objects))
+    l = list(range(0, len(LIGHTS)))
+    if bpy.context.scene.hisanimenablespread and bpy.context.screen.is_animation_playing:
+        for i in l[int((f() % t())*(len(l) / t())) : None if int(((f() + 1) % t())*(len(l) / t()))== 0 else int(((f() + 1) % t())*(len(l) / t())) ]:
+            if LIGHTS[i].data.get('LIGHTOVERRIDE'):
+                continue
+            if math.dist(bpy.context.scene.camera.location, LIGHTS[i].location) > bpy.context.scene.hisanimdrag.value*2 and not LIGHTS[i].data.type == 'SUN':
+                LIGHTS[i].hide_set(True)
+                LIGHTS[i].hide_render = True
+                LIGHTS[i].data['HIDDEN'] = True
+                continue
+            else:
+                LIGHTS[i].data['HIDDEN'] = False
+                LIGHTS[i].hide_set(False)
+                LIGHTS[i].hide_render = False
+                continue
+    else:
+        for i in LIGHTS:
+            if i.data.get('LIGHTOVERRIDE'):
+                continue
+            if math.dist(bpy.context.scene.camera.location, i.location) > bpy.context.scene.hisanimdrag.value*2 and not i.data.type == 'SUN':
+                i.hide_set(True)
+                i.hide_render = True
+                i.data['HIDDEN'] = True
+            else:
+                i['HIDDEN'] = False
+                i.hide_set(False)
+                i.hide_render = False
 
 class HISANIM_OT_LIGHTOVERRIDE(bpy.types.Operator):
     bl_idname = 'hisanim.lightoverride'
@@ -102,9 +146,9 @@ class HISANIM_OT_REVERTLIGHTS(bpy.types.Operator):
     bl_description = 'Show all the lights that were left hidden by the optimizer'
 
     def execute(self, execute):
-        for i in bpy.data.lights:
-            bpy.data.objects[i.name].hide_set(False)
-            bpy.data.objects[i.name].hide_render = False
+        for i in list(filter(IsLight, bpy.data.objects)):
+            i.hide_set(False)
+            i.hide_render = False
         return {'FINISHED'}
 
 def hisanimupdates(self, value):
@@ -146,17 +190,22 @@ def register():
         bpy.utils.register_class(i)
     bpy.types.Scene.hisanimlightdist = bpy.props.FloatProperty(min=0.0, default=25.0, step=0.1)#text='Max Light Distance', description='Lights outside of this distance will be disabled.', default=100.0)
     bpy.types.Scene.hisaenablelightdist = bpy.props.BoolProperty()#text='Enable Light Optimization', default=False)
+    #bpy.types.Scene.hisanimframe = bpy.props.IntProperty(name=)
     bpy.types.Scene.hisanimdrag = bpy.props.PointerProperty(type=HISANIM_LIGHTDIST)
     bpy.app.handlers.frame_change_post.append(OptimizeLights)
     bpy.app.handlers.load_post.append(crossover)
+    bpy.types.Scene.hisanimframemodulo = bpy.props.IntProperty(default=1, min=1, name='Frame Modulo', description='Have all the lights refresh every other amount of frames')
+    bpy.types.Scene.hisanimenablespread = bpy.props.BoolProperty()
     #subscribe_to = bpy.types.Object, "location"
     
 def unregister():
     for i in classes:
         bpy.utils.unregister_class(i)
+    del bpy.types.Scene.hisanimframemodulo
     del bpy.types.Scene.hisanimlightdist
     del bpy.types.Scene.hisaenablelightdist
     del bpy.types.Scene.hisanimdrag
+    del bpy.types.Scene.hisanimenablespread
     try:
         bpy.app.handlers.load_post.remove(crossover)
     except:
