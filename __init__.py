@@ -22,7 +22,7 @@ for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__
     if module: importlib.reload(module)
 from bpy.app.handlers import persistent
 # borrowed from BST
-from . import bonemerge, mercdeployer, uilist, icons, PATHS, updater,
+from . import bonemerge, mercdeployer, uilist, icons, PATHS, updater
 #global PATHS
 global loc
 global rot
@@ -50,24 +50,32 @@ def RefreshPaths():
     for i in files: # add paths to definitoin
         for ii in blend_files:
             try:
-                ii = str(ii)[str(ii).index("('") + 2:str(ii).index("')")]
+                if ii == '[]':
+                    continue
+                ii = str(ii)[str(ii).index("(") + 2:str(ii).index(")")-1]
                 if i in ii and not "V3" in ii: # skip TF2-V3 
                     PATHS.FPATHS[i] = ii
             except:
+                print(i, " is an invalid path!")
                 continue
                 
     for i in blend_files: # for allclass folders
         try:
-            i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+            if i == '[]':
+                continue
+            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
             if 'allclass.b' in i:
                 PATHS.FPATHS['allclass'] = i
         except:
+            raise
             print(i, " is an invalid path!")
             continue
             
     for i in blend_files:
         try:
-            i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+            if i == '[]':
+                continue
+            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
             if 'allclass2' in i:
                 PATHS.FPATHS['allclass2'] = i
         except:
@@ -76,12 +84,18 @@ def RefreshPaths():
 
     for i in blend_files:
         try:
-            i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+            if i == '[]':
+                continue
+            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
             if 'allclass3' in i:
                 PATHS.FPATHS['allclass3'] = i
         except:
+            raise
             print(i, " is an invalid path!")
             continue
+
+# i need a better system to handle this lol
+# missing one blend file from a 
 
 RefreshPaths()
 

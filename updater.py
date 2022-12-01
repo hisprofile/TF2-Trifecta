@@ -19,7 +19,7 @@ def RefreshPaths():
     for i in files: # add paths to definitoin
         for ii in blend_files:
             try:
-                ii = str(ii)[str(ii).index("('") + 2:str(ii).index("')")]
+                ii = str(ii)[str(ii).index("(") + 2:str(ii).index(")")-1]
                 if i in ii and not "V3" in ii: # skip TF2-V3 
                     PATHS.FPATHS[i] = ii
             except:
@@ -27,25 +27,28 @@ def RefreshPaths():
                 
     for i in blend_files: # for allclass folders
         try:
-            i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
             if 'allclass.b' in i:
                 PATHS.FPATHS['allclass'] = i
         except:
+            #print()
+            #raise
             print(i, " is an invalid path!")
             continue
             
     for i in blend_files:
         try:
-            i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
             if 'allclass2' in i:
                 PATHS.FPATHS['allclass2'] = i
         except:
+            #raise
             print(i, " is an invalid path!")
             continue
 
     for i in blend_files:
         try:
-            i = str(i)[str(i).index("('") + 2:str(i).index("')")]
+            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
             if 'allclass3' in i:
                 PATHS.FPATHS['allclass3'] = i
         except:
@@ -107,7 +110,7 @@ class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
                         FINDPATH = i.name
                         print(f'Directory found at {i.path}!')
                         break
-                PATHS.FPATHS[self.UPDATE] = context.preferences.filepaths.asset_libraries[FINDPATH].path.replace(r'\\', '/') + "/"
+                PATHS.FPATHS[self.UPDATE] = context.preferences.filepaths.asset_libraries[FINDPATH].path.replace(r'\\'[0], '/') + "/"
                 GET = PATHS.FPATHS[self.UPDATE]
                 print(GET)
                 del FINDPATH
