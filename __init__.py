@@ -2,7 +2,7 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
-    "version" : (1, 0),
+    "version" : (1, 2, 2),
     "blender" : (3, 0, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
@@ -23,7 +23,6 @@ for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__
 from bpy.app.handlers import persistent
 # borrowed from BST
 from . import bonemerge, mercdeployer, uilist, icons, PATHS, updater
-#global PATHS
 global loc
 global rot
 loc = bonemerge.loc
@@ -34,14 +33,12 @@ classes = []
 global select
 global blend_files
 blend_files = []
-# = {}
 def RefreshPaths():
     blend_files = []
     prefs = bpy.context.preferences
     filepaths = prefs.filepaths
     asset_libraries = filepaths.asset_libraries
     for asset_library in asset_libraries:
-        library_name = asset_library.path
         library_path = Path(asset_library.path)
         blend_files.append(str([fp for fp in library_path.glob("**/*.blend")]))
     # taken from https://blender.stackexchange.com/questions/244971/how-do-i-get-all-assets-in-a-given-userassetlibrary-with-the-python-api
@@ -165,7 +162,6 @@ class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with 
         try:
             NT.nodes['Lightwarp'].image = bpy.data.images['pyro_lightwarp.png']
         except:
-            raise
             self.report({'INFO'}, 'Add a class first!')
             return {'CANCELLED'}
         
@@ -356,10 +352,12 @@ class HISANIM_OT_Search(bpy.types.Operator):
             bl_region_type = 'UI'
             bl_category = addn
             bl_icon = "MOD_CLOTH"
+            bl_parent_id = 'WDRB_PT_PART1'
             global operators
             operators = hits
             def draw(self, context):
                 layout = self.layout
+                split = layout.split(factor=0.2)
                 row = layout.row()
                 if len(hits) == 1:
                     row.label(text=f'{len(hits)} Result')
@@ -368,9 +366,10 @@ class HISANIM_OT_Search(bpy.types.Operator):
                 
                 for ops in hits:
                     # draw the search results as buttons
-                    row=layout.row()
+                    split=layout.split(factor=0.2)
+                    row=split.row()
                     row.label(text=ops.split("_-_")[1])
-                    BACKS = '\\'
+                    row = split.row()
                     OPER = row.operator('hisanim.loadcosmetic', text=ops.split('_-_')[0])
                     OPER.LOAD = ops
             if len(hits) == 0:
@@ -403,16 +402,13 @@ class HISANIM_OT_MATFIX(bpy.types.Operator):
     bl_idname = 'hisanim.materialfix'
     bl_label = 'Fix Material'
     bl_description = 'Fix Material'
-    bl_options = {'UNDO'}
-    
-    MAT: bpy.props.StringProperty(default='')
     
     def execute(self, context):
+        MAT = context.object.active_material
         try:
-            bpy.data.materials[self.MAT].node_tree.nodes['WRDB-MIX']
+            MAT.node_tree.nodes['WRDB-MIX']
             return {'CANCELLED'}
         except:
-            MAT = bpy.data.materials[self.MAT]
             NODEMIX = MAT.node_tree.nodes.new('ShaderNodeMixRGB')
             NODEMIX.name = 'WRDB-MIX'
             NODEMIX.location = Vector((-400, 210))
@@ -428,6 +424,27 @@ class HISANIM_OT_MATFIX(bpy.types.Operator):
             MATLINK.new(NODEGAMMA.outputs[0], NODEMIX.inputs[2])
             MATLINK.new(NODEMIX.outputs[0], MAT.node_tree.nodes['VertexLitGeneric'].inputs['$basetexture [texture]'])
             return {'FINISHED'}
+
+class HISANIM_OT_REVERTFIX(bpy.types.Operator):
+    bl_idname = 'hisanim.revertfix'
+    bl_label = 'Revert Fix'
+    bl_description = 'Revert a material fix done on a material'
+
+    def execute(self, context):
+        MAT = context.object.active_material
+        MATLINK = MAT.node_tree.links
+        if MAT.node_tree.nodes.get('WRDB-MIX') != None:
+            MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = list(MAT.node_tree.nodes['WRDB-GAMMA'].inputs[0].default_value)
+
+            MAT.node_tree.nodes.remove(MAT.node_tree.nodes['WRDB-MIX'])
+            MAT.node_tree.nodes.remove(MAT.node_tree.nodes['WRDB-GAMMA'])
+            MATLINK.new(MAT.node_tree.nodes['$basetexture'].outputs[0], MAT.node_tree.nodes['VertexLitGeneric'].inputs[0])
+            return {'FINISHED'}
+        else:
+            return {'CANCELLED'}
+
+classes.append(HISANIM_OT_REVERTFIX)
+
 classes.append(HISANIM_OT_MATFIX)
 class HISANIM_OT_PAINTS(bpy.types.Operator):
     bl_idname = 'hisanim.paint'
@@ -508,6 +525,7 @@ class WDRB_PT_PART3(bpy.types.Panel): # for the material fixer and selector segm
     bl_region_type = 'UI'
     bl_category = addn
     bl_icon = "MOD_CLOTH"
+    bl_parent_id = 'WDRB_PT_PART1'
     @classmethod
     def poll(cls, context): # only show if an object is selected and has a dictionary property named 'skin_groups'.
         try:
@@ -521,9 +539,10 @@ class WDRB_PT_PART3(bpy.types.Panel): # for the material fixer and selector segm
             layout.label(text='Attempt to fix material')
             row = layout.row()
             row.template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
-            row = layout.row()
+            row = layout.row(align=True)
             oper = row.operator('hisanim.materialfix')
-            oper.MAT = context.object.active_material.name
+            oper = row.operator('hisanim.revertfix')
+            #oper.MAT = context.object.active_material.name
 
 #panel space for paints
 class WDRB_PT_PART4(bpy.types.Panel):
@@ -531,6 +550,7 @@ class WDRB_PT_PART4(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = addn
+    bl_parent_id = 'WDRB_PT_PART1'
     #check if the panel can be displayed
     @classmethod
     def poll(cls, context): # only show if an object is selected and has a dictionary property named 'skin_groups'.
@@ -542,10 +562,10 @@ class WDRB_PT_PART4(bpy.types.Panel):
         layout = self.layout
         row = layout.row()
         row.template_list('HISANIM_UL_PAINTLIST', "Paints", context.scene, "paintlist", context.scene, "paintindex") # use the cool paint index and icons
-        row=layout.row()
+        row=layout.row(align=True)
         oper = row.operator('hisanim.paint', text = 'Add Paint')
         oper.PAINT = uilist.paints[context.scene.paintlist[context.scene.paintindex].name]
-        row = layout.row()
+        #row = layout.row()
         row.operator('hisanim.paintclear')
 @persistent
 def load_handler(loadpaints): # fill the paintlist collectiongroup with "paints"'s keys.
