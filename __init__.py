@@ -2,7 +2,7 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
-    "version" : (1, 2, 2),
+    "version" : (1, 2, 3),
     "blender" : (3, 0, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",

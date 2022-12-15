@@ -20,7 +20,7 @@ for i in path:
 classes = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
 def append(a, b): # get a class from TF2-V3
     blendfile = f'{path}/{a}.blend'
-    section = "\\Collection\\"
+    section = "/Collection/"
     object = a + b
     
     directory = blendfile + section
@@ -29,7 +29,7 @@ def append(a, b): # get a class from TF2-V3
 
 def appendtext(a): # add the .py script to add further control to faces
     blendfile = f'{path}/{a}.blend'
-    section = "\\Text\\"
+    section = "/Text/"
     object = f'{a}.py'
     
     directory = blendfile + section
