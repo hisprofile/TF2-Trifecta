@@ -43,7 +43,7 @@ def RefreshPaths():
         blend_files.append(str([fp for fp in library_path.glob("**/*.blend")]))
     # taken from https://blender.stackexchange.com/questions/244971/how-do-i-get-all-assets-in-a-given-userassetlibrary-with-the-python-api
     PATHS.FPATHS = {}
-    files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
+    files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy', 'weapons']
     for i in files: # add paths to definitoin
         for ii in blend_files:
             try:
@@ -109,7 +109,10 @@ def returnsearch(a):
     path = str(Path(__file__).parent)
     path = path + "/master.json"
     #path = r'C:\Users\Javiers\Documents\master.json'
-    files = ["scout", "soldier", "pyro", "demo", "heavy", "engineer", "sniper", "medic", "spy", "allclass", "allclass2", "allclass3"]
+    if not bpy.context.scene.hisanimweapons:
+        files = ["scout", "soldier", "pyro", "demo", "heavy", "engineer", "sniper", "medic", "spy", "allclass", "allclass2", "allclass3"]
+    else:
+        files = ['weapons']
     cln = ["named", "unnamed"]
     f = open(path)
     cosmetics = json.loads(f.read())
@@ -220,13 +223,15 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         print(justadded)
         skins = D.objects[justadded]['skin_groups']
         count = 0
-        #updates the skin_groups dictionary on the object with its materials
-        for num in skins:
-            Range = count + len(skins[num])
+        # updates the skin_groups dictionary on the object with its materials
+        # previously it would iterate through the skin_groups dictionary, but this would not work if there were more entries than
+        # material slots. it will now only iterate through how many material slots there are
+        for num in range(len(D.objects[justadded].material_slots)):#skins:
+            Range = count + len(skins[str(num)])
             newmatlist = []
             for i in range(count, Range):
                 newmatlist.append(D.objects[justadded].material_slots[i].material.name)
-            skins[num] = newmatlist
+            skins[str(num)] = newmatlist
             count = Range
         D.objects[justadded]['skin_groups'] = skins
         del newmatlist, Range, count, skins, list
@@ -505,6 +510,8 @@ class WDRB_PT_PART1(bpy.types.Panel):
         layout = self.layout
         row = layout.row()
         row.prop(props, "query", text="Search", icon="VIEWZOOM")
+        row = layout.row()
+        row.prop(context.scene, 'hisanimweapons')
         layout.label(text="Warning! Don't leave the text field empty!")
         row=layout.row()
         row.operator('hisanim.search', icon='VIEWZOOM')
@@ -611,6 +618,7 @@ def register():
     bpy.types.Scene.hisamatlist = CollectionProperty(type = uilist.MaterialList)
     bpy.types.Scene.paintindex = IntProperty(name='Paint Index', default = 0)
     bpy.types.Scene.hisamatindex = IntProperty(name='Selected Material Index', default = 0)
+    bpy.types.Scene.hisanimweapons = BoolProperty(name='Search For Weapons')
     icons.register()
     updater.register()
     #lightdist.register()
@@ -624,6 +632,7 @@ def unregister():
     del bpy.types.Scene.paintindex
     del bpy.types.Scene.hisamatlist
     del bpy.types.Scene.hisamatindex
+    del bpy.types.Scene.hisanimweapons
     updater.unregister()
     #lightdist.unregister()
     
