@@ -1,6 +1,6 @@
 import bpy, os, shutil, shutil
 from pathlib import Path
-from . import dload, icons, mercdeployer, PATHS
+from . import dload, icons, mercdeployer, PATHS, addonUpdater
 import zipfile
 global blend_files
 global files
@@ -82,6 +82,8 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         row.operator('hisanim.hectorisupdate')
         layout.label(text='Face Panel + Phonemes Rigs by Hectoris919')
         layout.label(text='Open the console to view progress!')
+        row = layout.row()
+        row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
 
 class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_idname = 'hisanim.clsupdate'
@@ -234,16 +236,22 @@ class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
     def execute(self, execute):
         self.report({'INFO'}, 'Not ready yet!')
         return {'FINISHED'}
+    
+class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
+    bl_idname = 'hisanim.addonupdate'
+    bl_label = 'Update Addon'
+    bl_description = "Get the latest version of the addon. Addon-Updater made by Herwork"
+
+    def execute(self, execute):
+        addonUpdater.main()
+        self.report({'INFO'}, 'Please restart blender to apply the update')
+        return {'FINISHED'}
+
+bpyClasses = [HISANIM_PT_UPDATER, HISANIM_OT_CLSUPDATE, HISANIM_OT_ALLCLSUPDATE, HISANIM_OT_MERCUPDATE, HISANIM_OT_HECTORISUPDATE, HISANIM_OT_ADDONUPDATER]
 
 def register():
-    bpy.utils.register_class(HISANIM_PT_UPDATER)
-    bpy.utils.register_class(HISANIM_OT_CLSUPDATE)
-    bpy.utils.register_class(HISANIM_OT_ALLCLSUPDATE)
-    bpy.utils.register_class(HISANIM_OT_MERCUPDATE)
-    bpy.utils.register_class(HISANIM_OT_HECTORISUPDATE)
+    for operator in bpyClasses:
+        bpy.utils.register_class(operator)
 def unregister():
-    bpy.utils.unregister_class(HISANIM_PT_UPDATER)
-    bpy.utils.unregister_class(HISANIM_OT_CLSUPDATE)
-    bpy.utils.unregister_class(HISANIM_OT_ALLCLSUPDATE)
-    bpy.utils.unregister_class(HISANIM_OT_MERCUPDATE)
-    bpy.utils.unregister_class(HISANIM_OT_HECTORISUPDATE)
+    for operator in bpyClasses:
+        bpy.utils.unregister_class(operator)
