@@ -2,13 +2,13 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
-    "version" : (1, 2, 3),
+    "version" : (1, 3, 1),
     "blender" : (3, 0, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
     "category" : "Object, Mesh, Rigging",
 }
-
+"""peee"""
 import bpy, json, os
 from pathlib import Path
 from bpy.props import *
@@ -225,9 +225,14 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         count = 0
         # updates the skin_groups dictionary on the object with its materials
         # previously it would iterate through the skin_groups dictionary, but this would not work if there were more entries than
-        # material slots. it will now only iterate through how many material slots there are
-        for num in range(len(D.objects[justadded].material_slots)):#skins:
-            Range = count + len(skins[str(num)])
+        # material slots. it will now only iterate through the minimum between how many material slots there are and how many entries there are.
+        for num in range(min(len(D.objects[justadded].material_slots), len(skins))):
+            try:
+                Range = count + len(skins[str(num)])
+            except:
+                print(range(len(D.objects[justadded].material_slots)))
+                print(num)
+                raise
             newmatlist = []
             for i in range(count, Range):
                 newmatlist.append(D.objects[justadded].material_slots[i].material.name)

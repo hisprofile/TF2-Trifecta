@@ -3,6 +3,7 @@ from urllib import request
 from pathlib import Path
 import zipfile, os
 def main():
+    PATH = Path(__file__).parent.parent
     print("Fetching new download URL from GitHub")
     # Getting the new release URL from GitHub REST API
     githubResponse = request.urlopen("https://api.github.com/repos/hisprofile/TF2-Trifecta/releases")
@@ -37,7 +38,7 @@ def main():
     # Extracting the new zip file that dose not have to "addon-updater.py" file.
     print("Extracting the new update")
     with zipfile.ZipFile(newFile, "r") as zip_ref:
-        zip_ref.extractall(path="C:\\Program Files\\Blender Foundation\\Blender 3.3\\3.3\scripts\\addons")
+        zip_ref.extractall(path=PATH)
     # Deleting the new zipfiles to be ready for new ones and preserve disk space.
     print("Deleting zipFiles")
     for file in files:
