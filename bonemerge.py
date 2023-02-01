@@ -73,9 +73,11 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
                     ii.constraints[loc] # check if constraints already exist. if so, swap targets. if not, create constraints.
                     pass
                 except:
+                    ii.constraints.new('CHILD_OF').name = 'BONEMERGE-CHILD-OF'
                     ii.constraints.new('COPY_LOCATION').name = loc
                     ii.constraints.new('COPY_ROTATION').name = rot
-                
+                ii.constraints['BONEMERGE-CHILD-OF'].target = bpy.data.objects[obj]
+                ii.constraints['BONEMERGE-CHILD-OF'].subtarget = ii.name
                 ii.constraints[loc].target = bpy.data.objects[obj]
                 ii.constraints[loc].subtarget = ii.name
                 ii.constraints[rot].target = bpy.data.objects[obj]

@@ -2,7 +2,7 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
-    "version" : (1, 3, 1),
+    "version" : (1, 3, 2),
     "blender" : (3, 0, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
@@ -334,10 +334,12 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                     ii.constraints[loc]
                     pass
                 except:
+                    ii.constraints.new('CHILD_OF').name = 'BONEMERGE-CHILD-OF'
                     ii.constraints.new('COPY_LOCATION').name = loc
                     ii.constraints.new('COPY_ROTATION').name = rot
                 
-                
+                ii.constraints['BONEMERGE-CHILD-OF'].target = select
+                ii.constraints['BONEMERGE-CHILD-OF'].subtarget = ii.name
                 ii.constraints[loc].target = select
                 ii.constraints[loc].subtarget = ii.name
                 ii.constraints[rot].target = select
