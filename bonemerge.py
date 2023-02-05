@@ -2,8 +2,9 @@ import bpy
 
 loc = "BONEMERGE-ATTACH-LOC"
 rot = "BONEMERGE-ATTACH-ROT"
+scale = "BONEMERGE-ATTACH-SCALE"
 
-bpy.types.Scene.target = bpy.props.PointerProperty(type=bpy.types.Object)
+bpy.types.Scene.hisanimtarget = bpy.props.PointerProperty(type=bpy.types.Object)
 def GetRoot(a):
     for i in a:
         if i.parent == None:
@@ -25,7 +26,7 @@ class BM_PT_BONEMERGE(bpy.types.Panel):
         row.label(text='Attach TF2 cosmetics.', icon='MOD_CLOTH')
         ob = context.object
         row = layout.row()
-        self.layout.prop_search(context.scene, "target", bpy.data, "objects", text="Link to", icon='ARMATURE_DATA')
+        self.layout.prop_search(context.scene, "hisanimtarget", bpy.data, "objects", text="Link to", icon='ARMATURE_DATA')
         
         row = layout.row()
         row.operator('hisanim.attachto', icon="LINKED")
@@ -49,10 +50,11 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
     bl_options = {'UNDO'}
     
     def execute(self, context):
-        if context.scene.target == None:
-            raise TypeError("\n\nNo armature selected!")
-        obj = context.scene.target.name
-    
+        if context.scene.hisanimtarget == None:
+            self.report({'INFO'}, 'No armature selected!')
+            return {'CANCELLED'}
+        obj = context.scene.hisanimtarget
+        doOnce = True
         
         for i in bpy.context.selected_objects:
             if i == None:
@@ -65,7 +67,14 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
                 i = i.parent # if the mesh is selected instead of the parent armature, swap the iteration with its parent
             for ii in i.pose.bones:
                 try:
-                    bpy.data.objects[obj].pose.bones[ii.name] # check if the target bone exists. if not, continue.
+                    obj.pose.bones[ii.name] # check if the target bone exists. if not, continue.
+                    if doOnce:
+                        print
+                        i.parent = obj
+                        if i.get('BAKLOC') == None:
+                            i['BAKLOC'] = i.location
+                        i.location = [0, 0, 0]
+                        doOnce = False
                 except:
                     continue
                 
@@ -73,15 +82,20 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
                     ii.constraints[loc] # check if constraints already exist. if so, swap targets. if not, create constraints.
                     pass
                 except:
-                    ii.constraints.new('CHILD_OF').name = 'BONEMERGE-CHILD-OF'
+                    ii.constraints.new('COPY_SCALE').name = scale
                     ii.constraints.new('COPY_LOCATION').name = loc
                     ii.constraints.new('COPY_ROTATION').name = rot
-                ii.constraints['BONEMERGE-CHILD-OF'].target = bpy.data.objects[obj]
-                ii.constraints['BONEMERGE-CHILD-OF'].subtarget = ii.name
-                ii.constraints[loc].target = bpy.data.objects[obj]
-                ii.constraints[loc].subtarget = ii.name
-                ii.constraints[rot].target = bpy.data.objects[obj]
-                ii.constraints[rot].subtarget = ii.name
+
+                SCALE = ii.constraints[scale]
+                LOC = ii.constraints[loc]
+                ROT = ii.constraints[rot]
+
+                SCALE.target = obj
+                SCALE.subtarget = ii.name
+                LOC.target = obj
+                LOC.subtarget = ii.name
+                ROT.target = obj
+                ROT.subtarget = ii.name
         
         return {'FINISHED'}
     
@@ -92,7 +106,7 @@ class HISANIM_OT_DETACH(bpy.types.Operator):
     bl_options = {'UNDO'}
     
     def execute(self, context):
-        
+        doOnce = True
         for i in bpy.context.selected_objects:
             if i == None:
                 continue
@@ -104,6 +118,14 @@ class HISANIM_OT_DETACH(bpy.types.Operator):
                 try:
                     ii.constraints.remove(ii.constraints[loc])
                     ii.constraints.remove(ii.constraints[rot])
+                    ii.constraints.remove(ii.constraints[scale])
+                    if doOnce == True:
+                        print('Doing once')
+                        i.parent = None
+                        if i.get('BAKLOC') != None:
+                            i.location = [*i.get('BAKLOC')]
+                            del i['BAKLOC']
+                        doOnce = False
                 except:
                     continue
         

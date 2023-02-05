@@ -27,6 +27,7 @@ global loc
 global rot
 loc = bonemerge.loc
 rot = bonemerge.rot
+scale = bonemerge.scale
 global addn
 addn = "Wardrobe" # addon name
 classes = []
@@ -311,9 +312,11 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         # to the rig.
         try:
             if select.parent:
+                select.select_set(False)
                 select = select.parent
         except:
             pass
+        
         try:
             select['BMBCOMPATIBLE']
             var = 1
@@ -321,7 +324,10 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             var = 0
         
         if var == 1:
-    
+            PARENT = bpy.data.objects[justadded].parent
+            PARENT.parent = select
+            PARENT['BAKLOC'] = PARENT.location
+            PARENT.location = [0, 0, 0]
             for ii in bpy.data.objects[justadded].parent.pose.bones:
                 print(ii.name)
                 try:
@@ -334,16 +340,22 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                     ii.constraints[loc]
                     pass
                 except:
-                    ii.constraints.new('CHILD_OF').name = 'BONEMERGE-CHILD-OF'
+                    ii.constraints.new('COPY_SCALE').name = scale
                     ii.constraints.new('COPY_LOCATION').name = loc
                     ii.constraints.new('COPY_ROTATION').name = rot
                 
-                ii.constraints['BONEMERGE-CHILD-OF'].target = select
-                ii.constraints['BONEMERGE-CHILD-OF'].subtarget = ii.name
-                ii.constraints[loc].target = select
-                ii.constraints[loc].subtarget = ii.name
-                ii.constraints[rot].target = select
-                ii.constraints[rot].subtarget = ii.name
+                SCALE = ii.constraints[scale]
+                LOC = ii.constraints[loc]
+                ROT = ii.constraints[rot]
+                
+                SCALE.target = select
+                SCALE.subtarget = ii.name
+                SCALE.target_space = 'POSE'
+                SCALE.owner_space = 'POSE'
+                LOC.target = select
+                LOC.subtarget = ii.name
+                ROT.target = select
+                ROT.subtarget = ii.name
         mercdeployer.PurgeNodeGroups()
         mercdeployer.PurgeImages()
         return {'FINISHED'}
