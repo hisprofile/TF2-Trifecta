@@ -97,10 +97,11 @@ def Collapse(a, b): # merge TF2 BVLG groups
             return "continue"
         try:
             bpy.data.node_groups[c]
+            RemoveNodeGroups(a.node_tree)
             a.node_tree = bpy.data.node_groups[c]
-            RemoveNodeGroups(bpy.data.node_groups[DELETE]) # i don't remember what this was for, but an error will always be raised, and it doesn't matter cause of the PurgeNodeGroups function
+            #RemoveNodeGroups(bpy.data.node_groups[DELETE]) # i don't remember what this was for, but an error will always be raised, and it doesn't matter cause of the PurgeNodeGroups function
         except:
-            #raise
+            raise
             a.node_tree.name = c
             NoUserNodeGroup(a.node_tree)
     
@@ -123,7 +124,145 @@ def ReuseImage(a):
             a.image.name = new
             a.image.use_fake_user = False
             return "continue"
+
+class HISANIM_OT_LOADMERC(bpy.types.Operator):
+    merc: bpy.props.StringProperty(default='')
+    type: bpy.props.StringProperty(default='')
+    bl_idname = 'hisanim.loadmerc'
+    bl_label = 'Load Mercenary'
+    bl_options = {'UNDO'}
+    
+    def execute(self, context):
+        bak = GetActiveCol()
+        SetActiveCol()
+        if appendtext(self.merc) == "cancelled":
+            self.report({'INFO'}, "No Mercs Found!")
+            return {'CANCELLED'}
+        append(self.merc, self.type)
+        justadded = str(self.merc + self.type) # make a variable targeting the added collection of the character
+        matblacklist = []
+        for obj in bpy.data.collections[justadded].objects: # iterate through collection of objects
             
+            try:
+                goto = bpy.data.collections['Deployed Mercs']
+                goto.objects.link(obj)
+                
+            except:
+                bpy.context.scene.collection.children.link(bpy.data.collections.new('Deployed Mercs'))
+                goto = bpy.data.collections['Deployed Mercs']
+                goto.objects.link(obj)
+            # create new collection to contain all the mercs
+            try:
+                obj['COSMETIC']
+                if context.scene.cosmeticcompatibility and obj['COSMETIC'] == False:
+                    bpy.data.objects.remove(obj)
+                    continue
+                
+                if not context.scene.cosmeticcompatibility and obj['COSMETIC']:
+                    bpy.data.objects.remove(obj)
+                    continue
+            except:
+                pass
+            # remove non cosmetic compatible meshes, and vice versa.
+            if obj.type == 'ARMATURE':
+                armature = obj.name
+                bpy.data.objects[armature].location = bpy.context.scene.cursor.location
+                #move character to cursor
+                continue
+            
+            for mat in obj.material_slots:
+                mat = mat.material
+                for NODE in mat.node_tree.nodes:
+                    
+                    #use existing nodegroups
+                    
+                    if Collapse(NODE, 'TF2 BVLG') == "continue":
+                        continue
+                    
+                    
+                    
+                    if Collapse(NODE, 'TF2 Diffuse') == "continue":
+                        continue
+                    
+                    
+                    
+                    if Collapse(NODE, 'TF2 Eye') == "continue":
+                        continue
+                    
+                    #use existing images
+                    
+                    if NODE.type == 'TEX_IMAGE':
+                        if ReuseImage(NODE) == "continue":
+                            continue
+                            
+                if mat in matblacklist:
+                    continue
+                # relevant towards BLU. if the material has already been swapped to BLU, continue.
+                if context.scene.bluteam:
+                    foundred = False
+                    foundblu = False
+                    # all this to compensate for spy's head material.
+                    # multiple ifs are required, because if they were to be on the same line,
+                    # they would return an error.
+                    for NODE in mat.node_tree.nodes:
+                        if NODE.type == 'TEX_IMAGE':
+                            if 'blu' in NODE.image.name and foundblu == False:
+                                foundblu = True
+                                blutex = NODE
+                                
+                        if NODE.type == 'GROUP':
+                            if 'blu' in NODE.name:
+                                foundblu = True
+                                blutex = NODE
+                                
+                        if NODE.type == 'TEX_IMAGE':
+                            if 'red' in NODE.image.name and NODE.outputs[0].is_linked:
+                                if NODE.outputs[0].links[0].to_node.type == 'GROUP':
+                                    getconnect = NODE.outputs[0].links[0].to_node
+                                    foundred = True
+                                    
+                        if NODE.type == 'GROUP':
+                            if 'red' in NODE.name and NODE.outputs[0].links[0].to_node.type == 'GROUP':
+                                getconnect = NODE.outputs[0].links[0].to_node
+                                foundred = True
+                                
+                        if foundred and foundblu: # if red and blu textures have been found, connect the blu node to TF2 Diffuse and append the current material to matblacklist.
+                            mat.node_tree.links.new(blutex.outputs[0], getconnect.inputs[0])
+                            matblacklist.append(mat)
+                            break
+        
+        bpy.data.collections.remove(bpy.data.collections[justadded]) # remove the newly added collection.
+        pending = []
+        for i in bpy.data.objects[armature].pose.bones:
+            # use existing bone shapes
+            if i.custom_shape == None:
+                continue
+            shape = i.custom_shape.name
+            
+            if ".0" in shape:
+                try:
+                    DELETE = shape
+                    if DELETE not in pending:
+                        pending.append(DELETE)
+                    lookfor = shape[:shape.index(".")]
+                    i.custom_shape = bpy.data.objects[lookfor]
+                except:
+                    bpy.data.objects[shape].name = shape[:shape.index(".")]
+        print(pending)
+        if len(pending) > 0:
+            for i in pending:
+                bpy.data.objects.remove(bpy.data.objects[i])
+                        
+                        
+        print("DELETING")
+        #delete  unused images and nodegroups.
+        PurgeNodeGroups()
+        PurgeImages()
+        PurgeNodeGroups()
+        bpy.context.view_layer.active_layer_collection = bak
+        return {'FINISHED'}
+#bpy.utils.register_class(name)
+
 class MD_PT_MERCDEPLOY(bpy.types.Panel):
     '''Rolling in the nonsense, deploy the fantasy!'''
     bl_label = "Merc Deployer"
@@ -131,167 +270,7 @@ class MD_PT_MERCDEPLOY(bpy.types.Panel):
     bl_region_type = 'UI'
     bl_category = "Merc Deployer"
     bl_icon = "FORCE_DRAG"
-    
-    for i in classes:
-        global opname
-        opname = i
-        for ii in cln:
-            global opcln
-            opcln = ii
-            name = i+ii
-            class name(bpy.types.Operator):
-                merc = opname
-                type = opcln
-                bl_idname = f'''hisanim.{merc}{type.lower()}'''
-                bl_label = type
-                bl_options = {'UNDO'}
-                
-                def execute(self, context):
-                    bak = GetActiveCol()
-                    SetActiveCol()
-                    if appendtext(self.merc) == "cancelled":
-                        self.report({'INFO'}, "No Mercs Found!")
-                        return {'CANCELLED'}
-                    append(self.merc, self.type)
-                    justadded = str(self.merc + self.type) # make a variable targeting the added collection of the character
-                    matblacklist = []
-                    for obj in bpy.data.collections[justadded].objects: # iterate through collection of objects
-                        
-                        try:
-                            goto = bpy.data.collections['Deployed Mercs']
-                            goto.objects.link(obj)
-                            
-                        except:
-                            bpy.context.scene.collection.children.link(bpy.data.collections.new('Deployed Mercs'))
-                            goto = bpy.data.collections['Deployed Mercs']
-                            goto.objects.link(obj)
-                        # create new collection to contain all the mercs
-                        try:
-                            obj['COSMETIC']
-                            if context.scene.cosmeticcompatibility and obj['COSMETIC'] == False:
-                                bpy.data.objects.remove(obj)
-                                continue
-                            
-                            if not context.scene.cosmeticcompatibility and obj['COSMETIC']:
-                                bpy.data.objects.remove(obj)
-                                continue
-                        except:
-                            pass
-                        # remove non cosmetic compatible meshes, and vice versa.
-                        if obj.type == 'ARMATURE':
-                            armature = obj.name
-                            bpy.data.objects[armature].location = bpy.context.scene.cursor.location
-                            #move character to cursor
-                            continue
-                        
-                        for mat in obj.material_slots:
-                            mat = mat.material
-                            for NODE in mat.node_tree.nodes:
-                                
-                                #use existing nodegroups
-                                
-                                if Collapse(NODE, 'TF2 BVLG') == "continue":
-                                    continue
-                                
-                                
-                                
-                                if Collapse(NODE, 'TF2 Diffuse') == "continue":
-                                    continue
-                                
-                                
-                                
-                                if Collapse(NODE, 'TF2 Eye') == "continue":
-                                    continue
-                                
-                                #use existing images
-                                
-                                if NODE.type == 'TEX_IMAGE':
-                                    if ReuseImage(NODE) == "continue":
-                                        continue
-                                    '''if ".0" in NODE.image.name:
-                                        try:
-                                            lookfor = NODE.image.name[:NODE.image.name.rindex(".")]
-                                            print(f'looking for {lookfor}..')
-                                            NODE.image = bpy.data.images[lookfor]
-                                            print("found!")
-                                            NODE.image.use_fake_user = False
-                                        except:
-                                            print(f"no original match found for {NODE.image.name}!")
-                                            print("RENAMING")
-                                            old = NODE.image.name
-                                            new = NODE.image.name[:NODE.image.name.rindex(".")]
-                                            print(f'{old} --> {new}')
-                                            NODE.image.name = new
-                                            NODE.image.use_fake_user = False
-                                            continue'''
-                                        
-                            if mat in matblacklist:
-                                continue
-                            # relevant towards BLU. if the material has already been swapped to BLU, continue.
-                            if context.scene.bluteam:
-                                foundred = False
-                                foundblu = False
-                                # all this to compensate for spy's head material.
-                                # multiple ifs are required, because if they were to be on the same line,
-                                # they would return an error.
-                                for NODE in mat.node_tree.nodes:
-                                    if NODE.type == 'TEX_IMAGE':
-                                        if 'blu' in NODE.image.name and foundblu == False:
-                                            foundblu = True
-                                            blutex = NODE
-                                            
-                                    if NODE.type == 'GROUP':
-                                        if 'blu' in NODE.name:
-                                            foundblu = True
-                                            blutex = NODE
-                                            
-                                    if NODE.type == 'TEX_IMAGE':
-                                        if 'red' in NODE.image.name and NODE.outputs[0].is_linked:
-                                            if NODE.outputs[0].links[0].to_node.type == 'GROUP':
-                                                getconnect = NODE.outputs[0].links[0].to_node
-                                                foundred = True
-                                                
-                                    if NODE.type == 'GROUP':
-                                        if 'red' in NODE.name and NODE.outputs[0].links[0].to_node.type == 'GROUP':
-                                            getconnect = NODE.outputs[0].links[0].to_node
-                                            foundred = True
-                                            
-                                    if foundred and foundblu: # if red and blu textures have been found, connect the blu node to TF2 Diffuse and append the current material to matblacklist.
-                                        mat.node_tree.links.new(blutex.outputs[0], getconnect.inputs[0])
-                                        matblacklist.append(mat)
-                                        break
-                    
-                    bpy.data.collections.remove(bpy.data.collections[justadded]) # remove the newly added collection.
-                    pending = []
-                    for i in bpy.data.objects[armature].pose.bones:
-                        # use existing bone shapes
-                        if i.custom_shape == None:
-                            continue
-                        shape = i.custom_shape.name
-                        
-                        if ".0" in shape:
-                            try:
-                                DELETE = shape
-                                if DELETE not in pending:
-                                    pending.append(DELETE)
-                                lookfor = shape[:shape.index(".")]
-                                i.custom_shape = bpy.data.objects[lookfor]
-                            except:
-                                bpy.data.objects[shape].name = shape[:shape.index(".")]
-                    print(pending)
-                    if len(pending) > 0:
-                        for i in pending:
-                            bpy.data.objects.remove(bpy.data.objects[i])
-                                    
-                                    
-                    print("DELETING")
-                    #delete  unused images and nodegroups.
-                    PurgeNodeGroups()
-                    PurgeImages()
-                    PurgeNodeGroups()
-                    bpy.context.view_layer.active_layer_collection = bak
-                    return {'FINISHED'}
-            bpy.utils.register_class(name)
+            
     def draw(self, context):
         layout = self.layout
         row = layout.row(align=True)
@@ -299,7 +278,9 @@ class MD_PT_MERCDEPLOY(bpy.types.Panel):
             row.label(text=i)
             col = layout.column()
             for ii in cln:
-                row.operator(f'hisanim.{i}{ii.lower()}')
+                MERC = row.operator('hisanim.loadmerc', text=ii)
+                MERC.merc = i
+                MERC.type = ii
             row = layout.row(align=True)
         row.prop(context.scene, "bluteam")
         row = layout.row()

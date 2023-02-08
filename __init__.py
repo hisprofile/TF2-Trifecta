@@ -2,13 +2,12 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
-    "version" : (1, 3, 2),
+    "version" : (1, 3, 4),
     "blender" : (3, 0, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
     "category" : "Object, Mesh, Rigging",
 }
-"""peee"""
 import bpy, json, os
 from pathlib import Path
 from bpy.props import *
@@ -174,7 +173,6 @@ class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with 
         NT.links.new(NT.nodes['Group'].outputs['lightwarp vector'], NT.nodes['Lightwarp'].inputs['Vector'])
         NT.links.new(NT.nodes['Lightwarp'].outputs['Color'], NT.nodes['Group'].inputs['Lightwarp'])
         return {'FINISHED'}
-classes.append(HISANIM_OT_AddLightwarps)
 
 class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
     bl_idname = 'hisanim.removelightwarps'
@@ -190,8 +188,6 @@ class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
             return {'CANCELLED'}
         NT.nodes['Group'].node_tree = bpy.data.node_groups['tf2combined-cycles']
         return {'FINISHED'}
-
-classes.append(HISANIM_OT_RemoveLightwarps)
         
 
 class hisanimsearchs(bpy.types.PropertyGroup): # keyword to look for
@@ -281,13 +277,14 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
 
         for mat in D.objects[justadded].material_slots:
             for NODE in mat.material.node_tree.nodes:
+                if NODE.name == 'VertexLitGeneric':
+                    NODE.inputs['rim * ambient'].default_value = 1 # for better colors
+                    NODE.inputs['$rimlightboost [value]'].default_value = NODE.inputs['$rimlightboost [value]'].default_value* context.scene.hisanimrimpower
                 if Collapse(NODE, 'VertexLitGeneric') == 'continue': # use VertexLitGeneric-WDRB, recursively remove nodes and node groups from VertexLitGeneric
                     continue
                 if NODE.type == 'TEX_IMAGE':
                     if mercdeployer.ReuseImage(NODE) == 'continue': # use existing images
                         continue
-                if NODE.name == 'VertexLitGeneric':
-                    NODE.inputs['rim * ambient'].default_value = 1 # for better colors
 
         if bpy.context.scene.wrdbbluteam: # this one speaks for itself
             print("BLU")
@@ -317,49 +314,16 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         except:
             pass
         
-        try:
-            select['BMBCOMPATIBLE']
-            var = 1
-        except:
-            var = 0
-        
-        if var == 1:
-            PARENT = bpy.data.objects[justadded].parent
-            PARENT.parent = select
-            PARENT['BAKLOC'] = PARENT.location
-            PARENT.location = [0, 0, 0]
-            for ii in bpy.data.objects[justadded].parent.pose.bones:
-                print(ii.name)
-                try:
-                    bpy.data.objects[select.name].pose.bones[ii.name]
-                    print('found matching bone!')
-                except:
-                    continue
-                
-                try:
-                    ii.constraints[loc]
-                    pass
-                except:
-                    ii.constraints.new('COPY_SCALE').name = scale
-                    ii.constraints.new('COPY_LOCATION').name = loc
-                    ii.constraints.new('COPY_ROTATION').name = rot
-                
-                SCALE = ii.constraints[scale]
-                LOC = ii.constraints[loc]
-                ROT = ii.constraints[rot]
-                
-                SCALE.target = select
-                SCALE.subtarget = ii.name
-                SCALE.target_space = 'POSE'
-                SCALE.owner_space = 'POSE'
-                LOC.target = select
-                LOC.subtarget = ii.name
-                ROT.target = select
-                ROT.subtarget = ii.name
+        if select.get('BMBCOMPATIBLE') != None:
+            bak = context.scene.hisanimtarget
+            context.scene.hisanimtarget = select
+            bpy.data.objects[justadded].parent.select_set(True)
+            bpy.ops.hisanim.attachto()
+            context.scene.hisanimtarget = bak
+            del bak
         mercdeployer.PurgeNodeGroups()
         mercdeployer.PurgeImages()
         return {'FINISHED'}
-classes.append(HISANIM_OT_LOAD)
 class HISANIM_OT_Search(bpy.types.Operator):
     bl_idname = 'hisanim.search'
     bl_label = 'Search for cosmetics'
@@ -404,7 +368,6 @@ class HISANIM_OT_Search(bpy.types.Operator):
         bpy.utils.register_class(WDRB_PT_PART2)
         
         return {'FINISHED'}
-classes.append(HISANIM_OT_Search)
 
 class HISANIM_OT_ClearSearch(bpy.types.Operator): # clear the search
     bl_idname = 'hisanim.clearsearch'
@@ -419,8 +382,6 @@ class HISANIM_OT_ClearSearch(bpy.types.Operator): # clear the search
         except:
             pass
             return {'CANCELLED'}
-classes.append(HISANIM_OT_ClearSearch)
-classes.append(hisanimsearchs)
 
 class HISANIM_OT_MATFIX(bpy.types.Operator):
     bl_idname = 'hisanim.materialfix'
@@ -467,9 +428,6 @@ class HISANIM_OT_REVERTFIX(bpy.types.Operator):
         else:
             return {'CANCELLED'}
 
-classes.append(HISANIM_OT_REVERTFIX)
-
-classes.append(HISANIM_OT_MATFIX)
 class HISANIM_OT_PAINTS(bpy.types.Operator):
     bl_idname = 'hisanim.paint'
     bl_label = 'Paint'
@@ -514,7 +472,6 @@ class HISANIM_OT_PAINTCLEAR(bpy.types.Operator):
         MAT.nodes.remove(MAT.nodes['DEFAULTPAINT'])
         return {'FINISHED'}
 
-classes.append(HISANIM_OT_PAINTS)
 class WDRB_PT_PART1(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar""" # for the searching segment.
     bl_label = addn
@@ -542,6 +499,8 @@ class WDRB_PT_PART1(bpy.types.Panel):
         row=layout.row()
         row.operator('hisanim.removelightwarps')
         row = layout.row()
+        row.prop(context.scene, 'hisanimrimpower', slider=True)
+        row = layout.row()
         row.prop(context.scene, 'wrdbbluteam')
         row = layout.row()
 
@@ -566,9 +525,8 @@ class WDRB_PT_PART3(bpy.types.Panel): # for the material fixer and selector segm
             row = layout.row()
             row.template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
             row = layout.row(align=True)
-            oper = row.operator('hisanim.materialfix')
-            oper = row.operator('hisanim.revertfix')
-            #oper.MAT = context.object.active_material.name
+            row.operator('hisanim.materialfix')
+            row.operator('hisanim.revertfix')
 
 #panel space for paints
 class WDRB_PT_PART4(bpy.types.Panel):
@@ -577,7 +535,7 @@ class WDRB_PT_PART4(bpy.types.Panel):
     bl_region_type = 'UI'
     bl_category = addn
     bl_parent_id = 'WDRB_PT_PART1'
-    #check if the panel can be displayed
+    # check if the panel can be displayed
     @classmethod
     def poll(cls, context): # only show if an object is selected and has a dictionary property named 'skin_groups'.
         try:
@@ -591,7 +549,6 @@ class WDRB_PT_PART4(bpy.types.Panel):
         row=layout.row(align=True)
         oper = row.operator('hisanim.paint', text = 'Add Paint')
         oper.PAINT = uilist.paints[context.scene.paintlist[context.scene.paintindex].name]
-        #row = layout.row()
         row.operator('hisanim.paintclear')
 @persistent
 def load_handler(loadpaints): # fill the paintlist collectiongroup with "paints"'s keys.
@@ -603,20 +560,31 @@ def load_handler(loadpaints): # fill the paintlist collectiongroup with "paints"
 bpy.app.handlers.load_post.append(load_handler)
 
 paintnames = uilist.paintnames
-classes.append(WDRB_PT_PART1)
-classes.append(WDRB_PT_PART3)
-classes.append(WDRB_PT_PART4)
-classes.append(uilist.PaintList)
-classes.append(uilist.HISANIM_UL_PAINTLIST)
-classes.append(uilist.MaterialList)
-classes.append(uilist.HISANIM_UL_MATERIALLIST)
-classes.append(mercdeployer.MD_PT_MERCDEPLOY)
-classes.append(bonemerge.HISANIM_OT_ATTACH)
-classes.append(bonemerge.HISANIM_OT_DETACH)
-classes.append(bonemerge.BM_PT_BONEMERGE)
-classes.append(bonemerge.HISANIM_OT_BINDFACE)
-classes.append(bonemerge.HISANIM_OT_ATTEMPTFIX)
-classes.append(HISANIM_OT_PAINTCLEAR)
+classes = [WDRB_PT_PART1,
+            WDRB_PT_PART3,
+            WDRB_PT_PART4,
+            uilist.PaintList,
+            uilist.HISANIM_UL_PAINTLIST,
+            uilist.MaterialList,
+            uilist.HISANIM_UL_MATERIALLIST,
+            mercdeployer.MD_PT_MERCDEPLOY,
+            bonemerge.HISANIM_OT_ATTACH,
+            bonemerge.HISANIM_OT_DETACH,
+            bonemerge.BM_PT_BONEMERGE,
+            bonemerge.HISANIM_OT_BINDFACE,
+            bonemerge.HISANIM_OT_ATTEMPTFIX,
+            HISANIM_OT_PAINTCLEAR,
+            mercdeployer.HISANIM_OT_LOADMERC,
+            HISANIM_OT_LOAD,
+            HISANIM_OT_PAINTS,
+            HISANIM_OT_AddLightwarps,
+            HISANIM_OT_RemoveLightwarps,
+            HISANIM_OT_Search,
+            HISANIM_OT_ClearSearch,
+            hisanimsearchs,
+            HISANIM_OT_REVERTFIX,
+            HISANIM_OT_MATFIX
+            ]
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
@@ -638,9 +606,9 @@ def register():
     bpy.types.Scene.paintindex = IntProperty(name='Paint Index', default = 0)
     bpy.types.Scene.hisamatindex = IntProperty(name='Selected Material Index', default = 0)
     bpy.types.Scene.hisanimweapons = BoolProperty(name='Search For Weapons')
+    bpy.types.Scene.hisanimrimpower = FloatProperty(name='Rim Power', description='Multiply the overall rim boost by this number', default=0.400, min=0.0, max=1.0)
     icons.register()
     updater.register()
-    #lightdist.register()
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
@@ -652,8 +620,8 @@ def unregister():
     del bpy.types.Scene.hisamatlist
     del bpy.types.Scene.hisamatindex
     del bpy.types.Scene.hisanimweapons
+    del bpy.types.Scene.hisanimrimpower
     updater.unregister()
-    #lightdist.unregister()
     
 if __name__ == "__main__":
     register()
