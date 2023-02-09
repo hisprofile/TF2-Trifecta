@@ -101,7 +101,7 @@ def Collapse(a, b): # merge TF2 BVLG groups
             a.node_tree = bpy.data.node_groups[c]
             #RemoveNodeGroups(bpy.data.node_groups[DELETE]) # i don't remember what this was for, but an error will always be raised, and it doesn't matter cause of the PurgeNodeGroups function
         except:
-            raise
+            #raise
             a.node_tree.name = c
             NoUserNodeGroup(a.node_tree)
     
