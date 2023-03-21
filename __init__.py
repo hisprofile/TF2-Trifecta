@@ -21,7 +21,7 @@ for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__
     if module: importlib.reload(module)
 from bpy.app.handlers import persistent
 # borrowed from BST
-from . import bonemerge, mercdeployer, uilist, icons, PATHS, updater
+from . import bonemerge, mercdeployer, uilist, icons, PATHS, updater, newuilist
 global loc
 global rot
 loc = bonemerge.loc
@@ -545,10 +545,11 @@ class WDRB_PT_PART4(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         row = layout.row()
-        row.template_list('HISANIM_UL_PAINTLIST', "Paints", context.scene, "paintlist", context.scene, "paintindex") # use the cool paint index and icons
+        row.template_icon_view(context.window_manager, 'hisanim_paints', show_labels=True, scale=4, scale_popup=4)
+        #row.template_list('HISANIM_UL_PAINTLIST', "Paints", context.scene, "paintlist", context.scene, "paintindex") # use the cool paint index and icons
         row=layout.row(align=True)
         oper = row.operator('hisanim.paint', text = 'Add Paint')
-        oper.PAINT = uilist.paints[context.scene.paintlist[context.scene.paintindex].name]
+        oper.PAINT = newuilist.paints[context.window_manager.hisanim_paints]
         row.operator('hisanim.paintclear')
 @persistent
 def load_handler(loadpaints): # fill the paintlist collectiongroup with "paints"'s keys.
@@ -609,6 +610,7 @@ def register():
     bpy.types.Scene.hisanimrimpower = FloatProperty(name='Rim Power', description='Multiply the overall rim boost by this number', default=0.400, min=0.0, max=1.0)
     icons.register()
     updater.register()
+    newuilist.register()
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
