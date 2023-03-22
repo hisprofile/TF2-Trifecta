@@ -21,7 +21,7 @@ for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__
     if module: importlib.reload(module)
 from bpy.app.handlers import persistent
 # borrowed from BST
-from . import bonemerge, mercdeployer, uilist, icons, PATHS, updater, newuilist
+from . import bonemerge, mercdeployer, uilist, icons, PATHS, updater, newuilist, preferences
 global loc
 global rot
 loc = bonemerge.loc
@@ -557,6 +557,13 @@ def load_handler(loadpaints): # fill the paintlist collectiongroup with "paints"
     for i in uilist.paints: 
         item = bpy.context.scene.paintlist.add()
         item.name = i
+@persistent
+def runpullpath(dummy):
+    print('rpp')
+    if len(bpy.context.preferences.addons[__package__].preferences.hisanim_paths) == 0:
+        bpy.ops.hisanim.pullpath()
+
+bpy.app.handlers.load_post.append(runpullpath)
 
 bpy.app.handlers.load_post.append(load_handler)
 
@@ -611,7 +618,13 @@ def register():
     icons.register()
     updater.register()
     newuilist.register()
+    preferences.register()
+
 def unregister():
+    try:
+        bpy.utils.unregister_class(WDRB_PT_PART2)
+    except:
+        pass
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     icons.unregister()
@@ -624,6 +637,9 @@ def unregister():
     del bpy.types.Scene.hisanimweapons
     del bpy.types.Scene.hisanimrimpower
     updater.unregister()
+    newuilist.unregister()
+    preferences.unregister()
     
 if __name__ == "__main__":
     register()
+    #print('pee')
