@@ -2,13 +2,12 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
-    "version" : (1, 0),
+    "version" : (1, 3, 4),
     "blender" : (3, 0, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
     "category" : "Object, Mesh, Rigging",
 }
-
 import bpy, json, os
 from pathlib import Path
 from bpy.props import *
@@ -22,82 +21,21 @@ for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__
     if module: importlib.reload(module)
 from bpy.app.handlers import persistent
 # borrowed from BST
-from . import bonemerge, mercdeployer, uilist, icons, PATHS, updater
-#global PATHS
+from . import bonemerge, mercdeployer, uilist, icons, updater, newuilist, preferences
 global loc
 global rot
 loc = bonemerge.loc
 rot = bonemerge.rot
+scale = bonemerge.scale
 global addn
 addn = "Wardrobe" # addon name
 classes = []
 global select
 global blend_files
 blend_files = []
-# = {}
-def RefreshPaths():
-    blend_files = []
-    prefs = bpy.context.preferences
-    filepaths = prefs.filepaths
-    asset_libraries = filepaths.asset_libraries
-    for asset_library in asset_libraries:
-        library_name = asset_library.path
-        library_path = Path(asset_library.path)
-        blend_files.append(str([fp for fp in library_path.glob("**/*.blend")]))
-    # taken from https://blender.stackexchange.com/questions/244971/how-do-i-get-all-assets-in-a-given-userassetlibrary-with-the-python-api
-    PATHS.FPATHS = {}
-    files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
-    for i in files: # add paths to definitoin
-        for ii in blend_files:
-            try:
-                if ii == '[]':
-                    continue
-                ii = str(ii)[str(ii).index("(") + 2:str(ii).index(")")-1]
-                if i in ii and not "V3" in ii: # skip TF2-V3 
-                    PATHS.FPATHS[i] = ii
-            except:
-                print(i, " is an invalid path!")
-                continue
-                
-    for i in blend_files: # for allclass folders
-        try:
-            if i == '[]':
-                continue
-            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
-            if 'allclass.b' in i:
-                PATHS.FPATHS['allclass'] = i
-        except:
-            raise
-            print(i, " is an invalid path!")
-            continue
-            
-    for i in blend_files:
-        try:
-            if i == '[]':
-                continue
-            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
-            if 'allclass2' in i:
-                PATHS.FPATHS['allclass2'] = i
-        except:
-            print(i, " is an invalid path!")
-            continue
-
-    for i in blend_files:
-        try:
-            if i == '[]':
-                continue
-            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
-            if 'allclass3' in i:
-                PATHS.FPATHS['allclass3'] = i
-        except:
-            raise
-            print(i, " is an invalid path!")
-            continue
 
 # i need a better system to handle this lol
 # missing one blend file from a 
-
-RefreshPaths()
 
 def RemoveNodeGroups(a): # iterate through every node and node group by using the "tree" method and removing said nodes
     for i in a.nodes:
@@ -111,8 +49,10 @@ def RemoveNodeGroups(a): # iterate through every node and node group by using th
 def returnsearch(a):
     path = str(Path(__file__).parent)
     path = path + "/master.json"
-    #path = r'C:\Users\Javiers\Documents\master.json'
-    files = ["scout", "soldier", "pyro", "demo", "heavy", "engineer", "sniper", "medic", "spy", "allclass", "allclass2", "allclass3"]
+    if not bpy.context.scene.hisanimweapons:
+        files = ["scout", "soldier", "pyro", "demo", "heavy", "engineer", "sniper", "medic", "spy", "allclass", "allclass2", "allclass3"]
+    else:
+        files = ['weapons']
     cln = ["named", "unnamed"]
     f = open(path)
     cosmetics = json.loads(f.read())
@@ -127,21 +67,38 @@ def returnsearch(a):
                     
     return hits
 
+def ReuseImage(a, path):
+    bak = a.image.name
+    a.image.name = a.image.name.upper()
+    link(path, bak, 'Image')
+
+    if (newimg := bpy.data.images.get(bak)) != None:
+        a.image = newimg
+        return None
+    del newimg
+    a.image.name = bak
+    return
 
 def Collapse(a, b): # merge TF2 BVLG groups
     if a.type == 'GROUP' and b in a.node_tree.name:
         c = b + "-WDRB"
-        
         if a.node_tree.name == c:
             return "continue"
-        try:
-            bpy.data.node_groups[c]
+        if bpy.data.node_groups.get(c) != None:
             RemoveNodeGroups(a.node_tree)
             a.node_tree = bpy.data.node_groups[c]
-        except:
+        else:
             a.node_tree.name = c
             mercdeployer.NoUserNodeGroup(a.node_tree)
 
+def link(a, b, c): # get a class from TF2-V3
+    blendfile = a
+    section = f"/{c}/"
+    object = b
+    
+    directory = blendfile + section
+    
+    bpy.ops.wm.link(filename=object, directory=directory)
 
 class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with a button
     bl_idname = 'hisanim.lightwarps'
@@ -165,7 +122,6 @@ class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with 
         try:
             NT.nodes['Lightwarp'].image = bpy.data.images['pyro_lightwarp.png']
         except:
-            raise
             self.report({'INFO'}, 'Add a class first!')
             return {'CANCELLED'}
         
@@ -174,7 +130,6 @@ class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with 
         NT.links.new(NT.nodes['Group'].outputs['lightwarp vector'], NT.nodes['Lightwarp'].inputs['Vector'])
         NT.links.new(NT.nodes['Lightwarp'].outputs['Color'], NT.nodes['Group'].inputs['Lightwarp'])
         return {'FINISHED'}
-classes.append(HISANIM_OT_AddLightwarps)
 
 class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
     bl_idname = 'hisanim.removelightwarps'
@@ -190,8 +145,6 @@ class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
             return {'CANCELLED'}
         NT.nodes['Group'].node_tree = bpy.data.node_groups['tf2combined-cycles']
         return {'FINISHED'}
-
-classes.append(HISANIM_OT_RemoveLightwarps)
         
 
 class hisanimsearchs(bpy.types.PropertyGroup): # keyword to look for
@@ -206,12 +159,25 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     def execute(self, context):
-        RefreshPaths()
+        #RefreshPaths()
         D = bpy.data
         CLASS = self.LOAD.split("_-_")[1]
         COSMETIC = self.LOAD.split("_-_")[0]
-        p = PATHS.FPATHS[CLASS] # shortcut to paths. self.CLASS refers to the class folder.
+        '''p = PATHS.FPATHS[CLASS] # shortcut to paths. self.CLASS refers to the class folder.'''
+
+        prefs = context.preferences.addons[__name__].preferences
+        paths = prefs.hisanim_paths
+        print(paths, CLASS, paths.get(CLASS))
+        if (p := paths.get(CLASS)) == None:
+            self.report({'INFO'}, f'Directory for "{CLASS}" not found! Make sure an entry for it exists in the addon preferences!')
+            return {'CANCELLED'}
+
+        p = p.path
         cos = COSMETIC
+
+        print(p, cos)
+
+
         
         # check if the cosmetic already exists. if it does, use the existing assets.
         # may be deprecated at some point in favor of Merc Deployer's method, which is
@@ -220,67 +186,62 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
             data_to.objects = [cos]
         list = [i.name for i in D.objects if not "_ARM" in i.name and cos in i.name]
-        justadded = sorted(list)[-1]
-        print(justadded)
-        skins = D.objects[justadded]['skin_groups']
+        justadded = D.objects[sorted(list)[-1]]
+        #print(justadded)
+        skins = justadded['skin_groups']
         count = 0
-        #updates the skin_groups dictionary on the object with its materials
-        for num in skins:
-            Range = count + len(skins[num])
+        # updates the skin_groups dictionary on the object with its materials
+        # previously it would iterate through the skin_groups dictionary, but this would not work if there were more entries than
+        # material slots. it will now only iterate through the minimum between how many material slots there are and how many entries there are.
+        for num in range(min(len(justadded.material_slots), len(skins))):
+            Range = count + len(skins[str(num)]) # make a range between the last range (0 if first iteration) and the last range + how many entries are in this skin group
             newmatlist = []
             for i in range(count, Range):
-                newmatlist.append(D.objects[justadded].material_slots[i].material.name)
-            skins[num] = newmatlist
+                newmatlist.append(justadded.material_slots[i].material.name)
+            skins[str(num)] = newmatlist
             count = Range
-        D.objects[justadded]['skin_groups'] = skins
+        justadded['skin_groups'] = skins
         del newmatlist, Range, count, skins, list
 
-        try:
-            bpy.data.collections[addn]
-            bpy.data.collections[addn].objects.link(bpy.data.objects[justadded])
-            
-            #these try and except blocks are used in case objects are linked to both the
-            #scene collection and Wardrobe's collection. in my testing they seem to never
-            #be linked to the scene collection. can't take any chances though
-            
-            try:
-                bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded])
-            except:
-                pass
-            bpy.data.objects[justadded].use_fake_user = False
-            bpy.data.collections[addn].objects.link(bpy.data.objects[justadded].parent)
-            try:
-                bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded].parent)
-            except:
-                pass
-            bpy.data.objects[justadded].parent.use_fake_user = False
-        except:
-            bpy.context.scene.collection.children.link(bpy.data.collections.new(addn))
-            bpy.data.collections[addn].objects.link(bpy.data.objects[justadded])
-            try:
-                bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded])
-            except:
-                pass
-            bpy.data.objects[justadded].use_fake_user = False
-            bpy.data.collections[addn].objects.link(bpy.data.objects[justadded].parent)
-            try:
-                bpy.context.scene.collection.objects.unlink(bpy.data.objects[justadded].parent)
-            except:
-                pass
-            bpy.data.objects[justadded].parent.use_fake_user = False
-        bpy.data.objects[justadded].parent.location = bpy.context.scene.cursor.location
+        if (wardcol := context.scene.collection.children.get('Wardrobe')) == None:
+            wardcol = bpy.data.collections.new('Wardrobe')
+            context.scene.collection.children.link(wardcol)
+        
+        justaddedParent = justadded.parent
+        wardcol.objects.link(justaddedParent)
+        justaddedParent.use_fake_user = False
+
+        for child in justaddedParent.children:
+            wardcol.objects.link(child)
+            child.use_fake_user = False
+
+        justaddedParent.location = context.scene.cursor.location
+
+        for mat in justadded.material_slots:
+            for NODE in mat.material.node_tree.nodes:
+                if NODE.name == 'VertexLitGeneric':
+                    NODE.inputs['rim * ambient'].default_value = 1 # for better colors
+                    NODE.inputs['$rimlightboost [value]'].default_value = NODE.inputs['$rimlightboost [value]'].default_value* context.scene.hisanimrimpower
+                if Collapse(NODE, 'VertexLitGeneric') == 'continue': # use VertexLitGeneric-WDRB, recursively remove nodes and node groups from VertexLitGeneric
+                    continue
+                if NODE.type == 'TEX_IMAGE':
+                    if ReuseImage(NODE, p) == 'continue': # use existing images
+                        continue
+
+        '''
         mercdeployer.PurgeNodeGroups()
         
 
         for mat in D.objects[justadded].material_slots:
             for NODE in mat.material.node_tree.nodes:
+                if NODE.name == 'VertexLitGeneric':
+                    NODE.inputs['rim * ambient'].default_value = 1 # for better colors
+                    NODE.inputs['$rimlightboost [value]'].default_value = NODE.inputs['$rimlightboost [value]'].default_value* context.scene.hisanimrimpower
                 if Collapse(NODE, 'VertexLitGeneric') == 'continue': # use VertexLitGeneric-WDRB, recursively remove nodes and node groups from VertexLitGeneric
                     continue
                 if NODE.type == 'TEX_IMAGE':
                     if mercdeployer.ReuseImage(NODE) == 'continue': # use existing images
                         continue
-                if NODE.name == 'VertexLitGeneric':
-                    NODE.inputs['rim * ambient'].default_value = 1 # for better colors
 
         if bpy.context.scene.wrdbbluteam: # this one speaks for itself
             print("BLU")
@@ -305,41 +266,21 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         # to the rig.
         try:
             if select.parent:
+                select.select_set(False)
                 select = select.parent
         except:
             pass
-        try:
-            select['BMBCOMPATIBLE']
-            var = 1
-        except:
-            var = 0
         
-        if var == 1:
-    
-            for ii in bpy.data.objects[justadded].parent.pose.bones:
-                print(ii.name)
-                try:
-                    bpy.data.objects[select.name].pose.bones[ii.name]
-                    print('found matching bone!')
-                except:
-                    continue
-                
-                try:
-                    ii.constraints[loc]
-                    pass
-                except:
-                    ii.constraints.new('COPY_LOCATION').name = loc
-                    ii.constraints.new('COPY_ROTATION').name = rot
-                
-                
-                ii.constraints[loc].target = select
-                ii.constraints[loc].subtarget = ii.name
-                ii.constraints[rot].target = select
-                ii.constraints[rot].subtarget = ii.name
+        if select.get('BMBCOMPATIBLE') != None:
+            bak = context.scene.hisanimtarget
+            context.scene.hisanimtarget = select
+            bpy.data.objects[justadded].parent.select_set(True)
+            bpy.ops.hisanim.attachto()
+            context.scene.hisanimtarget = bak
+            del bak'''
         mercdeployer.PurgeNodeGroups()
         mercdeployer.PurgeImages()
         return {'FINISHED'}
-classes.append(HISANIM_OT_LOAD)
 class HISANIM_OT_Search(bpy.types.Operator):
     bl_idname = 'hisanim.search'
     bl_label = 'Search for cosmetics'
@@ -356,10 +297,12 @@ class HISANIM_OT_Search(bpy.types.Operator):
             bl_region_type = 'UI'
             bl_category = addn
             bl_icon = "MOD_CLOTH"
+            bl_parent_id = 'WDRB_PT_PART1'
             global operators
             operators = hits
             def draw(self, context):
                 layout = self.layout
+                split = layout.split(factor=0.2)
                 row = layout.row()
                 if len(hits) == 1:
                     row.label(text=f'{len(hits)} Result')
@@ -368,9 +311,10 @@ class HISANIM_OT_Search(bpy.types.Operator):
                 
                 for ops in hits:
                     # draw the search results as buttons
-                    row=layout.row()
+                    split=layout.split(factor=0.2)
+                    row=split.row()
                     row.label(text=ops.split("_-_")[1])
-                    BACKS = '\\'
+                    row = split.row()
                     OPER = row.operator('hisanim.loadcosmetic', text=ops.split('_-_')[0])
                     OPER.LOAD = ops
             if len(hits) == 0:
@@ -381,7 +325,6 @@ class HISANIM_OT_Search(bpy.types.Operator):
         bpy.utils.register_class(WDRB_PT_PART2)
         
         return {'FINISHED'}
-classes.append(HISANIM_OT_Search)
 
 class HISANIM_OT_ClearSearch(bpy.types.Operator): # clear the search
     bl_idname = 'hisanim.clearsearch'
@@ -396,23 +339,18 @@ class HISANIM_OT_ClearSearch(bpy.types.Operator): # clear the search
         except:
             pass
             return {'CANCELLED'}
-classes.append(HISANIM_OT_ClearSearch)
-classes.append(hisanimsearchs)
 
 class HISANIM_OT_MATFIX(bpy.types.Operator):
     bl_idname = 'hisanim.materialfix'
     bl_label = 'Fix Material'
     bl_description = 'Fix Material'
-    bl_options = {'UNDO'}
-    
-    MAT: bpy.props.StringProperty(default='')
     
     def execute(self, context):
+        MAT = context.object.active_material
         try:
-            bpy.data.materials[self.MAT].node_tree.nodes['WRDB-MIX']
+            MAT.node_tree.nodes['WRDB-MIX']
             return {'CANCELLED'}
         except:
-            MAT = bpy.data.materials[self.MAT]
             NODEMIX = MAT.node_tree.nodes.new('ShaderNodeMixRGB')
             NODEMIX.name = 'WRDB-MIX'
             NODEMIX.location = Vector((-400, 210))
@@ -428,7 +366,25 @@ class HISANIM_OT_MATFIX(bpy.types.Operator):
             MATLINK.new(NODEGAMMA.outputs[0], NODEMIX.inputs[2])
             MATLINK.new(NODEMIX.outputs[0], MAT.node_tree.nodes['VertexLitGeneric'].inputs['$basetexture [texture]'])
             return {'FINISHED'}
-classes.append(HISANIM_OT_MATFIX)
+
+class HISANIM_OT_REVERTFIX(bpy.types.Operator):
+    bl_idname = 'hisanim.revertfix'
+    bl_label = 'Revert Fix'
+    bl_description = 'Revert a material fix done on a material'
+
+    def execute(self, context):
+        MAT = context.object.active_material
+        MATLINK = MAT.node_tree.links
+        if MAT.node_tree.nodes.get('WRDB-MIX') != None:
+            MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = list(MAT.node_tree.nodes['WRDB-GAMMA'].inputs[0].default_value)
+
+            MAT.node_tree.nodes.remove(MAT.node_tree.nodes['WRDB-MIX'])
+            MAT.node_tree.nodes.remove(MAT.node_tree.nodes['WRDB-GAMMA'])
+            MATLINK.new(MAT.node_tree.nodes['$basetexture'].outputs[0], MAT.node_tree.nodes['VertexLitGeneric'].inputs[0])
+            return {'FINISHED'}
+        else:
+            return {'CANCELLED'}
+
 class HISANIM_OT_PAINTS(bpy.types.Operator):
     bl_idname = 'hisanim.paint'
     bl_label = 'Paint'
@@ -473,7 +429,6 @@ class HISANIM_OT_PAINTCLEAR(bpy.types.Operator):
         MAT.nodes.remove(MAT.nodes['DEFAULTPAINT'])
         return {'FINISHED'}
 
-classes.append(HISANIM_OT_PAINTS)
 class WDRB_PT_PART1(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar""" # for the searching segment.
     bl_label = addn
@@ -488,6 +443,8 @@ class WDRB_PT_PART1(bpy.types.Panel):
         layout = self.layout
         row = layout.row()
         row.prop(props, "query", text="Search", icon="VIEWZOOM")
+        row = layout.row()
+        row.prop(context.scene, 'hisanimweapons')
         layout.label(text="Warning! Don't leave the text field empty!")
         row=layout.row()
         row.operator('hisanim.search', icon='VIEWZOOM')
@@ -499,6 +456,8 @@ class WDRB_PT_PART1(bpy.types.Panel):
         row=layout.row()
         row.operator('hisanim.removelightwarps')
         row = layout.row()
+        row.prop(context.scene, 'hisanimrimpower', slider=True)
+        row = layout.row()
         row.prop(context.scene, 'wrdbbluteam')
         row = layout.row()
 
@@ -508,6 +467,7 @@ class WDRB_PT_PART3(bpy.types.Panel): # for the material fixer and selector segm
     bl_region_type = 'UI'
     bl_category = addn
     bl_icon = "MOD_CLOTH"
+    bl_parent_id = 'WDRB_PT_PART1'
     @classmethod
     def poll(cls, context): # only show if an object is selected and has a dictionary property named 'skin_groups'.
         try:
@@ -521,9 +481,9 @@ class WDRB_PT_PART3(bpy.types.Panel): # for the material fixer and selector segm
             layout.label(text='Attempt to fix material')
             row = layout.row()
             row.template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
-            row = layout.row()
-            oper = row.operator('hisanim.materialfix')
-            oper.MAT = context.object.active_material.name
+            row = layout.row(align=True)
+            row.operator('hisanim.materialfix')
+            row.operator('hisanim.revertfix')
 
 #panel space for paints
 class WDRB_PT_PART4(bpy.types.Panel):
@@ -531,7 +491,8 @@ class WDRB_PT_PART4(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = addn
-    #check if the panel can be displayed
+    bl_parent_id = 'WDRB_PT_PART1'
+    # check if the panel can be displayed
     @classmethod
     def poll(cls, context): # only show if an object is selected and has a dictionary property named 'skin_groups'.
         try:
@@ -541,11 +502,11 @@ class WDRB_PT_PART4(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         row = layout.row()
-        row.template_list('HISANIM_UL_PAINTLIST', "Paints", context.scene, "paintlist", context.scene, "paintindex") # use the cool paint index and icons
-        row=layout.row()
+        row.template_icon_view(context.window_manager, 'hisanim_paints', show_labels=True, scale=4, scale_popup=4)
+        #row.template_list('HISANIM_UL_PAINTLIST', "Paints", context.scene, "paintlist", context.scene, "paintindex") # use the cool paint index and icons
+        row=layout.row(align=True)
         oper = row.operator('hisanim.paint', text = 'Add Paint')
-        oper.PAINT = uilist.paints[context.scene.paintlist[context.scene.paintindex].name]
-        row = layout.row()
+        oper.PAINT = newuilist.paints[context.window_manager.hisanim_paints]
         row.operator('hisanim.paintclear')
 @persistent
 def load_handler(loadpaints): # fill the paintlist collectiongroup with "paints"'s keys.
@@ -557,20 +518,31 @@ def load_handler(loadpaints): # fill the paintlist collectiongroup with "paints"
 bpy.app.handlers.load_post.append(load_handler)
 
 paintnames = uilist.paintnames
-classes.append(WDRB_PT_PART1)
-classes.append(WDRB_PT_PART3)
-classes.append(WDRB_PT_PART4)
-classes.append(uilist.PaintList)
-classes.append(uilist.HISANIM_UL_PAINTLIST)
-classes.append(uilist.MaterialList)
-classes.append(uilist.HISANIM_UL_MATERIALLIST)
-classes.append(mercdeployer.MD_PT_MERCDEPLOY)
-classes.append(bonemerge.HISANIM_OT_ATTACH)
-classes.append(bonemerge.HISANIM_OT_DETACH)
-classes.append(bonemerge.BM_PT_BONEMERGE)
-classes.append(bonemerge.HISANIM_OT_BINDFACE)
-classes.append(bonemerge.HISANIM_OT_ATTEMPTFIX)
-classes.append(HISANIM_OT_PAINTCLEAR)
+classes = [WDRB_PT_PART1,
+            WDRB_PT_PART3,
+            WDRB_PT_PART4,
+            uilist.PaintList,
+            uilist.HISANIM_UL_PAINTLIST,
+            uilist.MaterialList,
+            uilist.HISANIM_UL_MATERIALLIST,
+            mercdeployer.MD_PT_MERCDEPLOY,
+            bonemerge.HISANIM_OT_ATTACH,
+            bonemerge.HISANIM_OT_DETACH,
+            bonemerge.BM_PT_BONEMERGE,
+            bonemerge.HISANIM_OT_BINDFACE,
+            bonemerge.HISANIM_OT_ATTEMPTFIX,
+            HISANIM_OT_PAINTCLEAR,
+            mercdeployer.HISANIM_OT_LOADMERC,
+            HISANIM_OT_LOAD,
+            HISANIM_OT_PAINTS,
+            HISANIM_OT_AddLightwarps,
+            HISANIM_OT_RemoveLightwarps,
+            HISANIM_OT_Search,
+            HISANIM_OT_ClearSearch,
+            hisanimsearchs,
+            HISANIM_OT_REVERTFIX,
+            HISANIM_OT_MATFIX
+            ]
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
@@ -591,10 +563,18 @@ def register():
     bpy.types.Scene.hisamatlist = CollectionProperty(type = uilist.MaterialList)
     bpy.types.Scene.paintindex = IntProperty(name='Paint Index', default = 0)
     bpy.types.Scene.hisamatindex = IntProperty(name='Selected Material Index', default = 0)
+    bpy.types.Scene.hisanimweapons = BoolProperty(name='Search For Weapons')
+    bpy.types.Scene.hisanimrimpower = FloatProperty(name='Rim Power', description='Multiply the overall rim boost by this number', default=0.400, min=0.0, max=1.0)
     icons.register()
     updater.register()
-    #lightdist.register()
+    newuilist.register()
+    preferences.register()
+
 def unregister():
+    try:
+        bpy.utils.unregister_class(WDRB_PT_PART2)
+    except:
+        pass
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     icons.unregister()
@@ -604,8 +584,12 @@ def unregister():
     del bpy.types.Scene.paintindex
     del bpy.types.Scene.hisamatlist
     del bpy.types.Scene.hisamatindex
+    del bpy.types.Scene.hisanimweapons
+    del bpy.types.Scene.hisanimrimpower
     updater.unregister()
-    #lightdist.unregister()
+    newuilist.unregister()
+    preferences.unregister()
     
 if __name__ == "__main__":
     register()
+    #print('pee')

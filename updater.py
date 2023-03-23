@@ -1,6 +1,6 @@
 import bpy, os, shutil, shutil
 from pathlib import Path
-from . import dload, icons, mercdeployer, PATHS
+from . import dload, icons, mercdeployer, PATHS, addonUpdater
 import zipfile
 global blend_files
 global files
@@ -31,8 +31,6 @@ def RefreshPaths():
             if 'allclass.b' in i:
                 PATHS.FPATHS['allclass'] = i
         except:
-            #print()
-            #raise
             print(i, " is an invalid path!")
             continue
             
@@ -42,7 +40,6 @@ def RefreshPaths():
             if 'allclass2' in i:
                 PATHS.FPATHS['allclass2'] = i
         except:
-            #raise
             print(i, " is an invalid path!")
             continue
 
@@ -57,25 +54,23 @@ def RefreshPaths():
 classes = mercdeployer.classes
 allclasses = ['allclass', 'allclass2', 'allclass3']
 class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Updater
-    #bpy.ops.wm.console_toggle()
     bl_label = "TF2 Trifecta Updater"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'scene'
-
     def draw(self, context):
         layout = self.layout
         self.layout.icon
         layout.label(text='Update Class Cosmetics')
         row = layout.row()
         for i in classes:
-            OPER = row.operator('hisanim.clsupdate', text='Update ' + i, icon_value=icons.id('tfupdater'))
+            OPER = row.operator('hisanim.clsupdate', text='Update ' + i, icon_value=icons.id(f'tfupdater'))
             OPER.UPDATE = i
             row = layout.row()
         layout.label(text='Update Allclass Cosmetics')
         row = layout.row()
         for i in allclasses:
-            OPER = row.operator('hisanim.allclsupdate', text='Update '+i, icon_value=icons.id('tfupdater'))
+            OPER = row.operator('hisanim.allclsupdate', text='Update '+ i, icon_value=icons.id('tfupdater'))
             OPER.UPDATE = i
             row = layout.row()
         layout.label(text='Note! Allclass will take much longer!')
@@ -87,6 +82,8 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         row.operator('hisanim.hectorisupdate')
         layout.label(text='Face Panel + Phonemes Rigs by Hectoris919')
         layout.label(text='Open the console to view progress!')
+        row = layout.row()
+        row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
 
 class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_idname = 'hisanim.clsupdate'
@@ -94,7 +91,6 @@ class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_description = 'Press to update class'
     UPDATE: bpy.props.StringProperty(default='')
     def execute(self, context):
-        #dload.save('https://gitlab.com/hisprofile/the-tf2-collection/-/raw/main/electraceyrig2.blend')
         RefreshPaths() # refresh paths, just cause
         switch = False
         try:
@@ -238,18 +234,24 @@ class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
     bl_description = "Download Hectoris919's version of hisanimation's port, complete with a face rig and phonemes"
 
     def execute(self, execute):
-        print("WOW")
+        self.report({'INFO'}, 'Not ready yet!')
+        return {'FINISHED'}
+    
+class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
+    bl_idname = 'hisanim.addonupdate'
+    bl_label = 'Update Addon'
+    bl_description = "Get the latest version of the addon. Addon-Updater made by Herwork"
+
+    def execute(self, execute):
+        addonUpdater.main()
+        self.report({'INFO'}, 'Please restart blender to apply the update')
         return {'FINISHED'}
 
+bpyClasses = [HISANIM_PT_UPDATER, HISANIM_OT_CLSUPDATE, HISANIM_OT_ALLCLSUPDATE, HISANIM_OT_MERCUPDATE, HISANIM_OT_HECTORISUPDATE, HISANIM_OT_ADDONUPDATER]
+
 def register():
-    bpy.utils.register_class(HISANIM_PT_UPDATER)
-    bpy.utils.register_class(HISANIM_OT_CLSUPDATE)
-    bpy.utils.register_class(HISANIM_OT_ALLCLSUPDATE)
-    bpy.utils.register_class(HISANIM_OT_MERCUPDATE)
-    bpy.utils.register_class(HISANIM_OT_HECTORISUPDATE)
+    for operator in bpyClasses:
+        bpy.utils.register_class(operator)
 def unregister():
-    bpy.utils.unregister_class(HISANIM_PT_UPDATER)
-    bpy.utils.unregister_class(HISANIM_OT_CLSUPDATE)
-    bpy.utils.unregister_class(HISANIM_OT_ALLCLSUPDATE)
-    bpy.utils.unregister_class(HISANIM_OT_MERCUPDATE)
-    bpy.utils.unregister_class(HISANIM_OT_HECTORISUPDATE)
+    for operator in bpyClasses:
+        bpy.utils.unregister_class(operator)

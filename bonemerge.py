@@ -2,13 +2,21 @@ import bpy
 
 loc = "BONEMERGE-ATTACH-LOC"
 rot = "BONEMERGE-ATTACH-ROT"
+scale = "BONEMERGE-ATTACH-SCALE"
+def IsArmature(scene, obj):
+    if obj.type=='ARMATURE':
+        return True
+    else:
+        return False
 
-bpy.types.Scene.target = bpy.props.PointerProperty(type=bpy.types.Object)
+bpy.types.Scene.hisanimtarget = bpy.props.PointerProperty(type=bpy.types.Object, poll=IsArmature)
 def GetRoot(a):
     for i in a:
         if i.parent == None:
             return i
-        
+
+bpy.types.Scene.hisanimscale = bpy.props.BoolProperty(default=False, name='Scale With', description='Scales cosmetics with targets bones. Disabled by default')
+
 class BM_PT_BONEMERGE(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar"""
     bl_label = "Bonemerge"
@@ -25,12 +33,14 @@ class BM_PT_BONEMERGE(bpy.types.Panel):
         row.label(text='Attach TF2 cosmetics.', icon='MOD_CLOTH')
         ob = context.object
         row = layout.row()
-        self.layout.prop_search(context.scene, "target", bpy.data, "objects", text="Link to", icon='ARMATURE_DATA')
+        self.layout.prop_search(context.scene, "hisanimtarget", bpy.data, "objects", text="Link to", icon='ARMATURE_DATA')
         
         row = layout.row()
         row.operator('hisanim.attachto', icon="LINKED")
         row=layout.row()
         row.operator('hisanim.detachfrom', icon="UNLINKED")
+        row = layout.row()
+        row.prop(context.scene, 'hisanimscale')
         row = layout.row()
         row.label(text='Bind facial cosmetics')
         row = layout.row()
@@ -49,10 +59,11 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
     bl_options = {'UNDO'}
     
     def execute(self, context):
-        if context.scene.target == None:
-            raise TypeError("\n\nNo armature selected!")
-        obj = context.scene.target.name
-    
+        if context.scene.hisanimtarget == None:
+            self.report({'INFO'}, 'No armature selected!')
+            return {'CANCELLED'}
+        obj = context.scene.hisanimtarget
+        doOnce = True
         
         for i in bpy.context.selected_objects:
             if i == None:
@@ -65,21 +76,41 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
                 i = i.parent # if the mesh is selected instead of the parent armature, swap the iteration with its parent
             for ii in i.pose.bones:
                 try:
-                    bpy.data.objects[obj].pose.bones[ii.name] # check if the target bone exists. if not, continue.
+                    obj.pose.bones[ii.name] # check if the target bone exists. if not, continue.
+                    if doOnce: # this will parent the cosmetic to the target if at least
+                        # one bone from the cosmetic exists in the target
+                        if context.scene.hisanimscale:
+                            i.parent = obj # make the cosmetic's armature's parent the merc
+                            if i.get('BAKLOC') == None:
+                                i['BAKLOC'] = i.location # save previous location
+                            i.location = [0, 0, 0]
+                            doOnce = False
+                        else:
+                            if i.constraints.get('COPLOC') == None: # always copy merc's location
+                                LOC = i.constraints.new('COPY_LOCATION')
+                                LOC.name = 'COPLOC'
+                                LOC.target = obj
                 except:
                     continue
-                
-                try:
-                    ii.constraints[loc] # check if constraints already exist. if so, swap targets. if not, create constraints.
-                    pass
-                except:
+                if ii.constraints.get(loc) == None: # check if constraints already exist. if so, swap targets. if not, create constraints.
+                    if context.scene.hisanimscale:
+                        ii.constraints.new('COPY_SCALE').name = scale
                     ii.constraints.new('COPY_LOCATION').name = loc
                     ii.constraints.new('COPY_ROTATION').name = rot
-                
-                ii.constraints[loc].target = bpy.data.objects[obj]
-                ii.constraints[loc].subtarget = ii.name
-                ii.constraints[rot].target = bpy.data.objects[obj]
-                ii.constraints[rot].subtarget = ii.name
+
+                LOC = ii.constraints[loc]
+                ROT = ii.constraints[rot]
+
+                LOC.target = obj
+                LOC.subtarget = ii.name
+                ROT.target = obj
+                ROT.subtarget = ii.name
+                if context.scene.hisanimscale:
+                    if ii.constraints.get(scale) == None:
+                        ii.constraints.new('COPY_SCALE').name = scale
+                    SCALE = ii.constraints[scale]
+                    SCALE.target = obj
+                    SCALE.subtarget = ii.name
         
         return {'FINISHED'}
     
@@ -90,7 +121,7 @@ class HISANIM_OT_DETACH(bpy.types.Operator):
     bl_options = {'UNDO'}
     
     def execute(self, context):
-        
+        doOnce = True
         for i in bpy.context.selected_objects:
             if i == None:
                 continue
@@ -98,10 +129,20 @@ class HISANIM_OT_DETACH(bpy.types.Operator):
                 continue
             if i.type == 'MESH':
                 i = i.parent
+            if doOnce == True:
+                i.parent = None
+                if i.get('BAKLOC') != None:
+                    i.location = [*i.get('BAKLOC')]
+                    del i['BAKLOC']
+                doOnce = False
+                if i.constraints.get('COPLOC') != None:
+                    i.constraints.remove(i.constraints.get('COPLOC'))
             for ii in i.pose.bones:
                 try:
                     ii.constraints.remove(ii.constraints[loc])
                     ii.constraints.remove(ii.constraints[rot])
+                    ii.constraints.remove(ii.constraints[scale])
+                    
                 except:
                     continue
         
@@ -129,8 +170,6 @@ class HISANIM_OT_BINDFACE(bpy.types.Operator):
                     val.variables[0].targets[0].id_type = 'KEY'
                     val.variables[0].targets[0].id = CON[0].data.shape_keys
                     val.variables[0].targets[0].data_path = f'key_blocks["{ii.name}"].value'
-            
-        
         return {'FINISHED'}
 class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
     bl_idname = 'hisanim.attemptfix'
