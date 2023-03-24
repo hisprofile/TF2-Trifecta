@@ -262,25 +262,23 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                 del SKIN, OBJMAT
             except:
                 pass
-        '''
             
         select = bpy.context.object
         # if a Bonemerge compatible rig or mesh parented to one is selected, automatically bind the cosmetic
         # to the rig.
-        try:
-            if select.parent:
-                select.select_set(False)
-                select = select.parent
-        except:
-            pass
+
+        if select.parent != None:
+            select.select_set(False)
+            select = select.parent
         
         if select.get('BMBCOMPATIBLE') != None:
             bak = context.scene.hisanimtarget
             context.scene.hisanimtarget = select
-            bpy.data.objects[justadded].parent.select_set(True)
+            justadded.parent.select_set(True)
             bpy.ops.hisanim.attachto()
             context.scene.hisanimtarget = bak
-            del bak'''
+            del bak
+        
         mercdeployer.PurgeNodeGroups()
         mercdeployer.PurgeImages()
         return {'FINISHED'}
@@ -288,7 +286,6 @@ class HISANIM_OT_Search(bpy.types.Operator):
     bl_idname = 'hisanim.search'
     bl_label = 'Search for cosmetics'
     bl_description = "Go ahead, search"
-    query: StringProperty(default='')
     
     def execute(self, context):
         lookfor = bpy.context.scene.hisanimsearchs.query
@@ -351,25 +348,25 @@ class HISANIM_OT_MATFIX(bpy.types.Operator):
     
     def execute(self, context):
         MAT = context.object.active_material
-        try:
-            MAT.node_tree.nodes['WRDB-MIX']
+
+        if MAT.node_tree.nodes.get('WRDB-MIX') != None:
             return {'CANCELLED'}
-        except:
-            NODEMIX = MAT.node_tree.nodes.new('ShaderNodeMixRGB')
-            NODEMIX.name = 'WRDB-MIX'
-            NODEMIX.location = Vector((-400, 210))
-            NODEGAMMA = MAT.node_tree.nodes.new('ShaderNodeGamma')
-            NODEGAMMA.name = 'WRDB-GAMMA'
-            NODEGAMMA.location = Vector((-780, 110))
-            NODEGAMMA.inputs[0].default_value = list(MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value)
-            MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = [1, 1, 1, 1]
-            NODEGAMMA.inputs[1].default_value = 2.2
-            MATLINK = MAT.node_tree.links
-            MATLINK.new(MAT.node_tree.nodes['$basetexture'].outputs['Alpha'], NODEMIX.inputs[0])
-            MATLINK.new(MAT.node_tree.nodes['$basetexture'].outputs['Color'], NODEMIX.inputs[1])
-            MATLINK.new(NODEGAMMA.outputs[0], NODEMIX.inputs[2])
-            MATLINK.new(NODEMIX.outputs[0], MAT.node_tree.nodes['VertexLitGeneric'].inputs['$basetexture [texture]'])
-            return {'FINISHED'}
+
+        NODEMIX = MAT.node_tree.nodes.new('ShaderNodeMixRGB')
+        NODEMIX.name = 'WRDB-MIX'
+        NODEMIX.location = Vector((-400, 210))
+        NODEGAMMA = MAT.node_tree.nodes.new('ShaderNodeGamma')
+        NODEGAMMA.name = 'WRDB-GAMMA'
+        NODEGAMMA.location = Vector((-780, 110))
+        NODEGAMMA.inputs[0].default_value = list(MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value)
+        MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = [1, 1, 1, 1]
+        NODEGAMMA.inputs[1].default_value = 2.2
+        MATLINK = MAT.node_tree.links
+        MATLINK.new(MAT.node_tree.nodes['$basetexture'].outputs['Alpha'], NODEMIX.inputs[0])
+        MATLINK.new(MAT.node_tree.nodes['$basetexture'].outputs['Color'], NODEMIX.inputs[1])
+        MATLINK.new(NODEGAMMA.outputs[0], NODEMIX.inputs[2])
+        MATLINK.new(NODEMIX.outputs[0], MAT.node_tree.nodes['VertexLitGeneric'].inputs['$basetexture [texture]'])
+        return {'FINISHED'}
 
 class HISANIM_OT_REVERTFIX(bpy.types.Operator):
     bl_idname = 'hisanim.revertfix'
@@ -441,7 +438,8 @@ class WDRB_PT_PART1(bpy.types.Panel):
     bl_category = addn
     bl_icon = "MOD_CLOTH"
 
-    fart: bpy.props.BoolProperty(default=False)
+    #flt: bpy.props.FloatProperty()
+    #fart: bpy.props.BoolProperty(default=False)
 
     
     def draw(self, context):
@@ -515,23 +513,10 @@ class WDRB_PT_PART4(bpy.types.Panel):
         oper = row.operator('hisanim.paint', text = 'Add Paint')
         oper.PAINT = newuilist.paints[context.window_manager.hisanim_paints]
         row.operator('hisanim.paintclear')
-@persistent
-def load_handler(loadpaints): # fill the paintlist collectiongroup with "paints"'s keys.
-    bpy.context.scene.paintlist.clear()
-    for i in uilist.paints: 
-        item = bpy.context.scene.paintlist.add()
-        item.name = i
 
-bpy.app.handlers.load_post.append(load_handler)
-
-paintnames = uilist.paintnames
 classes = [WDRB_PT_PART1,
             WDRB_PT_PART3,
             WDRB_PT_PART4,
-            uilist.PaintList,
-            uilist.HISANIM_UL_PAINTLIST,
-            uilist.MaterialList,
-            uilist.HISANIM_UL_MATERIALLIST,
             mercdeployer.MD_PT_MERCDEPLOY,
             bonemerge.HISANIM_OT_ATTACH,
             bonemerge.HISANIM_OT_DETACH,
@@ -566,8 +551,6 @@ def register():
         name="Blu Team",
         description="Swap classes",
         default = False)
-    bpy.types.Scene.paintlist = CollectionProperty(type = uilist.PaintList)
-    bpy.types.Scene.hisamatlist = CollectionProperty(type = uilist.MaterialList)
     bpy.types.Scene.paintindex = IntProperty(name='Paint Index', default = 0)
     bpy.types.Scene.hisamatindex = IntProperty(name='Selected Material Index', default = 0)
     bpy.types.Scene.hisanimweapons = BoolProperty(name='Search For Weapons')

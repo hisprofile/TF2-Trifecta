@@ -3,10 +3,10 @@ import bpy, os, glob
 from pathlib import Path
 
 from bpy.props import (StringProperty, CollectionProperty,
-                                        IntProperty, EnumProperty,
-                                        BoolProperty)
+                        IntProperty, EnumProperty,
+                        BoolProperty)
 from bpy.types import (UIList, PropertyGroup,
-                                        AddonPreferences, Operator)
+                        AddonPreferences, Operator)
 names = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy', 'allclass2', 'allclass3', 'allclass', 'weapons', 'TF2-V3']
 
 class AssetPaths(PropertyGroup):
