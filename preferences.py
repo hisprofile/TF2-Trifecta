@@ -50,6 +50,10 @@ class AssetPaths(PropertyGroup):
         default='Path:'
     )
 
+    toggle: BoolProperty(
+        default=False
+    )
+
 class HISANIM_UL_ASSETS(UIList):
 
     def draw_item(self, context,
@@ -60,10 +64,30 @@ class HISANIM_UL_ASSETS(UIList):
         prefs = context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
         pathsindex = prefs.hisanim_pathsindex
+
+        if item.this_is == 'EMPTY':
+            ICON = 'BLANK1'
+        elif item.this_is == 'BLEND':
+            ICON = 'BLENDER'
+        elif item.this_is == 'FOLDER':
+            ICON = 'FILE_FOLDER'
+        else:
+            ICON = 'QUESTION'
+
+        if item != paths[pathsindex]:
+            item.toggle = False
+
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            layout.prop(item, "this_is", emboss=False, icon_only=True, icon_value=icon)
-            layout.prop(item, "path", emboss=False, icon_value=icon, icon_only=True)
-            layout.label(icon='RADIOBUT_ON' if paths[pathsindex] == item else 'RADIOBUT_OFF')
+            layout.label(icon=ICON)
+            if item.toggle:
+                layout.prop(item, "name", emboss=True, icon_value=icon, icon_only=True)
+                layout.prop(item, 'toggle', icon='DOT', text='', emboss=True)
+            else:
+                layout.prop(item, "path", emboss=False, icon_value=icon, icon_only=True)
+                if item == paths[pathsindex]:
+                    layout.prop(item, 'toggle', icon='RADIOBUT_ON' if paths[pathsindex] == item else 'RADIOBUT_OFF', text='', emboss=True)
+                else:
+                    layout.label(icon='RADIOBUT_OFF')     
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
@@ -187,7 +211,6 @@ classes = [HISANIM_UL_ASSETS,
 def runpullpath():
     prefs = bpy.context.preferences.addons[__package__].preferences
     paths = prefs.hisanim_paths
-    pathsindex = prefs.hisanim_pathsindex
     libraries = bpy.context.preferences.filepaths.asset_libraries
     for i in names[:-1]:
         if (assetpath := libraries.get(i)) != None and paths.get(i) == None:

@@ -77,6 +77,23 @@ def ReuseImage(a, path):
         return None
     del newimg
     a.image.name = bak
+    if ".0" in a.image.name:
+        lookfor = a.image.name[:a.image.name.rindex(".")]
+        print(f'looking for {lookfor}...')
+        if (lookfor := bpy.data.images.get(lookfor)) != None:
+            a.image = lookfor
+            print("found!")
+            a.image.use_fake_user = False
+            return None
+        else:
+            del lookfor
+            print(f"no original match found for {a.image.name}! Renaming...")
+            old = a.image.name
+            new = a.image.name[:a.image.name.rindex(".")]
+            print(f'{old} --> {new}')
+            a.image.name = new
+            a.image.use_fake_user = False
+    print(f'No match for {a.image.name}! How odd...')
     return
 
 def Collapse(a, b): # merge TF2 BVLG groups
@@ -227,6 +244,28 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                 if NODE.type == 'TEX_IMAGE':
                     if ReuseImage(NODE, p) == 'continue': # use existing images
                         continue
+        
+        if bpy.context.scene.wrdbbluteam: # this one speaks for itself
+            var = False
+            print("BLU")
+            try:
+                SKIN = bpy.data.objects[justadded]['skin_groups']
+                OBJMAT = bpy.data.objects[justadded].material_slots
+                for i in SKIN: # return where blu materials are found as BLU
+                    for ii in SKIN[i]:
+                        if "blu" in ii:
+                            BLU = i
+                            print(BLU)
+                            var = True
+                            break
+                    if var: break
+                counter = 0
+                for i in SKIN[BLU]: # set the materials as BLU
+                    OBJMAT[counter].material = bpy.data.materials[i]
+                    counter += 1
+                del counter, SKIN, OBJMAT
+            except:
+                pass
 
         '''
         mercdeployer.PurgeNodeGroups()
@@ -285,6 +324,7 @@ class HISANIM_OT_Search(bpy.types.Operator):
     bl_idname = 'hisanim.search'
     bl_label = 'Search for cosmetics'
     bl_description = "Go ahead, search"
+    query: StringProperty(default='')
     
     def execute(self, context):
         lookfor = bpy.context.scene.hisanimsearchs.query
