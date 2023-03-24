@@ -70,14 +70,15 @@ def returnsearch(a):
 def ReuseImage(a, path):
     bak = a.image.name
     a.image.name = a.image.name.upper()
-    link(path, bak, 'Image')
+    link(path, bak, 'Image') # link an image
 
-    if (newimg := bpy.data.images.get(bak)) != None:
+    if (newimg := bpy.data.images.get(bak)) != None: # if the linked image was truly linked, replace the old image with the linked image and stop the function.
         a.image = newimg
         return None
+    # if the function was not stopped, then revert the image name
     del newimg
     a.image.name = bak
-    if ".0" in a.image.name:
+    if ".0" in a.image.name: # if .0 is in the name, then it is most likely a duplicate. it will try to search for the original. and use that instead.
         lookfor = a.image.name[:a.image.name.rindex(".")]
         print(f'looking for {lookfor}...')
         if (lookfor := bpy.data.images.get(lookfor)) != None:
@@ -85,7 +86,7 @@ def ReuseImage(a, path):
             print("found!")
             a.image.use_fake_user = False
             return None
-        else:
+        else: # the image is the first despite it having .0 in its name, then rename it.
             del lookfor
             print(f"no original match found for {a.image.name}! Renaming...")
             old = a.image.name
@@ -93,6 +94,7 @@ def ReuseImage(a, path):
             print(f'{old} --> {new}')
             a.image.name = new
             a.image.use_fake_user = False
+            return None
     print(f'No match for {a.image.name}! How odd...')
     return
 
@@ -180,7 +182,6 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         D = bpy.data
         CLASS = self.LOAD.split("_-_")[1]
         COSMETIC = self.LOAD.split("_-_")[0]
-        '''p = PATHS.FPATHS[CLASS] # shortcut to paths. self.CLASS refers to the class folder.'''
 
         prefs = context.preferences.addons[__name__].preferences
         paths = prefs.hisanim_paths
@@ -193,12 +194,6 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         cos = COSMETIC
 
         print(p, cos)
-
-
-        
-        # check if the cosmetic already exists. if it does, use the existing assets.
-        # may be deprecated at some point in favor of Merc Deployer's method, which is
-        # to use the same assets but not the same material.
 
         with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
             data_to.objects = [cos]
@@ -249,8 +244,8 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             var = False
             print("BLU")
             try:
-                SKIN = bpy.data.objects[justadded]['skin_groups']
-                OBJMAT = bpy.data.objects[justadded].material_slots
+                SKIN = justadded['skin_groups']
+                OBJMAT = justadded.material_slots
                 for i in SKIN: # return where blu materials are found as BLU
                     for ii in SKIN[i]:
                         if "blu" in ii:
@@ -259,46 +254,15 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                             var = True
                             break
                     if var: break
-                counter = 0
-                for i in SKIN[BLU]: # set the materials as BLU
-                    OBJMAT[counter].material = bpy.data.materials[i]
-                    counter += 1
-                del counter, SKIN, OBJMAT
+                else: raise
+                print(SKIN[BLU])
+                for i in enumerate(SKIN[BLU]): # set the materials as BLU
+                    print(i)
+                    OBJMAT[i[0]].material = bpy.data.materials[i[1]]
+                del SKIN, OBJMAT
             except:
                 pass
-
         '''
-        mercdeployer.PurgeNodeGroups()
-        
-
-        for mat in D.objects[justadded].material_slots:
-            for NODE in mat.material.node_tree.nodes:
-                if NODE.name == 'VertexLitGeneric':
-                    NODE.inputs['rim * ambient'].default_value = 1 # for better colors
-                    NODE.inputs['$rimlightboost [value]'].default_value = NODE.inputs['$rimlightboost [value]'].default_value* context.scene.hisanimrimpower
-                if Collapse(NODE, 'VertexLitGeneric') == 'continue': # use VertexLitGeneric-WDRB, recursively remove nodes and node groups from VertexLitGeneric
-                    continue
-                if NODE.type == 'TEX_IMAGE':
-                    if mercdeployer.ReuseImage(NODE) == 'continue': # use existing images
-                        continue
-
-        if bpy.context.scene.wrdbbluteam: # this one speaks for itself
-            print("BLU")
-            try:
-                SKIN = bpy.data.objects[justadded]['skin_groups']
-                OBJMAT = bpy.data.objects[justadded].material_slots
-                for i in SKIN: # return where blu materials are found as BLU
-                    for ii in SKIN[i]:
-                        if "blu" in ii:
-                            BLU = i
-                            print(BLU)
-                counter = 0
-                for i in SKIN[BLU]: # set the materials as BLU
-                    OBJMAT[counter].material = bpy.data.materials[i]
-                    counter += 1
-                del counter, SKIN, OBJMAT
-            except:
-                pass
             
         select = bpy.context.object
         # if a Bonemerge compatible rig or mesh parented to one is selected, automatically bind the cosmetic
@@ -476,13 +440,16 @@ class WDRB_PT_PART1(bpy.types.Panel):
     bl_region_type = 'UI'
     bl_category = addn
     bl_icon = "MOD_CLOTH"
+
+    fart: bpy.props.BoolProperty(default=False)
+
     
     def draw(self, context):
         
         props = bpy.context.scene.hisanimsearchs
         layout = self.layout
         row = layout.row()
-        row.prop(props, "query", text="Search", icon="VIEWZOOM")
+        row.prop(props, 'query', text="Search", icon="VIEWZOOM")
         row = layout.row()
         row.prop(context.scene, 'hisanimweapons')
         layout.label(text="Warning! Don't leave the text field empty!")

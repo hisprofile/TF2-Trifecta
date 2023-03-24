@@ -93,16 +93,24 @@ class HISANIM_UL_ASSETS(UIList):
             layout.alignment = 'CENTER'
             layout.label(text='')
 
+class ridOf(PropertyGroup):
+    name: StringProperty(default='')
+    index: IntProperty(default=0)
+
 class hisanimFilePaths(AddonPreferences):
     bl_idname = __package__
     hisanim_paths: CollectionProperty(type=AssetPaths)
     hisanim_pathsindex: IntProperty(default=0)
     autonaming: BoolProperty(default=True)
     is_executed: BoolProperty(default=False)
+    remove: CollectionProperty(type=ridOf)
+    runonce_removepaths: IntProperty(default=0)
+    #removeindex: IntProperty(default=0)
     
     def draw(self, context):
         if not self.is_executed:
             runpullpath()
+            #bpy.app.handlers.depsgraph_update_post.append(deleteOldPaths)
             self.is_executed = True
         prefs = bpy.context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
@@ -202,11 +210,12 @@ class HISANIM_OT_REMOVEPATH(Operator):
 
 classes = [HISANIM_UL_ASSETS,
         AssetPaths,
+        ridOf,
         hisanimFilePaths,
         HISANIM_OT_ADDPATH,
         HISANIM_OT_REMOVEPATH,
         HISANIM_OT_DETECTPATH,
-        HISANIM_OT_PULLPATH]
+        HISANIM_OT_PULLPATH,]
 
 def runpullpath():
     prefs = bpy.context.preferences.addons[__package__].preferences
@@ -217,6 +226,9 @@ def runpullpath():
             path = glob.glob('*.blend', root_dir=assetpath.path)
             if len(path) == 0:
                 continue
+            delete = prefs.remove.add()
+            delete.index = libraries.find(i)
+            delete.name = i
             path = path[0]
             newitem = paths.add()
             newitem.path = assetpath.path + '/' + path
@@ -224,10 +236,33 @@ def runpullpath():
 
     if libraries.get('TF2-V3') != None:
         assetpath = libraries.get('TF2-V3')
-
+        delete = prefs.remove.add()
+        delete.index = libraries.find('TF2-V3')
+        delete.name = 'TF2-V3'
         newitem = paths.add()
         newitem.path = assetpath.path
         newitem.name = assetpath.name
+
+def deleteOldPaths(scn):
+
+    ''' This purpose of this function was meant to be occur alongside runpullpath,
+    but because I require the bpy.ops.preferences.asset_library_remove operator,
+    it cannot be done while drawing. So I needed a way to separate the two somehow.
+    runpullpath happens instantly because of the panel drawing, and deleteOldPaths
+    happens whenever the dependency graph updates.'''
+
+    prefs = bpy.context.preferences.addons[__package__].preferences
+    if prefs.runonce_removepaths:
+        return None
+    libraries = bpy.context.preferences.filepaths.asset_libraries
+    if prefs.is_executed == True:
+        prefs.runonce_removepaths = True
+        for i in prefs.remove:
+                bpy.ops.preferences.asset_library_remove(index=libraries.find(i.name))
+        bpy.app.handlers.depsgraph_update_post.remove(deleteOldPaths)
+        return None
+
+#bpy.app.handlers.depsgraph_update_post.append(deleteOldPaths)
 
 def register():
     for i in classes:
