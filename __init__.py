@@ -21,18 +21,11 @@ for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__
     if module: importlib.reload(module)
 from bpy.app.handlers import persistent
 # borrowed from BST
-from . import bonemerge, mercdeployer, uilist, icons, updater, newuilist, preferences
-global loc
-global rot
-loc = bonemerge.loc
-rot = bonemerge.rot
-scale = bonemerge.scale
+from . import bonemerge, mercdeployer, icons, updater, newuilist, preferences
 global addn
 addn = "Wardrobe" # addon name
 classes = []
-global select
-global blend_files
-blend_files = []
+#global select
 
 # i need a better system to handle this lol
 # missing one blend file from a 
@@ -126,23 +119,19 @@ class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with 
     bl_options = {'UNDO'}
     
     def execute(self, context):
-        try:
-            NT = bpy.data.node_groups['VertexLitGeneric-WDRB']
-        except:
+        if (NT := bpy.data.node_groups.get('VertexLitGeneric-WDRB')) == None: 
             self.report({'INFO'}, 'Cosmetic and class needed to proceed!')
             return {'CANCELLED'}
         
         NT.nodes['Group'].node_tree.use_fake_user = True
         NT.nodes['Group'].node_tree = bpy.data.node_groups['tf2combined-eevee']
-        try:
-            NT.nodes['Lightwarp']
-        except:
+        if NT.nodes.get('Lightwarp') == None:
             NT.nodes.new(type="ShaderNodeTexImage").name = "Lightwarp"
-        try:
-            NT.nodes['Lightwarp'].image = bpy.data.images['pyro_lightwarp.png']
-        except:
+        if (IMG := bpy.data.images.get('pyro_lightwarp.png')) == None:
             self.report({'INFO'}, 'Add a class first!')
             return {'CANCELLED'}
+        else:
+            NT.nodes['Lightwarp'].image = IMG
         
         NT.nodes['Lightwarp'].location[0] = 960
         NT.nodes['Lightwarp'].location[1] = -440
@@ -157,9 +146,7 @@ class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
     bl_options = {'UNDO'}
     
     def execute(self, execute):
-        try:
-            NT = bpy.data.node_groups['VertexLitGeneric-WDRB']
-        except:
+        if (NT := bpy.data.node_groups.get('VertexLitGeneric-WDRB')) == None:
             self.report({'INFO'}, 'Cosmetic needed to proceed!')
             return {'CANCELLED'}
         NT.nodes['Group'].node_tree = bpy.data.node_groups['tf2combined-cycles']
