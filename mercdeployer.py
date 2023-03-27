@@ -19,7 +19,7 @@ for i in path:
         
 classes = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
 def append(a, b): # get a class from TF2-V3
-    blendfile = f'{path}/{a}.blend'
+    blendfile = f'{bpy.context.preferences.addons[__package__].preferences.hisanim_paths["TF2-V3"].path}/{a}.blend'
     section = "/Collection/"
     object = a + b
     
@@ -82,9 +82,9 @@ def PurgeImages(): # delete unused images
     return {'FINISHED'}
 
 def SetActiveCol(a = None): # set the active collection
-    ihate = bpy.context.view_layer
+    VL = bpy.context.view_layer
     if a == None:
-        ihate.active_layer_collection = ihate.layer_collection
+        VL.active_layer_collection = VL.layer_collection
         return {'FINISHED'}
 def GetActiveCol(): # get the active collection
     return bpy.context.view_layer.active_layer_collection
@@ -95,19 +95,17 @@ def Collapse(a, b): # merge TF2 BVLG groups
         
         if a.node_tree.name == c:
             return "continue"
-        try:
+        if bpy.data.node_groups.get(c) != None:
             bpy.data.node_groups[c]
             RemoveNodeGroups(a.node_tree)
             a.node_tree = bpy.data.node_groups[c]
             #RemoveNodeGroups(bpy.data.node_groups[DELETE]) # i don't remember what this was for, but an error will always be raised, and it doesn't matter cause of the PurgeNodeGroups function
-        except:
-            #raise
+        else:
             a.node_tree.name = c
             NoUserNodeGroup(a.node_tree)
-    
     return {'FINISHED'}
 
-def ReuseImage(a):
+'''def ReuseImage(a):
     if ".0" in a.image.name:
         try:
             lookfor = a.image.name[:a.image.name.rindex(".")]
@@ -123,7 +121,45 @@ def ReuseImage(a):
             print(f'{old} --> {new}')
             a.image.name = new
             a.image.use_fake_user = False
-            return "continue"
+            return "continue"'''
+
+def link(a, b, c): # get a class from TF2-V3
+    blendfile = a
+    section = f"/{c}/"
+    object = b
+    
+    directory = blendfile + section
+    
+    bpy.ops.wm.link(filename=object, directory=directory)
+
+def ReuseImage(a, path):
+    bak = a.image.name
+    a.image.name = a.image.name.upper()
+    link(path, bak, 'Image') # link an image
+
+    if (newimg := bpy.data.images.get(bak)) != None: # if the linked image was truly linked, replace the old image with the linked image and stop the function.
+        a.image = newimg
+        return None
+    # if the function was not stopped, then revert the image name
+    del newimg
+    a.image.name = bak
+    if ".0" in a.image.name: # if .0 is in the name, then it is most likely a duplicate. it will try to search for the original. and use that instead.
+        lookfor = a.image.name[:a.image.name.rindex(".")]
+        print(f'looking for {lookfor}...')
+        if (lookfor := bpy.data.images.get(lookfor)) != None:
+            a.image = lookfor
+            print("found!")
+            a.image.use_fake_user = False
+            return None
+        else: # the image is the first despite it having .0 in its name, then rename it.
+            del lookfor
+            print(f"no original match found for {a.image.name}! Renaming...")
+            old = a.image.name
+            new = a.image.name[:a.image.name.rindex(".")]
+            print(f'{old} --> {new}')
+            a.image.name = new
+            a.image.use_fake_user = False
+            return None
 
 class HISANIM_OT_LOADMERC(bpy.types.Operator):
     merc: bpy.props.StringProperty(default='')
@@ -133,6 +169,10 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
     bl_options = {'UNDO'}
     
     def execute(self, context):
+        prefs  = bpy.context.preferences.addons[__package__].preferences
+        if prefs.hisanim_paths.get('TF2-V3') == None:
+            self.report({'INFO'}, 'No Mercs Found! Make sure you have TF2-V3 setup as an entry!')
+        PATH = prefs.hisanim_paths['TF2-V3'].path
         bak = GetActiveCol()
         SetActiveCol()
         if appendtext(self.merc) == "cancelled":
@@ -141,64 +181,48 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         append(self.merc, self.type)
         justadded = str(self.merc + self.type) # make a variable targeting the added collection of the character
         matblacklist = []
+        armature = bpy.data.collections[justadded].objects[0]
+        armature.location = bpy.context.scene.cursor.location
         for obj in bpy.data.collections[justadded].objects: # iterate through collection of objects
-            
-            try:
+            if (goto :=bpy.data.collections.get('Deployed Mercs')) == None:
+                bpy.context.scene.collection.children.link(bpy.data.collections.new('Deployed Mercs')) # If the collection 'Deployed Mercs' does not exist yet, create it
                 goto = bpy.data.collections['Deployed Mercs']
-                goto.objects.link(obj)
-                
-            except:
-                bpy.context.scene.collection.children.link(bpy.data.collections.new('Deployed Mercs'))
-                goto = bpy.data.collections['Deployed Mercs']
-                goto.objects.link(obj)
-            # create new collection to contain all the mercs
-            try:
-                obj['COSMETIC']
-                if context.scene.cosmeticcompatibility and obj['COSMETIC'] == False:
+            goto.objects.link(obj) # link the current object to 'Deployed Mercs'
+
+            if obj.get('COSMETIC') != None: # See if the
+                if context.scene.hisanimvars.cosmeticcompatibility and not obj['COSMETIC']:
                     bpy.data.objects.remove(obj)
                     continue
-                
-                if not context.scene.cosmeticcompatibility and obj['COSMETIC']:
+                if not context.scene.hisanimvars.cosmeticcompatibility and obj['COSMETIC']:
                     bpy.data.objects.remove(obj)
                     continue
-            except:
-                pass
             # remove non cosmetic compatible meshes, and vice versa.
-            if obj.type == 'ARMATURE':
+            '''if obj.type == 'ARMATURE':
                 armature = obj.name
                 bpy.data.objects[armature].location = bpy.context.scene.cursor.location
                 #move character to cursor
-                continue
+                continue'''
             
             for mat in obj.material_slots:
                 mat = mat.material
                 for NODE in mat.node_tree.nodes:
-                    
                     #use existing nodegroups
-                    
                     if Collapse(NODE, 'TF2 BVLG') == "continue":
                         continue
-                    
-                    
                     
                     if Collapse(NODE, 'TF2 Diffuse') == "continue":
                         continue
                     
-                    
-                    
                     if Collapse(NODE, 'TF2 Eye') == "continue":
                         continue
-                    
-                    #use existing images
-                    
+                    #use existing imagesx
                     if NODE.type == 'TEX_IMAGE':
-                        if ReuseImage(NODE) == "continue":
-                            continue
+                        ReuseImage(NODE, PATH + f'/{self.merc}.blend')
                             
                 if mat in matblacklist:
                     continue
                 # relevant towards BLU. if the material has already been swapped to BLU, continue.
-                if context.scene.bluteam:
+                if context.scene.hisanimvars.bluteam:
                     foundred = False
                     foundblu = False
                     # all this to compensate for spy's head material.
@@ -233,25 +257,30 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         
         bpy.data.collections.remove(bpy.data.collections[justadded]) # remove the newly added collection.
         pending = []
-        for i in bpy.data.objects[armature].pose.bones:
+        #print(armature)
+        for i in armature.pose.bones:
             # use existing bone shapes
             if i.custom_shape == None:
                 continue
             shape = i.custom_shape.name
             
             if ".0" in shape:
+                #print(shape)
                 try:
                     DELETE = shape
                     if DELETE not in pending:
                         pending.append(DELETE)
-                    lookfor = shape[:shape.index(".")]
+                    lookfor = shape[:shape.index(".0")]
                     i.custom_shape = bpy.data.objects[lookfor]
                 except:
                     bpy.data.objects[shape].name = shape[:shape.index(".")]
-        print(pending)
+        #print(pending)
         if len(pending) > 0:
             for i in pending:
-                bpy.data.objects.remove(bpy.data.objects[i])
+                try:
+                    bpy.data.objects.remove(bpy.data.objects[i])
+                except:
+                    continue
                         
                         
         print("DELETING")
@@ -282,6 +311,6 @@ class MD_PT_MERCDEPLOY(bpy.types.Panel):
                 MERC.merc = i
                 MERC.type = ii
             row = layout.row(align=True)
-        row.prop(context.scene, "bluteam")
+        row.prop(context.scene.hisanimvars, "bluteam")
         row = layout.row()
-        row.prop(context.scene, "cosmeticcompatibility")
+        row.prop(context.scene.hisanimvars, "cosmeticcompatibility")

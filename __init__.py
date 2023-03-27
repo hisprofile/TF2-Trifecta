@@ -42,7 +42,7 @@ def RemoveNodeGroups(a): # iterate through every node and node group by using th
 def returnsearch(a):
     path = str(Path(__file__).parent)
     path = path + "/master.json"
-    if not bpy.context.scene.hisanimweapons:
+    if not bpy.context.scene.hisanimvars.hisanimweapons:
         files = ["scout", "soldier", "pyro", "demo", "heavy", "engineer", "sniper", "medic", "spy", "allclass", "allclass2", "allclass3"]
     else:
         files = ['weapons']
@@ -153,10 +153,26 @@ class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
         return {'FINISHED'}
         
 
-class hisanimsearchs(bpy.types.PropertyGroup): # keyword to look for
-
+class hisanimvars(bpy.types.PropertyGroup): # keyword to look for
+    
+    bluteam: bpy.props.BoolProperty(
+        name="Blu Team",
+        description="Swap classes",
+        default = False)
     query: bpy.props.StringProperty(default="")
-
+    cosmeticcompatibility: BoolProperty(
+        name="Cosmetic Compatible",
+        description="Use cosmetic compatible bodygroups that don't intersect with cosmetics. Disabling will use SFM bodygroups",
+        default = True)
+    wrdbbluteam: BoolProperty(
+        name="Blu Team",
+        description="Swap classes",
+        default = False)
+    hisanimweapons: BoolProperty(name='Search For Weapons')
+    hisanimrimpower: FloatProperty(name='Rim Power',
+                                description='Multiply the overall rim boost by this number',
+                                default=0.400, min=0.0, max=1.0)
+    
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')
     bl_idname = 'hisanim.loadcosmetic'
@@ -220,14 +236,14 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             for NODE in mat.material.node_tree.nodes:
                 if NODE.name == 'VertexLitGeneric':
                     NODE.inputs['rim * ambient'].default_value = 1 # for better colors
-                    NODE.inputs['$rimlightboost [value]'].default_value = NODE.inputs['$rimlightboost [value]'].default_value* context.scene.hisanimrimpower
+                    NODE.inputs['$rimlightboost [value]'].default_value = NODE.inputs['$rimlightboost [value]'].default_value* context.scene.hisanimvars.hisanimrimpower
                 if Collapse(NODE, 'VertexLitGeneric') == 'continue': # use VertexLitGeneric-WDRB, recursively remove nodes and node groups from VertexLitGeneric
                     continue
                 if NODE.type == 'TEX_IMAGE':
                     if ReuseImage(NODE, p) == 'continue': # use existing images
                         continue
         
-        if bpy.context.scene.wrdbbluteam: # this one speaks for itself
+        if bpy.context.scene.hisanimvars.wrdbbluteam: # this one speaks for itself
             var = False
             print("BLU")
             try:
@@ -275,7 +291,7 @@ class HISANIM_OT_Search(bpy.types.Operator):
     bl_description = "Go ahead, search"
     
     def execute(self, context):
-        lookfor = bpy.context.scene.hisanimsearchs.query
+        lookfor = bpy.context.scene.hisanimvars.query
         lookfor = lookfor.split("|")
         lookfor.sort()
         hits = returnsearch(lookfor)
@@ -431,12 +447,12 @@ class WDRB_PT_PART1(bpy.types.Panel):
     
     def draw(self, context):
         
-        props = bpy.context.scene.hisanimsearchs
+        props = bpy.context.scene.hisanimvars
         layout = self.layout
         row = layout.row()
         row.prop(props, 'query', text="Search", icon="VIEWZOOM")
         row = layout.row()
-        row.prop(context.scene, 'hisanimweapons')
+        row.prop(context.scene.hisanimvars, 'hisanimweapons')
         layout.label(text="Warning! Don't leave the text field empty!")
         row=layout.row()
         row.operator('hisanim.search', icon='VIEWZOOM')
@@ -448,11 +464,10 @@ class WDRB_PT_PART1(bpy.types.Panel):
         row=layout.row()
         row.operator('hisanim.removelightwarps')
         row = layout.row()
-        row.prop(context.scene, 'hisanimrimpower', slider=True)
+        row.prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
         row = layout.row()
-        row.prop(context.scene, 'wrdbbluteam')
+        row.prop(context.scene.hisanimvars, 'wrdbbluteam')
         row = layout.row()
-
 class WDRB_PT_PART3(bpy.types.Panel): # for the material fixer and selector segment.
     bl_label = 'Material Fixer/Selector'
     bl_space_type = 'VIEW_3D'
@@ -518,15 +533,15 @@ classes = [WDRB_PT_PART1,
             HISANIM_OT_RemoveLightwarps,
             HISANIM_OT_Search,
             HISANIM_OT_ClearSearch,
-            hisanimsearchs,
+            hisanimvars,
             HISANIM_OT_REVERTFIX,
             HISANIM_OT_MATFIX
             ]
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-    bpy.types.Scene.hisanimsearchs = bpy.props.PointerProperty(type=hisanimsearchs)
-    bpy.types.Scene.bluteam = BoolProperty(
+    bpy.types.Scene.hisanimvars = bpy.props.PointerProperty(type=hisanimvars)
+    '''bpy.types.Scene.bluteam = BoolProperty(
         name="Blu Team",
         description="Swap classes",
         default = False)
@@ -538,10 +553,8 @@ def register():
         name="Blu Team",
         description="Swap classes",
         default = False)
-    bpy.types.Scene.paintindex = IntProperty(name='Paint Index', default = 0)
-    bpy.types.Scene.hisamatindex = IntProperty(name='Selected Material Index', default = 0)
     bpy.types.Scene.hisanimweapons = BoolProperty(name='Search For Weapons')
-    bpy.types.Scene.hisanimrimpower = FloatProperty(name='Rim Power', description='Multiply the overall rim boost by this number', default=0.400, min=0.0, max=1.0)
+    bpy.types.Scene.hisanimrimpower = FloatProperty(name='Rim Power', description='Multiply the overall rim boost by this number', default=0.400, min=0.0, max=1.0)'''
     icons.register()
     updater.register()
     newuilist.register()
@@ -555,14 +568,12 @@ def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     icons.unregister()
-    del bpy.types.Scene.bluteam
+    '''del bpy.types.Scene.bluteam
     del bpy.types.Scene.cosmeticcompatibility
-    del bpy.types.Scene.paintlist
-    del bpy.types.Scene.paintindex
     del bpy.types.Scene.hisamatlist
     del bpy.types.Scene.hisamatindex
     del bpy.types.Scene.hisanimweapons
-    del bpy.types.Scene.hisanimrimpower
+    del bpy.types.Scene.hisanimrimpower'''
     updater.unregister()
     newuilist.unregister()
     preferences.unregister()
