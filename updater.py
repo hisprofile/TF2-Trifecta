@@ -1,11 +1,11 @@
-import bpy, os, shutil, shutil
+import bpy, os, shutil, shutil, glob
 from pathlib import Path
 from . import dload, icons, mercdeployer, PATHS, addonUpdater
 import zipfile
 global blend_files
 global files
 files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
-def RefreshPaths():
+'''def RefreshPaths():
     blend_files = []
     prefs = bpy.context.preferences
     filepaths = prefs.filepaths
@@ -50,7 +50,7 @@ def RefreshPaths():
                 PATHS.FPATHS['allclass3'] = i
         except:
             print(i, " is an invalid path!")
-            continue
+            continue'''
 classes = mercdeployer.classes
 allclasses = ['allclass', 'allclass2', 'allclass3']
 class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Updater
@@ -63,7 +63,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         self.layout.icon
         layout.label(text='Update Class Cosmetics')
         row = layout.row()
-        for i in classes:
+        for i in files:
             OPER = row.operator('hisanim.clsupdate', text='Update ' + i, icon_value=icons.id(f'tfupdater'))
             OPER.UPDATE = i
             row = layout.row()
@@ -91,6 +91,7 @@ class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_description = 'Press to update class'
     UPDATE: bpy.props.StringProperty(default='')
     def execute(self, context):
+        prefs  = bpy.context.preferences.addons[__package__].preferences
         RefreshPaths() # refresh paths, just cause
         switch = False
         try:

@@ -153,8 +153,7 @@ class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
         return {'FINISHED'}
         
 
-class hisanimvars(bpy.types.PropertyGroup): # keyword to look for
-    
+class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     bluteam: bpy.props.BoolProperty(
         name="Blu Team",
         description="Swap classes",
@@ -172,7 +171,9 @@ class hisanimvars(bpy.types.PropertyGroup): # keyword to look for
     hisanimrimpower: FloatProperty(name='Rim Power',
                                 description='Multiply the overall rim boost by this number',
                                 default=0.400, min=0.0, max=1.0)
-    
+    hisanimscale: bpy.props.BoolProperty(default=False, name='Scale With', description='Scales cosmetics with targets bones. Disabled by default')
+    hisanimtarget: bpy.props.PointerProperty(type=bpy.types.Object, poll=bonemerge.IsArmature)
+
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')
     bl_idname = 'hisanim.loadcosmetic'
@@ -275,11 +276,11 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             select = select.parent
         
         if select.get('BMBCOMPATIBLE') != None:
-            bak = context.scene.hisanimtarget
-            context.scene.hisanimtarget = select
+            bak = context.scene.hisanimvars.hisanimtarget
+            context.scene.hisanimvars.hisanimtarget = select
             justadded.parent.select_set(True)
             bpy.ops.hisanim.attachto()
-            context.scene.hisanimtarget = bak
+            context.scene.hisanimvars.hisanimtarget = bak
             del bak
         
         mercdeployer.PurgeNodeGroups()
@@ -519,14 +520,7 @@ class WDRB_PT_PART4(bpy.types.Panel):
 classes = [WDRB_PT_PART1,
             WDRB_PT_PART3,
             WDRB_PT_PART4,
-            mercdeployer.MD_PT_MERCDEPLOY,
-            bonemerge.HISANIM_OT_ATTACH,
-            bonemerge.HISANIM_OT_DETACH,
-            bonemerge.BM_PT_BONEMERGE,
-            bonemerge.HISANIM_OT_BINDFACE,
-            bonemerge.HISANIM_OT_ATTEMPTFIX,
             HISANIM_OT_PAINTCLEAR,
-            mercdeployer.HISANIM_OT_LOADMERC,
             HISANIM_OT_LOAD,
             HISANIM_OT_PAINTS,
             HISANIM_OT_AddLightwarps,
@@ -540,26 +534,13 @@ classes = [WDRB_PT_PART1,
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
+    mercdeployer.register()
     bpy.types.Scene.hisanimvars = bpy.props.PointerProperty(type=hisanimvars)
-    '''bpy.types.Scene.bluteam = BoolProperty(
-        name="Blu Team",
-        description="Swap classes",
-        default = False)
-    bpy.types.Scene.cosmeticcompatibility = BoolProperty(
-        name="Cosmetic Compatible",
-        description="Use cosmetic compatible bodygroups that don't intersect with cosmetics. Disabling will use SFM bodygroups",
-        default = True)
-    bpy.types.Scene.wrdbbluteam = BoolProperty(
-        name="Blu Team",
-        description="Swap classes",
-        default = False)
-    bpy.types.Scene.hisanimweapons = BoolProperty(name='Search For Weapons')
-    bpy.types.Scene.hisanimrimpower = FloatProperty(name='Rim Power', description='Multiply the overall rim boost by this number', default=0.400, min=0.0, max=1.0)'''
     icons.register()
     updater.register()
     newuilist.register()
     preferences.register()
-
+    bonemerge.register()
 def unregister():
     try:
         bpy.utils.unregister_class(WDRB_PT_PART2)
@@ -567,17 +548,12 @@ def unregister():
         pass
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
+    mercdeployer.unregister()
     icons.unregister()
-    '''del bpy.types.Scene.bluteam
-    del bpy.types.Scene.cosmeticcompatibility
-    del bpy.types.Scene.hisamatlist
-    del bpy.types.Scene.hisamatindex
-    del bpy.types.Scene.hisanimweapons
-    del bpy.types.Scene.hisanimrimpower'''
     updater.unregister()
     newuilist.unregister()
     preferences.unregister()
-    
+    bonemerge.unregister()
 if __name__ == "__main__":
     register()
     #print('pee')

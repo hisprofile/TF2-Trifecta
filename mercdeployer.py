@@ -11,13 +11,13 @@ blend_files = []
 global path
 global cln
 cln = ["IK", "FK"]
-path = [i.path for i in asset_libraries]
+'''path = [i.path for i in asset_libraries]
 
 for i in path:
     if "TF2-V3" in i:
-        path = i.replace("\\", "/")
+        path = i.replace("\\", "/")'''
         
-classes = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
+mercs = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
 def append(a, b): # get a class from TF2-V3
     blendfile = f'{bpy.context.preferences.addons[__package__].preferences.hisanim_paths["TF2-V3"].path}/{a}.blend'
     section = "/Collection/"
@@ -28,7 +28,7 @@ def append(a, b): # get a class from TF2-V3
     bpy.ops.wm.append(filename=object, directory=directory)
 
 def appendtext(a): # add the .py script to add further control to faces
-    blendfile = f'{path}/{a}.blend'
+    blendfile = f'{bpy.context.preferences.addons[__package__].preferences.hisanim_paths["TF2-V3"].path}/{a}.blend'
     section = "/Text/"
     object = f'{a}.py'
     
@@ -105,24 +105,6 @@ def Collapse(a, b): # merge TF2 BVLG groups
             NoUserNodeGroup(a.node_tree)
     return {'FINISHED'}
 
-'''def ReuseImage(a):
-    if ".0" in a.image.name:
-        try:
-            lookfor = a.image.name[:a.image.name.rindex(".")]
-            print(f'looking for {lookfor}..')
-            a.image = bpy.data.images[lookfor]
-            print("found!")
-            a.image.use_fake_user = False
-        except:
-            print(f"no original match found for {a.image.name}!")
-            print("RENAMING")
-            old = a.image.name
-            new = a.image.name[:a.image.name.rindex(".")]
-            print(f'{old} --> {new}')
-            a.image.name = new
-            a.image.use_fake_user = False
-            return "continue"'''
-
 def link(a, b, c): # get a class from TF2-V3
     blendfile = a
     section = f"/{c}/"
@@ -135,6 +117,9 @@ def link(a, b, c): # get a class from TF2-V3
 def ReuseImage(a, path):
     bak = a.image.name
     a.image.name = a.image.name.upper()
+    if (newimg := bpy.data.images.get(bak)) != None: # if the image already exists, use it.
+        a.image = newimg
+        return None
     link(path, bak, 'Image') # link an image
 
     if (newimg := bpy.data.images.get(bak)) != None: # if the linked image was truly linked, replace the old image with the linked image and stop the function.
@@ -182,6 +167,8 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         justadded = str(self.merc + self.type) # make a variable targeting the added collection of the character
         matblacklist = []
         armature = bpy.data.collections[justadded].objects[0]
+        while armature.parent != None: # get the absolute root of the objects
+            armature = armature.parent
         armature.location = bpy.context.scene.cursor.location
         for obj in bpy.data.collections[justadded].objects: # iterate through collection of objects
             if (goto :=bpy.data.collections.get('Deployed Mercs')) == None:
@@ -197,12 +184,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     bpy.data.objects.remove(obj)
                     continue
             # remove non cosmetic compatible meshes, and vice versa.
-            '''if obj.type == 'ARMATURE':
-                armature = obj.name
-                bpy.data.objects[armature].location = bpy.context.scene.cursor.location
-                #move character to cursor
-                continue'''
-            
             for mat in obj.material_slots:
                 mat = mat.material
                 for NODE in mat.node_tree.nodes:
@@ -225,47 +206,28 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if context.scene.hisanimvars.bluteam:
                     foundred = False
                     foundblu = False
-                    # all this to compensate for spy's head material.
-                    # multiple ifs are required, because if they were to be on the same line,
-                    # they would return an error.
-                    for NODE in mat.node_tree.nodes:
-                        if NODE.type == 'TEX_IMAGE':
-                            if 'blu' in NODE.image.name and foundblu == False:
-                                foundblu = True
-                                blutex = NODE
-                                
-                        if NODE.type == 'GROUP':
-                            if 'blu' in NODE.name:
-                                foundblu = True
-                                blutex = NODE
-                                
-                        if NODE.type == 'TEX_IMAGE':
-                            if 'red' in NODE.image.name and NODE.outputs[0].is_linked:
-                                if NODE.outputs[0].links[0].to_node.type == 'GROUP':
-                                    getconnect = NODE.outputs[0].links[0].to_node
-                                    foundred = True
-                                    
-                        if NODE.type == 'GROUP':
-                            if 'red' in NODE.name and NODE.outputs[0].links[0].to_node.type == 'GROUP':
-                                getconnect = NODE.outputs[0].links[0].to_node
-                                foundred = True
-                                
-                        if foundred and foundblu: # if red and blu textures have been found, connect the blu node to TF2 Diffuse and append the current material to matblacklist.
-                            mat.node_tree.links.new(blutex.outputs[0], getconnect.inputs[0])
-                            matblacklist.append(mat)
-                            break
+                    if (red := mat.node_tree.nodes.get('REDTEX')) != None and (blu := mat.node_tree.nodes.get('BLUTEX')) != None:
+                        getconnect = red.outputs[0].links[0].to_node
+                        mat.node_tree.links.new(blu.outputs[0], getconnect.inputs[0])
+                        matblacklist.append(mat)
+                        break
         
         bpy.data.collections.remove(bpy.data.collections[justadded]) # remove the newly added collection.
         pending = []
-        #print(armature)
+
+        if bpy.data.collections.get('MDSHAPES') == None:
+            bpy.data.collections.new('MDSHAPES').use_fake_user = True
+
         for i in armature.pose.bones:
             # use existing bone shapes
             if i.custom_shape == None:
                 continue
+            for col in i.custom_shape.users_collection:
+                col.objects.unlink(i.custom_shape)
+            bpy.data.collections['MDSHAPES'].objects.link(i.custom_shape)
             shape = i.custom_shape.name
             
             if ".0" in shape:
-                #print(shape)
                 try:
                     DELETE = shape
                     if DELETE not in pending:
@@ -273,12 +235,14 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     lookfor = shape[:shape.index(".0")]
                     i.custom_shape = bpy.data.objects[lookfor]
                 except:
-                    bpy.data.objects[shape].name = shape[:shape.index(".")]
+                    bpy.data.objects[shape].name = shape[:shape.index(".0")]
         #print(pending)
         if len(pending) > 0:
             for i in pending:
                 try:
+                    DATA = bpy.data.objects[i].data
                     bpy.data.objects.remove(bpy.data.objects[i])
+                    bpy.data.meshes.remove(DATA)
                 except:
                     continue
                         
@@ -303,7 +267,7 @@ class MD_PT_MERCDEPLOY(bpy.types.Panel):
     def draw(self, context):
         layout = self.layout
         row = layout.row(align=True)
-        for i in classes:
+        for i in mercs:
             row.label(text=i)
             col = layout.column()
             for ii in cln:
@@ -314,3 +278,14 @@ class MD_PT_MERCDEPLOY(bpy.types.Panel):
         row.prop(context.scene.hisanimvars, "bluteam")
         row = layout.row()
         row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
+
+classes = [HISANIM_OT_LOADMERC,
+                MD_PT_MERCDEPLOY]
+
+def register():
+    for i in classes:
+        bpy.utils.register_class(i)
+
+def unregister():
+    for i in reversed(classes):
+        bpy.utils.unregister_class(i)
