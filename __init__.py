@@ -2,12 +2,14 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
-    "version" : (1, 3, 4),
+    "version" : (2, 0, 0),
     "blender" : (3, 0, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
     "category" : "Object, Mesh, Rigging",
 }
+
+#from .wardrobe import register, unregister
 import bpy, json, os
 from pathlib import Path
 from bpy.props import *
@@ -153,6 +155,8 @@ class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
         NT.nodes['Group'].node_tree = bpy.data.node_groups['tf2combined-cycles']
         return {'FINISHED'}
         
+class searchHits(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty()
 
 class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     bluteam: bpy.props.BoolProperty(
@@ -174,7 +178,10 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
                                 default=0.400, min=0.0, max=1.0)
     hisanimscale: bpy.props.BoolProperty(default=False, name='Scale With', description='Scales cosmetics with targets bones. Disabled by default')
     hisanimtarget: bpy.props.PointerProperty(type=bpy.types.Object, poll=bonemerge.IsArmature)
-    savespace: bpy.props.BoolProperty(default=True, name='Save Space', description='When enabled, The TF2-Trifecta will link textures from source files.')
+    savespace: bpy.props.BoolProperty(default=True, name='Save Space', description='When enabled, The TF2-Trifecta will link textures from source files')
+    autobind: bpy.props.BoolProperty(default=False, name='Auto BoneMerge', description='When enabled, weapons will automatically bind to mercs')
+    results: bpy.props.CollectionProperty(type=searchHits)
+    searched: bpy.props.BoolProperty()
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')
@@ -191,16 +198,12 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
 
         prefs = context.preferences.addons[__name__].preferences
         paths = prefs.hisanim_paths
-        print(paths, CLASS, paths.get(CLASS))
         if (p := paths.get(CLASS)) == None:
             self.report({'INFO'}, f'Directory for "{CLASS}" not found! Make sure an entry for it exists in the addon preferences!')
             return {'CANCELLED'}
 
         p = p.path
         cos = COSMETIC
-
-        print(p, cos)
-
         with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
             data_to.objects = [cos]
         list = [i.name for i in D.objects if not "_ARM" in i.name and cos in i.name]
@@ -277,7 +280,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             select.select_set(False)
             select = select.parent
         
-        if select.get('BMBCOMPATIBLE') != None:
+        if select.get('BMBCOMPATIBLE') != None and (context.scene.hisanimvars.autobind if context.scene.hisanimvars.hisanimweapons else True):
             bak = context.scene.hisanimvars.hisanimtarget
             context.scene.hisanimvars.hisanimtarget = select
             justadded.parent.select_set(True)
@@ -288,50 +291,57 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         mercdeployer.PurgeNodeGroups()
         mercdeployer.PurgeImages()
         return {'FINISHED'}
+
 class HISANIM_OT_Search(bpy.types.Operator):
     bl_idname = 'hisanim.search'
     bl_label = 'Search for cosmetics'
     bl_description = "Go ahead, search"
     
     def execute(self, context):
+        context.scene.hisanimvars.results.clear()
+        context.scene.hisanimvars.searched = True
         lookfor = bpy.context.scene.hisanimvars.query
         lookfor = lookfor.split("|")
         lookfor.sort()
         hits = returnsearch(lookfor)
-        class WDRB_PT_PART2(bpy.types.Panel):
-            bl_label = "Search Results"
-            bl_space_type = 'VIEW_3D'
-            bl_region_type = 'UI'
-            bl_category = addn
-            bl_icon = "MOD_CLOTH"
-            bl_parent_id = 'WDRB_PT_PART1'
-            global operators
-            operators = hits
-            def draw(self, context):
-                layout = self.layout
-                split = layout.split(factor=0.2)
-                row = layout.row()
-                if len(hits) == 1:
-                    row.label(text=f'{len(hits)} Result')
-                else:
-                    row.label(text=f'{len(hits)} Results')
-                
-                for ops in hits:
-                    # draw the search results as buttons
-                    split=layout.split(factor=0.2)
-                    row=split.row()
-                    row.label(text=ops.split("_-_")[1])
-                    row = split.row()
-                    OPER = row.operator('hisanim.loadcosmetic', text=ops.split('_-_')[0])
-                    OPER.LOAD = ops
-            if len(hits) == 0:
-                def draw(self, context):
-                    layout = self.layout
-                    row = layout.row()
-                    row.label(text='Nothing found!')
-        bpy.utils.register_class(WDRB_PT_PART2)
-        
+        for hit in hits:
+            new = context.scene.hisanimvars.results.add()
+            new.name = hit
         return {'FINISHED'}
+class WDRB_PT_PART2(bpy.types.Panel):
+    bl_label = "Search Results"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = addn
+    bl_icon = "MOD_CLOTH"
+    bl_parent_id = 'WDRB_PT_PART1'
+    @classmethod
+    def poll(cls, context):
+        return context.scene.hisanimvars.searched
+
+    def draw(self, context):
+        hits = context.scene.hisanimvars.results
+        layout = self.layout
+        split = layout.split(factor=0.2)
+        row = layout.row()
+        #print(hits)
+        if len(hits) > 0:
+            if len(hits) == 1:
+                row.label(text=f'{len(hits)} Result')
+            else:
+                row.label(text=f'{len(hits)} Results')
+            
+            for ops in hits:
+                # draw the search results as buttons
+                split=layout.split(factor=0.2)
+                row=split.row()
+                row.label(text=ops.name.split("_-_")[1])
+                row = split.row()
+                OPER = row.operator('hisanim.loadcosmetic', text=ops.name.split('_-_')[0])
+                OPER.LOAD = ops.name
+        else: 
+            layout = self.layout
+            layout.label(text='Nothing found!')
 
 class HISANIM_OT_ClearSearch(bpy.types.Operator): # clear the search
     bl_idname = 'hisanim.clearsearch'
@@ -340,12 +350,9 @@ class HISANIM_OT_ClearSearch(bpy.types.Operator): # clear the search
     
     def execute(self, context):
         
-        try:
-            bpy.utils.unregister_class(bpy.types.WDRB_PT_PART2)
-            return {'FINISHED'}
-        except:
-            pass
-            return {'CANCELLED'}
+        context.scene.hisanimvars.results.clear()
+        context.scene.hisanimvars.searched = False
+        return {'FINISHED'}
 
 class HISANIM_OT_MATFIX(bpy.types.Operator):
     bl_idname = 'hisanim.materialfix'
@@ -456,6 +463,9 @@ class WDRB_PT_PART1(bpy.types.Panel):
         row.prop(props, 'query', text="Search", icon="VIEWZOOM")
         row = layout.row()
         row.prop(context.scene.hisanimvars, 'hisanimweapons')
+        if props.hisanimweapons:
+            row = layout.row()
+            row.prop(props, 'autobind')
         layout.label(text="Warning! Don't leave the text field empty!")
         row=layout.row()
         row.operator('hisanim.search', icon='VIEWZOOM')
@@ -519,7 +529,11 @@ class WDRB_PT_PART4(bpy.types.Panel):
         oper.PAINT = newuilist.paints[context.window_manager.hisanim_paints]
         row.operator('hisanim.paintclear')
 
-classes = [WDRB_PT_PART1,
+classes = [
+            searchHits,
+            hisanimvars,
+            WDRB_PT_PART1,
+            WDRB_PT_PART2,
             WDRB_PT_PART3,
             WDRB_PT_PART4,
             HISANIM_OT_PAINTCLEAR,
@@ -529,7 +543,6 @@ classes = [WDRB_PT_PART1,
             HISANIM_OT_RemoveLightwarps,
             HISANIM_OT_Search,
             HISANIM_OT_ClearSearch,
-            hisanimvars,
             HISANIM_OT_REVERTFIX,
             HISANIM_OT_MATFIX
             ]
@@ -544,12 +557,13 @@ def register():
     preferences.register()
     bonemerge.register()
 def unregister():
-    try:
-        bpy.utils.unregister_class(WDRB_PT_PART2)
-    except:
-        pass
+    #try:
+        #bpy.utils.unregister_class(WDRB_PT_PART2)
+    #except:
+        #pass
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
+    
     mercdeployer.unregister()
     icons.unregister()
     updater.unregister()
@@ -557,6 +571,5 @@ def unregister():
     preferences.unregister()
     bonemerge.unregister()
     del bpy.types.Scene.hisanimvars
-if __name__ == "__main__":
+if __name__ == '__main__':
     register()
-    #print('pee')

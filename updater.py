@@ -1,7 +1,7 @@
-import bpy, os, shutil, shutil, glob
+import bpy, os, shutil, shutil, glob, json, zipfile
 from pathlib import Path
 from . import dload, icons, mercdeployer, addonUpdater
-import zipfile
+from urllib import request
 global blend_files
 global files
 files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
@@ -94,28 +94,6 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
     bl_description = 'Press to update class'
     UPDATE: bpy.props.StringProperty(default='')
     def execute(self, context):
-        #RefreshPaths()
-        '''try:
-            GET = PATHS.FPATHS[self.UPDATE]
-        except: # if the addon cannot find an existing .blend, it will go through your asset paths..
-            # The rest can be understood by reading the print lines.
-            print(f'No existing .blend file found for {self.UPDATE}!')
-            try:
-                print('Attempting to find existing directory...')
-                assetpath = context.preferences.filepaths.asset_libraries
-                for i in assetpath:
-                    if self.UPDATE in i.path.casefold():
-                        FINDPATH = i.name
-                        print(f'Directory found at {i.path}!')
-                        break
-                PATHS.FPATHS[self.UPDATE] = context.preferences.filepaths.asset_libraries[FINDPATH].path.replace(r'\\', '/') + "/"
-                GET = PATHS.FPATHS[self.UPDATE]
-                print(GET)
-                del FINDPATH
-                switch = True
-            except:
-                self.report({'INFO'}, f"Cannot find a directory for {self.UPDATE}!")
-                return {'CANCELLED'}'''
         prefs = bpy.context.preferences.addons[__package__].preferences
         switch = False
         if (GET := prefs.hisanim_paths.get(self.UPDATE)) == None:
@@ -215,11 +193,60 @@ class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
 class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
     bl_idname = 'hisanim.addonupdate'
     bl_label = 'Update Addon'
-    bl_description = "Get the latest version of the addon. Addon-Updater made by Herwork"
+    bl_description = "Get the latest version of the addon. Updater made by Herwork and hisanimations"
 
-    def execute(self, execute):
-        addonUpdater.main()
-        self.report({'INFO'}, 'Please restart blender to apply the update')
+    def execute(self, context):
+        PATH = Path(__file__).parent.parent
+        print("Fetching new download URL from GitHub")
+        # Getting the new release URL from GitHub REST API
+        try:
+            githubResponse = request.urlopen("https://api.github.com/repos/hisprofile/TF2-Trifecta/releases")
+        except:
+            self.report({'ERROR'}, 'Network failure! Unable to download file!')
+            return {'CANCELLED'}
+        gitData = githubResponse.read()
+        # Decoding the urllib contents to JSON format
+        encode = githubResponse.info().get_content_charset('utf-8')
+        data = json.loads(gitData.decode(encode))
+        newRelease = dict(data[0]).get("assets")
+        assetsData = dict(newRelease[0])
+        addonPath = Path(__file__).parent
+        tempPath = os.path.join(Path(__file__).parent.parent, 'TRIFECTATEMP')
+        downPath = os.path.join(Path(__file__).parent, 'Newvers.zip')
+        if not os.path.exists(tempPath):
+            os.mkdir(tempPath)
+        
+        for file in glob.glob("*", root_dir=addonPath):
+            shutil.move(os.path.join(addonPath, file), os.path.join(tempPath, file))
+        
+        URL = assetsData.get("browser_download_url")
+        
+        try:
+            request.urlretrieve(URL, downPath)
+        except:
+            self.report({'ERROR'}, 'Network failure! Unable to download file!')
+            for file in glob.glob("*", root_dir=tempPath):
+                shutil.move(os.path.join(tempPath, file), os.path.join(addonPath, file))
+            return {'CANCELLED'}
+        if not os.path.exists(downPath):
+            self.report({'ERROR'}, 'File downloaded, but not where it should be.. weird..')
+            for file in glob.glob("*", root_dir=tempPath):
+                shutil.move(os.path.join(tempPath, file), os.path.join(addonPath, file))
+            return {'CANCELLED'}
+        
+        zipfile.ZipFile(downPath).extractall(addonPath)
+        moveFrom = os.path.join(addonPath, 'TF2-Trifecta')
+
+        for file in glob.glob("*", root_dir=moveFrom):
+            shutil.move(os.path.join(moveFrom, file), os.path.join(addonPath, file))
+        
+        shutil.rmtree(tempPath)
+        os.remove(downPath)
+        shutil.rmtree(moveFrom)
+        bpy.ops.preferences.addon_disable(module=__package__)
+        bpy.ops.preferences.addon_enable(module=__package__)
+
+        self.report({'INFO'}, 'Addon successfully updated!')
         return {'FINISHED'}
 
 bpyClasses = [HISANIM_PT_UPDATER, HISANIM_OT_CLSUPDATE, HISANIM_OT_ALLCLSUPDATE, HISANIM_OT_MERCUPDATE, HISANIM_OT_HECTORISUPDATE, HISANIM_OT_ADDONUPDATER]

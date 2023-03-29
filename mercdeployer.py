@@ -1,4 +1,4 @@
-import bpy
+import bpy, os
 
 from pathlib import Path
 
@@ -119,11 +119,13 @@ def ReuseImage(a, path):
         bak = a.image.name
         a.image.name = a.image.name.upper()
         if (newimg := bpy.data.images.get(bak)) != None: # if the image already exists, use it.
+            #bpy.data.images.remove(a.image)
             a.image = newimg
             return None
         link(path, bak, 'Image') # link an image
 
         if (newimg := bpy.data.images.get(bak)) != None: # if the linked image was truly linked, replace the old image with the linked image and stop the function.
+            #bpy.data.images.remove(a.image)
             a.image = newimg
             return None
         # if the function was not stopped, then revert the image name
@@ -164,20 +166,54 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         if appendtext(self.merc) == "cancelled":
             self.report({'INFO'}, "No Mercs Found!")
             return {'CANCELLED'}
-        append(self.merc, self.type)
+        if context.scene.hisanimvars.savespace:
+            link(os.path.join(PATH, f'{self.merc}.blend'), self.merc + self.type, 'Collection')
+            name = self.merc + self.type
+            bpy.data.objects.remove(bpy.data.objects[name])
+            bpy.context.scene.collection.children.link(bpy.data.collections[name].make_local())
+
+            for i in bpy.data.collections[name].objects:
+                if i.type != 'MESH':
+                    continue
+                NEW = i.make_local()
+                NEW.data.make_local()
+            
+            for i in bpy.data.collections[name].objects:
+                if i.type != 'MESH':
+                    continue
+                for m in i.material_slots:
+                    if m.material.library != None:
+                        m.material.make_local()
+
+            for i in bpy.data.collections[name].objects:
+                if i.type != 'EMPTY':
+                    continue
+                i.make_local()
+            armature = bpy.data.collections[name].objects[0]
+            while armature.parent != None: # get the absolute root of the objects
+                armature = armature.parent
+            for i in armature.children_recursive:
+                if i.type != 'ARMATURE':
+                    continue
+                i.make_local().data.make_local()
+            armature.make_local().data.make_local()
+        else:
+            append(self.merc, self.type)
         justadded = str(self.merc + self.type) # make a variable targeting the added collection of the character
         matblacklist = []
         armature = bpy.data.collections[justadded].objects[0]
         while armature.parent != None: # get the absolute root of the objects
             armature = armature.parent
         armature.location = bpy.context.scene.cursor.location
+        if (text := armature.get('rig_ui')) != None:
+            text.as_module()
         for obj in bpy.data.collections[justadded].objects: # iterate through collection of objects
             if (goto :=bpy.data.collections.get('Deployed Mercs')) == None:
                 bpy.context.scene.collection.children.link(bpy.data.collections.new('Deployed Mercs')) # If the collection 'Deployed Mercs' does not exist yet, create it
                 goto = bpy.data.collections['Deployed Mercs']
             goto.objects.link(obj) # link the current object to 'Deployed Mercs'
 
-            if obj.get('COSMETIC') != None: # See if the
+            if obj.get('COSMETIC') != None:
                 if context.scene.hisanimvars.cosmeticcompatibility and not obj['COSMETIC']:
                     bpy.data.objects.remove(obj)
                     continue
@@ -186,6 +222,8 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     continue
             # remove non cosmetic compatible meshes, and vice versa.
             for mat in obj.material_slots:
+                if context.scene.hisanimvars.savespace: # if Save Space is enabled, this is useless as all material contents will be linked.
+                    break
                 mat = mat.material
                 for NODE in mat.node_tree.nodes:
                     #use existing nodegroups

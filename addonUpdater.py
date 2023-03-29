@@ -1,8 +1,8 @@
 import json
 from urllib import request
 from pathlib import Path
-import zipfile, os
-def main():
+import zipfile, os, shutil, glob
+def main(self, context):
     PATH = Path(__file__).parent.parent
     print("Fetching new download URL from GitHub")
     # Getting the new release URL from GitHub REST API
@@ -13,7 +13,19 @@ def main():
     data = json.loads(gitData.decode(encode))
     newRelease = dict(data[0]).get("assets")
     assetsData = dict(newRelease[0])
-            
+    addonPath = Path(__file__).parent
+    tempPath = os.path.join(Path(__file__).parent.parent, 'TRIFECTATEMP')
+    downPath = os.path.join(Path(__file__).parent, 'Newvers.zip')
+    #for file in glob.glob("*", root_dir=addonPath):
+        #shutil.move(os.path.join(addonPath, file), os.path.join(tempPath, file))
+    
+    URL = assetsData.get("browser_download_url")
+    try:
+        request.urlretrieve(URL, downPath)
+    except:
+        self.report({'ERROR'}, 'Network failure! Unable to download file!')
+        return {'CANCELLED'}
+    '''     
     # Applying the latest download url  
     URL = assetsData.get("browser_download_url")
     filePath = Path("temp/Update.zip").parent
@@ -44,3 +56,6 @@ def main():
     for file in files:
         print(f"Deleting {file}")
         os.remove(file)
+'''  
+#main()
+#request.urlretrieve()
