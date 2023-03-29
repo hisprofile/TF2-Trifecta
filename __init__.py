@@ -61,16 +61,17 @@ def returnsearch(a):
     return hits
 
 def ReuseImage(a, path):
-    bak = a.image.name
-    a.image.name = a.image.name.upper()
-    link(path, bak, 'Image') # link an image
+    if bpy.context.scene.hisanimvars.savespace:
+        bak = a.image.name
+        a.image.name = a.image.name.upper()
+        link(path, bak, 'Image') # link an image
 
-    if (newimg := bpy.data.images.get(bak)) != None: # if the linked image was truly linked, replace the old image with the linked image and stop the function.
-        a.image = newimg
-        return None
-    # if the function was not stopped, then revert the image name
-    del newimg
-    a.image.name = bak
+        if (newimg := bpy.data.images.get(bak)) != None: # if the linked image was truly linked, replace the old image with the linked image and stop the function.
+            a.image = newimg
+            return None
+        # if the function was not stopped, then revert the image name
+        del newimg
+        a.image.name = bak
     if ".0" in a.image.name: # if .0 is in the name, then it is most likely a duplicate. it will try to search for the original. and use that instead.
         lookfor = a.image.name[:a.image.name.rindex(".")]
         print(f'looking for {lookfor}...')
@@ -173,6 +174,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
                                 default=0.400, min=0.0, max=1.0)
     hisanimscale: bpy.props.BoolProperty(default=False, name='Scale With', description='Scales cosmetics with targets bones. Disabled by default')
     hisanimtarget: bpy.props.PointerProperty(type=bpy.types.Object, poll=bonemerge.IsArmature)
+    savespace: bpy.props.BoolProperty(default=True, name='Save Space', description='When enabled, The TF2-Trifecta will link textures from source files.')
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')
@@ -554,6 +556,7 @@ def unregister():
     newuilist.unregister()
     preferences.unregister()
     bonemerge.unregister()
+    del bpy.types.Scene.hisanimvars
 if __name__ == "__main__":
     register()
     #print('pee')

@@ -1,60 +1,14 @@
 import bpy, os, shutil, shutil, glob
 from pathlib import Path
-from . import dload, icons, mercdeployer, PATHS, addonUpdater
+from . import dload, icons, mercdeployer, addonUpdater
 import zipfile
 global blend_files
 global files
 files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
-'''def RefreshPaths():
-    blend_files = []
-    prefs = bpy.context.preferences
-    filepaths = prefs.filepaths
-    asset_libraries = filepaths.asset_libraries
-    for asset_library in asset_libraries:
-        library_path = Path(asset_library.path)
-        blend_files.append(str([fp for fp in library_path.glob("**/*.blend")]))
-    # taken from https://blender.stackexchange.com/questions/244971/how-do-i-get-all-assets-in-a-given-userassetlibrary-with-the-python-api
-    PATHS.FPATHS = {}
-    #files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
-    for i in files: # add paths to definitoin
-        for ii in blend_files:
-            try:
-                ii = str(ii)[str(ii).index("(") + 2:str(ii).index(")")-1]
-                if i in ii and not "V3" in ii: # skip TF2-V3 
-                    PATHS.FPATHS[i] = ii
-            except:
-                continue
-                
-    for i in blend_files: # for allclass folders
-        try:
-            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
-            if 'allclass.b' in i:
-                PATHS.FPATHS['allclass'] = i
-        except:
-            print(i, " is an invalid path!")
-            continue
-            
-    for i in blend_files:
-        try:
-            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
-            if 'allclass2' in i:
-                PATHS.FPATHS['allclass2'] = i
-        except:
-            print(i, " is an invalid path!")
-            continue
-
-    for i in blend_files:
-        try:
-            i = str(i)[str(i).index("(") + 2:str(i).index(")")-1]
-            if 'allclass3' in i:
-                PATHS.FPATHS['allclass3'] = i
-        except:
-            print(i, " is an invalid path!")
-            continue'''
 classes = mercdeployer.classes
 allclasses = ['allclass', 'allclass2', 'allclass3']
 class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Updater
-    bl_label = "TF2 Trifecta Updater"
+    bl_label = "TF2 Trifecta"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'scene'
@@ -84,42 +38,34 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         layout.label(text='Open the console to view progress!')
         row = layout.row()
         row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
-
+        row = layout.row()
+        row.prop(context.scene.hisanimvars, 'savespace')
 class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_idname = 'hisanim.clsupdate'
     bl_label = 'Update Class'
     bl_description = 'Press to update class'
     UPDATE: bpy.props.StringProperty(default='')
     def execute(self, context):
-        prefs  = bpy.context.preferences.addons[__package__].preferences
-        RefreshPaths() # refresh paths, just cause
+        prefs = bpy.context.preferences.addons[__package__].preferences
+        #RefreshPaths() # refresh paths, just cause
         switch = False
-        try:
-            GET = PATHS.FPATHS[self.UPDATE]
-        except: # if the addon cannot find an existing .blend, it will go through your asset paths..
-            # The rest can be understood by reading the print lines.
-            print(f'No existing .blend file found for {self.UPDATE}!')
-            try:
-                print('Attempting to find existing directory...')
-                assetpath = context.preferences.filepaths.asset_libraries
-                for i in assetpath:
-                    if self.UPDATE in i.path.casefold():
-                        FINDPATH = i.name
-                        print(f'Directory found at {i.path}!')
-                        break
-                PATHS.FPATHS[self.UPDATE] = context.preferences.filepaths.asset_libraries[FINDPATH].path.replace(r'\\'[0], '/') + "/"
-                GET = PATHS.FPATHS[self.UPDATE]
-                print(GET)
-                del FINDPATH
+        if (GET := prefs.hisanim_paths.get(self.UPDATE)) == None:
+            self.report({'INFO'}, f'No valid path for {self.UPDATE} found!')
+            return {'CANCELLED'}
+        PATH = GET.path
+        if not os.path.exists(PATH):
+            if os.path.exists(Path(PATH).parents[0]):
                 switch = True
-            except:
-                self.report({'INFO'}, f"Cannot find a directory for {self.UPDATE}!")
+                DLOADTO = Path(PATH).parents[0]
+            else:
+                self.report({'INFO'}, f'Entry for {self.UPDATE} exists, but path is not valid!')
                 return {'CANCELLED'}
-        DLOADTO = GET[:GET.rfind('/')+1]
+        else:
+            DLOADTO = GET.path[:GET.path.rfind('/')+1]
         if switch == False:
-            print(f"Deleting old file from {GET}...")
-            if os.path.exists(GET):
-                os.remove(GET)
+            print(f"Deleting old file from {GET.path}...")
+            if os.path.exists(GET.path):
+                os.remove(GET.path)
                 print('Deleted!')
             else:
                 print("Nothing to delete!")
@@ -134,13 +80,12 @@ class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
         shutil.move(str(Path(__file__).parent) + f"/{self.UPDATE}cosmetics.zip", DLOADTO)
         print('Moved!')
         print('Extracting .zip file...')
-        zipfile.ZipFile(DLOADTO+f'{self.UPDATE}cosmetics.zip', 'r').extractall(DLOADTO)
+        zipfile.ZipFile(os.path.join(DLOADTO, f'{self.UPDATE}cosmetics.zip'), 'r').extractall(DLOADTO)
         print('Extracted!')
         print('Removing .zip file...')
-        os.remove(DLOADTO+f'{self.UPDATE}cosmetics.zip')
+        os.remove(os.path.join(DLOADTO, f'{self.UPDATE}cosmetics.zip'))
         print('Removed!')
         print(f'Updating {self.UPDATE} complete!')
-        #bpy.ops.wm.console_toggle()
         return {'FINISHED'}
 
 class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
@@ -149,9 +94,8 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
     bl_description = 'Press to update class'
     UPDATE: bpy.props.StringProperty(default='')
     def execute(self, context):
-        RefreshPaths()
-        switch = False
-        try:
+        #RefreshPaths()
+        '''try:
             GET = PATHS.FPATHS[self.UPDATE]
         except: # if the addon cannot find an existing .blend, it will go through your asset paths..
             # The rest can be understood by reading the print lines.
@@ -171,7 +115,29 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
                 switch = True
             except:
                 self.report({'INFO'}, f"Cannot find a directory for {self.UPDATE}!")
+                return {'CANCELLED'}'''
+        prefs = bpy.context.preferences.addons[__package__].preferences
+        switch = False
+        if (GET := prefs.hisanim_paths.get(self.UPDATE)) == None:
+            self.report({'INFO'}, f'No valid path for {self.UPDATE} found!')
+            return {'CANCELLED'}
+        PATH = GET.path
+        if not os.path.exists(PATH):
+            if os.path.exists(Path(PATH).parents[0]):
+                switch = True
+                DLOADTO = Path(PATH).parents[0]
+            else:
+                self.report({'INFO'}, f'Entry for {self.UPDATE} exists, but path is not valid!')
                 return {'CANCELLED'}
+        else:
+            DLOADTO = GET.path[:GET.path.rfind('/')+1]
+        if switch == False:
+            print(f"Deleting old file from {GET.path}...")
+            if os.path.exists(GET.path):
+                os.remove(GET.path)
+                print('Deleted!')
+            else:
+                print("Nothing to delete!")
         DLOADTO = GET[:GET.rfind('/')+1]
         if switch == False:
             print(f"Deleting old file from {GET}...")
@@ -191,10 +157,10 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
         shutil.move(str(Path(__file__).parent) + f"/{self.UPDATE}.zip", DLOADTO)
         print('Moved!')
         print('Extracting .zip file...')
-        zipfile.ZipFile(DLOADTO+f'{self.UPDATE}.zip', 'r').extractall(DLOADTO)
+        zipfile.ZipFile(os.path.join(DLOADTO, f'{self.UPDATE}.zip'), 'r').extractall(DLOADTO)
         print('Extracted!')
         print('Removing .zip file...')
-        os.remove(DLOADTO+f'{self.UPDATE}.zip')
+        os.remove(os.path.join(DLOADTO, f'{self.UPDATE}.zip'))
         print('Removed!')
         print(f'Updating {self.UPDATE} complete!')
         return {'FINISHED'}
@@ -205,15 +171,23 @@ class HISANIM_OT_MERCUPDATE(bpy.types.Operator):
     bl_description = "Download hisanimations' TF2 rigs, the default rigs to use"
 
     def execute(self, execute):
-        DLOADTO = bpy.context.preferences.filepaths.asset_libraries['TF2-V3'].path + "/"
+        prefs = bpy.context.preferences.addons[__package__].preferences
+        #DLOADTO = bpy.context.preferences.filepaths.asset_libraries['TF2-V3'].path + "/"
+        if (GET := prefs.hisanim_paths.get('TF2-V3')) == None:
+            self.report({'INFO'}, 'No entry for TF2-V3!')
+            return {'CANCELLED'}
+        GET = GET.path
         print('Deleting old .blend files...')
-        for i in files:
+        for i in glob.glob("*.blend", root_dir=GET):
+            os.remove(os.path.join(GET, i))
+            print(f'Deleted {i}..')
+        '''for i in files:
             try:
                 os.remove(f'{DLOADTO + i}.blend')
                 print(f'Deleted {i}.blend')
             except:
-                print(f'Could not delete {i}.blend!')
-        
+                print(f'Could not delete {i}.blend!')'''
+        DLOADTO = GET
         print(f"Downloading hisanimations' TF2-V3 port...")
         dload.save('https://gitlab.com/hisprofile/the-tf2-collection/raw/main/TF2-V3.zip')
         print('''hisanimations' port downloaded!''')
@@ -221,10 +195,10 @@ class HISANIM_OT_MERCUPDATE(bpy.types.Operator):
         shutil.move(str(Path(__file__).parent) + f"/TF2-V3.zip", DLOADTO)
         print('Moved!')
         print('Extracting .zip file...')
-        zipfile.ZipFile(DLOADTO+'TF2-V3.zip', 'r').extractall(DLOADTO)
+        zipfile.ZipFile(os.path.join(DLOADTO, 'TF2-V3.zip'), 'r').extractall(DLOADTO)
         print('Extracted!')
         print('Removing .zip flie...')
-        os.remove(DLOADTO+'TF2-V3.zip')
+        os.remove(os.path.join(DLOADTO, 'TF2-V3.zip'))
         print('Removed!')
         print("Downloaded hisanimations' port!")
         return {'FINISHED'}

@@ -115,19 +115,20 @@ def link(a, b, c): # get a class from TF2-V3
     bpy.ops.wm.link(filename=object, directory=directory)
 
 def ReuseImage(a, path):
-    bak = a.image.name
-    a.image.name = a.image.name.upper()
-    if (newimg := bpy.data.images.get(bak)) != None: # if the image already exists, use it.
-        a.image = newimg
-        return None
-    link(path, bak, 'Image') # link an image
+    if bpy.context.scene.hisanimvars.savespace:
+        bak = a.image.name
+        a.image.name = a.image.name.upper()
+        if (newimg := bpy.data.images.get(bak)) != None: # if the image already exists, use it.
+            a.image = newimg
+            return None
+        link(path, bak, 'Image') # link an image
 
-    if (newimg := bpy.data.images.get(bak)) != None: # if the linked image was truly linked, replace the old image with the linked image and stop the function.
-        a.image = newimg
-        return None
-    # if the function was not stopped, then revert the image name
-    del newimg
-    a.image.name = bak
+        if (newimg := bpy.data.images.get(bak)) != None: # if the linked image was truly linked, replace the old image with the linked image and stop the function.
+            a.image = newimg
+            return None
+        # if the function was not stopped, then revert the image name
+        del newimg
+        a.image.name = bak
     if ".0" in a.image.name: # if .0 is in the name, then it is most likely a duplicate. it will try to search for the original. and use that instead.
         lookfor = a.image.name[:a.image.name.rindex(".")]
         print(f'looking for {lookfor}...')
@@ -211,13 +212,17 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                         mat.node_tree.links.new(blu.outputs[0], getconnect.inputs[0])
                         matblacklist.append(mat)
                         break
-        
+        armature = bpy.data.collections[justadded].objects[0]
+        while armature.parent != None: # get the absolute root of the objects
+            armature = armature.parent
+        armature.location = bpy.context.scene.cursor.location
         bpy.data.collections.remove(bpy.data.collections[justadded]) # remove the newly added collection.
         pending = []
 
         if bpy.data.collections.get('MDSHAPES') == None:
             bpy.data.collections.new('MDSHAPES').use_fake_user = True
-
+        
+        print(armature)
         for i in armature.pose.bones:
             # use existing bone shapes
             if i.custom_shape == None:
