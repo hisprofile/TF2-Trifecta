@@ -1,6 +1,6 @@
 import bpy, os, shutil, shutil, glob, json, zipfile
 from pathlib import Path
-from . import dload, icons, mercdeployer, addonUpdater
+from . import dload, icons, mercdeployer, preferences
 from urllib import request
 global blend_files
 global files
@@ -40,6 +40,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
         row = layout.row()
         row.prop(context.scene.hisanimvars, 'savespace')
+
 class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_idname = 'hisanim.clsupdate'
     bl_label = 'Update Class'
@@ -243,10 +244,48 @@ class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
         shutil.rmtree(tempPath)
         os.remove(downPath)
         shutil.rmtree(moveFrom)
-        bpy.ops.preferences.addon_disable(module=__package__)
-        bpy.ops.preferences.addon_enable(module=__package__)
+        class HISANIM_OT_reloadAddon(bpy.types.Operator):
+            bl_idname = 'temp.reloadaddon'
+            bl_label = 'Reload Addon'
+            bl_description = 'Press to reload the TF2-Trifecta'
 
-        self.report({'INFO'}, 'Addon successfully updated!')
+            def execute(self, context):
+                class restoreAssetsPaths(bpy.types.PropertyGroup):
+                    assets: bpy.props.CollectionProperty(type=preferences.AssetPaths)
+                prefs = context.preferences.addons[__package__].preferences
+                bpy.utils.register_class(restoreAssetsPaths)
+                bpy.types.Scene.restoreassets = bpy.props.PointerProperty(type=restoreAssetsPaths)
+                for i in context.preferences.addons[__package__].preferences.hisanim_paths:
+                    new = bpy.context.scene.restoreassets.add()
+                    new.path = i.path
+                    new.name = i.name
+                    new.this_is = i.this_is
+
+
+                bpy.ops.preferences.addon_enable(module=__package__)
+
+                prefs.is_executed = True
+
+                bpy.utils.unregister_class(HISANIM_PT_tempPanel)
+                bpy.utils.unregister_class(HISANIM_OT_reloadAddon)
+                self.report({'INFO'}, 'Addon successfully updated!')
+                return {'FINISHED'}
+            
+        class HISANIM_PT_tempPanel(bpy.types.Panel):
+            bl_label = 'Reload Addon'
+            bl_parent_id = 'HISANIM_PT_UPDATER'
+            bl_space_type = 'PROPERTIES'
+            bl_region_type = 'WINDOW'
+            bl_context = 'scene'
+
+            def draw(self, context):
+                layout = self.layout
+                row = layout.row()
+                row.operator('temp.reloadaddon')
+        
+        bpy.utils.register_class(HISANIM_OT_reloadAddon)
+        bpy.utils.register_class(HISANIM_PT_tempPanel)
+        self.report({'INFO'}, 'Addon downloaded! Press "Reload Addon" to apply changes.')
         return {'FINISHED'}
 
 bpyClasses = [HISANIM_PT_UPDATER, HISANIM_OT_CLSUPDATE, HISANIM_OT_ALLCLSUPDATE, HISANIM_OT_MERCUPDATE, HISANIM_OT_HECTORISUPDATE, HISANIM_OT_ADDONUPDATER]
