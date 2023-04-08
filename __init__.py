@@ -266,7 +266,9 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                 del SKIN, OBJMAT
             except:
                 pass
-            
+
+        if bpy.context.object == None: return {'FINISHED'}
+
         select = bpy.context.object
         # if a Bonemerge compatible rig or mesh parented to one is selected, automatically bind the cosmetic
         # to the rig.
