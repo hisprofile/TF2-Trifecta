@@ -27,10 +27,6 @@ from . import bonemerge, mercdeployer, icons, updater, newuilist, preferences
 global addn
 addn = "Wardrobe" # addon name
 classes = []
-#global select
-
-# i need a better system to handle this lol
-# missing one blend file from a 
 
 def RemoveNodeGroups(a): # iterate through every node and node group by using the "tree" method and removing said nodes
     for i in a.nodes:
@@ -191,7 +187,6 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     def execute(self, context):
-        #RefreshPaths()
         D = bpy.data
         CLASS = self.LOAD.split("_-_")[1]
         COSMETIC = self.LOAD.split("_-_")[0]
@@ -209,7 +204,6 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             data_to.objects = [cos]
         list = [i.name for i in D.objects if not "_ARM" in i.name and cos in i.name]
         justadded = D.objects[sorted(list)[-1]]
-        #print(justadded)
         skins = justadded['skin_groups']
         count = 0
         # updates the skin_groups dictionary on the object with its materials
@@ -325,13 +319,11 @@ class WDRB_PT_PART2(bpy.types.Panel):
         layout = self.layout
         split = layout.split(factor=0.2)
         row = layout.row()
-        #print(hits)
         if len(hits) > 0:
             if len(hits) == 1:
                 row.label(text=f'{len(hits)} Result')
             else:
                 row.label(text=f'{len(hits)} Results')
-            
             for ops in hits:
                 # draw the search results as buttons
                 split=layout.split(factor=0.2)
@@ -478,6 +470,7 @@ class WDRB_PT_PART1(bpy.types.Panel):
         row = layout.row()
         row.prop(context.scene.hisanimvars, 'wrdbbluteam')
         row = layout.row()
+
 class WDRB_PT_PART3(bpy.types.Panel): # for the material fixer and selector segment.
     bl_label = 'Material Fixer/Selector'
     bl_space_type = 'VIEW_3D'

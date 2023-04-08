@@ -120,7 +120,7 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
                 print('Deleted!')
             else:
                 print("Nothing to delete!")
-        DLOADTO = GET[:GET.rfind('/')+1]
+        DLOADTO = GET.path[:GET.path.rfind('/')+1]
         if switch == False:
             print(f"Deleting old file from {GET}...")
             if os.path.exists(GET):

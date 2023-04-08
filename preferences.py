@@ -13,7 +13,6 @@ class AssetPaths(PropertyGroup):
     def get_path(self):
         return self.get("path", "")
     def set_path(self, value):
-        prefs = bpy.context.preferences.addons[__package__].preferences
         value = bpy.path.abspath(value)
         self["path"] = value
         name = os.path.basename(value)
@@ -50,7 +49,9 @@ class AssetPaths(PropertyGroup):
     )
 
     toggle: BoolProperty(
-        default=False
+        default=False,
+        name='Show Name',
+        description='Show Name'
     )
 
 class HISANIM_UL_ASSETS(UIList):
@@ -140,7 +141,7 @@ class HISANIM_OT_DETECTPATH(Operator):
         parent = Path(selectedpath).parents[0]
         parent2 = Path(selectedpath).parents[1]
         
-        for i in glob.glob('*.blend', root_dir=parent):
+        '''for i in glob.glob('*.blend', root_dir=parent):
             path = os.path.join(parent, i)
             name = os.path.basename(path)
             name = name[:name.rfind('.')]
@@ -148,7 +149,7 @@ class HISANIM_OT_DETECTPATH(Operator):
                 if file in name and paths.get(file) == None:
                     newitem = paths.add()
                     newitem.path = path
-                    newitem.name = file
+                    newitem.name = file'''
 
         for i in glob.glob('**/*.blend', root_dir=parent2):
             path = os.path.join(parent2, i)
