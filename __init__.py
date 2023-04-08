@@ -2,14 +2,14 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
-    "version" : (2, 0, 0),
-    "blender" : (3, 0, 0),
+    "version" : (2, 0),
+    "blender" : (3, 5, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
-    "category" : "Object, Mesh, Rigging",
+    "category" : "Porting",
+    "doc_url": "https://github.com/hisprofile/TF2-Trifecta/blob/main/README.md"
 }
 
-#from .wardrobe import register, unregister
 import bpy, json, os
 from pathlib import Path
 from bpy.props import *
@@ -158,14 +158,14 @@ class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
 class searchHits(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty()
 
-class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
+class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs. Less to write for registering and unregistering
     bluteam: bpy.props.BoolProperty(
         name="Blu Team",
         description="Swap classes",
         default = False)
     query: bpy.props.StringProperty(default="")
     cosmeticcompatibility: BoolProperty(
-        name="Cosmetic Compatible",
+        name="Low Quality (Cosmetic Compatible)",
         description="Use cosmetic compatible bodygroups that don't intersect with cosmetics. Disabling will use SFM bodygroups",
         default = True)
     wrdbbluteam: BoolProperty(
@@ -199,10 +199,11 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         prefs = context.preferences.addons[__name__].preferences
         paths = prefs.hisanim_paths
         if (p := paths.get(CLASS)) == None:
-            self.report({'INFO'}, f'Directory for "{CLASS}" not found! Make sure an entry for it exists in the addon preferences!')
+            self.report({'ERROR'}, f'Directory for "{CLASS}" not found! Make sure an entry for it exists in the addon preferences!')
             return {'CANCELLED'}
-
         p = p.path
+        if not os.path.exists(p):
+            self.report({'ERROR'}, f'Entry for "{CLASS}" exists, but the path is invalid!')
         cos = COSMETIC
         with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
             data_to.objects = [cos]
@@ -229,7 +230,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             context.scene.collection.children.link(wardcol)
         
         justaddedParent = justadded.parent
-        wardcol.objects.link(justaddedParent)
+        wardcol.objects.link(justaddedParent) # link everything and its children to the 'Wardrobe' collection for better management.
         justaddedParent.use_fake_user = False
 
         for child in justaddedParent.children:
@@ -280,7 +281,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             select.select_set(False)
             select = select.parent
         
-        if select.get('BMBCOMPATIBLE') != None and (context.scene.hisanimvars.autobind if context.scene.hisanimvars.hisanimweapons else True):
+        if select.get('BMBCOMPATIBLE') != None and (context.scene.hisanimvars.autobind if context.scene.hisanimvars.hisanimweapons else True): # if the selected armature is bonemerge compatible, bind to it.
             bak = context.scene.hisanimvars.hisanimtarget
             context.scene.hisanimvars.hisanimtarget = select
             justadded.parent.select_set(True)
@@ -450,10 +451,6 @@ class WDRB_PT_PART1(bpy.types.Panel):
     bl_region_type = 'UI'
     bl_category = addn
     bl_icon = "MOD_CLOTH"
-
-    #flt: bpy.props.FloatProperty()
-    #fart: bpy.props.BoolProperty(default=False)
-
     
     def draw(self, context):
         
@@ -523,7 +520,6 @@ class WDRB_PT_PART4(bpy.types.Panel):
         layout = self.layout
         row = layout.row()
         row.template_icon_view(context.window_manager, 'hisanim_paints', show_labels=True, scale=4, scale_popup=4)
-        #row.template_list('HISANIM_UL_PAINTLIST', "Paints", context.scene, "paintlist", context.scene, "paintindex") # use the cool paint index and icons
         row=layout.row(align=True)
         oper = row.operator('hisanim.paint', text = 'Add Paint')
         oper.PAINT = newuilist.paints[context.window_manager.hisanim_paints]
@@ -557,10 +553,6 @@ def register():
     preferences.register()
     bonemerge.register()
 def unregister():
-    #try:
-        #bpy.utils.unregister_class(WDRB_PT_PART2)
-    #except:
-        #pass
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     

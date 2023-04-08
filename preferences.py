@@ -13,7 +13,6 @@ class AssetPaths(PropertyGroup):
     def get_path(self):
         return self.get("path", "")
     def set_path(self, value):
-        #print('setting path')
         prefs = bpy.context.preferences.addons[__package__].preferences
         value = bpy.path.abspath(value)
         self["path"] = value
@@ -101,7 +100,6 @@ class hisanimFilePaths(AddonPreferences):
     bl_idname = __package__
     hisanim_paths: CollectionProperty(type=AssetPaths)
     hisanim_pathsindex: IntProperty(default=0)
-    autonaming: BoolProperty(default=True)
     is_executed: BoolProperty(default=False)
     remove: CollectionProperty(type=ridOf)
     runonce_removepaths: IntProperty(default=0)
@@ -109,8 +107,8 @@ class hisanimFilePaths(AddonPreferences):
     
     def draw(self, context):
         if not self.is_executed:
-            runpullpath()
-            #bpy.app.handlers.depsgraph_update_post.append(deleteOldPaths)
+            runpullpath() # get existing asset path entries
+            bpy.types.SpacePreferences.draw_handler_add(deleteOldPaths, (), 'WINDOW', 'POST_PIXEL') # delete the old asset paths, as they are no longer
             self.is_executed = True
         prefs = bpy.context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
@@ -243,7 +241,7 @@ def runpullpath():
         newitem.path = assetpath.path
         newitem.name = assetpath.name
 
-def deleteOldPaths(scn):
+def deleteOldPaths():
 
     ''' This purpose of this function was meant to be occur alongside runpullpath,
     but because I require the bpy.ops.preferences.asset_library_remove operator,
@@ -259,10 +257,9 @@ def deleteOldPaths(scn):
         prefs.runonce_removepaths = True
         for i in prefs.remove:
                 bpy.ops.preferences.asset_library_remove(index=libraries.find(i.name))
-        bpy.app.handlers.depsgraph_update_post.remove(deleteOldPaths)
+        #bpy.app.handlers.depsgraph_update_post.remove(deleteOldPaths)
+        bpy.types.SpacePreferences.draw_handler_remove(deleteOldPaths)
         return None
-
-#bpy.app.handlers.depsgraph_update_post.append(deleteOldPaths)
 
 def register():
     for i in classes:

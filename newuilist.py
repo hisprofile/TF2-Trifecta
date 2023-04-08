@@ -60,6 +60,8 @@ def get_items(self, context):
 
 preview_collections = {}
 
+# i don't even know how this stuff works lol
+
 def register():
     bpy.types.WindowManager.hisanim_paints = bpy.props.EnumProperty(items=get_items)
     pcoll = bpy.utils.previews.new()

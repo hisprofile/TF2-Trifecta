@@ -16,11 +16,13 @@ To start it all off, we need to install the third version of my TF2 port. This f
 
 Download [TF2-V3](https://drive.google.com/file/d/1CRIgFztf5PbcXsSB8_Txe1oBnaxL6bxg/) from my google drive. Once downloaded, extract the .zip file to a directory. We are going to add this directory to Blender's asset libraries.
 
-Open Blender, and head to the preferences.
+Open Blender, and head to the addon preferences.
 
-<img src='https://user-images.githubusercontent.com/41131633/204805272-21535761-7455-4077-8341-dc4ec94f89c1.png' width='650'>
+<img src='https://user-images.githubusercontent.com/41131633/230690290-6b15a067-4e8b-4517-a22d-b672edaa7c78.png' width='500'>
 
 Click on the plus to add a new asset library. Go to the TF2-V3 folder containing the 9 .blend files, and add the folder as an asset library. You should now have TF2-V3 installed for Merc Deployer.
+
+You can add one asset and click on the magnifying glass to automatically add more in the relative path. You can click on the download button to pull existing paths from the asset library. However, on a fresh install, that should automatically happen.
 
 Make sure you do not have a TF2-V3 folder under another TF2-V3 folder. However, it's ok if you have the last folder added as an asset library. For organization's sake, it's better to have the path set up like this:
 
