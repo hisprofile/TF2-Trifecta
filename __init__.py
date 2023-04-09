@@ -2,7 +2,7 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
-    "version" : (2, 0),
+    "version" : (2, 0, 1),
     "blender" : (3, 5, 0),
     "location" : "View3d > Wardrobe, View3d > Merc Deployer, View3d > Bonemerge",
     "support" : "COMMUNITY",
@@ -16,6 +16,7 @@ from bpy.props import *
 from bpy.types import *
 from mathutils import *
 from bpy.app.handlers import persistent
+from datetime import datetime
 import importlib, sys
 for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__))) if f.endswith(".py") ]:
     if filename == os.path.basename(__file__): continue
@@ -127,8 +128,14 @@ class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with 
         if NT.nodes.get('Lightwarp') == None:
             NT.nodes.new(type="ShaderNodeTexImage").name = "Lightwarp"
         if (IMG := bpy.data.images.get('pyro_lightwarp.png')) == None:
-            self.report({'INFO'}, 'Add a class first!')
-            return {'CANCELLED'}
+            for i in range(100):
+                num = f'{"0"*(3-len(str(i)))}{str(i)}'
+                if (IMG := bpy.data.images.get(f'pyro_lightwarp.png.{num}')) != None:
+                    NT.nodes['Lightwarp'].image = IMG
+                    break
+            else:
+                self.report({'INFO'}, 'Add a class first!')
+                return {'CANCELLED'}
         else:
             NT.nodes['Lightwarp'].image = IMG
         
@@ -178,6 +185,181 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     autobind: bpy.props.BoolProperty(default=False, name='Auto BoneMerge', description='When enabled, weapons will automatically bind to mercs')
     results: bpy.props.CollectionProperty(type=searchHits)
     searched: bpy.props.BoolProperty()
+    tools: bpy.props.EnumProperty(
+        items=(
+        ('WARDROBE', 'Wardrobe', "Show Wardrobe's tools", 'MOD_CLOTH', 0),
+        ('MERCDEPLOYER', 'Merc Deployer', "Show Merc Deployer's tools", 'FORCE_DRAG', 1),
+        ('BONEMERGE', 'Bonemerge', "Show Bonemerge's tools", 'GROUP_BONE', 2)
+        ),
+        name='Tool'
+    )
+    ddsearch: bpy.props.BoolProperty(default=True, name='')
+    ddpaints: bpy.props.BoolProperty(default=True, name='')
+    ddmatsettings: bpy.props.BoolProperty(default=True, name='')
+    wrinklemaps: bpy.props.BoolProperty()
+
+class WDRB_PT_PART1(bpy.types.Panel):
+    """A Custom Panel in the Viewport Toolbar""" # for the searching segment.
+    bl_label = 'TF2-Trifecta'
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = 'TF2-Trifecta'
+    bl_icon = "MOD_CLOTH"
+    
+
+    def draw(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        props = bpy.context.scene.hisanimvars
+        layout = self.layout
+        row = layout.row()
+        row.prop(props, 'tools')
+        if props.tools == 'WARDROBE':
+            row = layout.row()
+            row.label(text='Spawn TF2 Cosmetics', icon='MOD_CLOTH')
+            row = layout.row()
+            row.prop(props, 'query', text="Search", icon="VIEWZOOM")
+            row = layout.row()
+            row.prop(context.scene.hisanimvars, 'hisanimweapons')
+            if props.hisanimweapons:
+                row = layout.row()
+                row.prop(props, 'autobind')
+            layout.label(text="Warning! Don't leave the text field empty!")
+            if prefs.missing == True:
+                row = layout.row()
+                row.label(text='Assets missing. Check preferences for info.')
+            row=layout.row()
+            row.operator('hisanim.search', icon='VIEWZOOM')
+            row=layout.row()
+            row.operator('hisanim.clearsearch', icon='X')
+            if props.ddmatsettings or not prefs.compactable:
+                if prefs.compactable: row = layout.row()
+                if prefs.compactable: row.prop(props, 'ddmatsettings', icon='DISCLOSURE_TRI_DOWN', emboss=False)
+                if prefs.compactable: row.label(text='Material settings')
+                if not prefs.compactable: layout.label(text='Material settings')
+                row=layout.row()
+                row.operator('hisanim.lightwarps')
+                row=layout.row()
+                row.operator('hisanim.removelightwarps')
+                row = layout.row()
+                row.prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
+                row = layout.row()
+                row.prop(context.scene.hisanimvars, 'wrdbbluteam')
+            else:
+                row = layout.row()
+                row.prop(props, 'ddmatsettings', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
+                row.label(text='Material settings', icon='MATERIAL')
+
+            if len(context.selected_objects) > 0:
+                if context.object.get('skin_groups') != None:
+                    row = layout.row()
+                    if props.ddpaints or not prefs.compactable:
+                        if prefs.compactable: row.prop(props, 'ddpaints', icon='DISCLOSURE_TRI_DOWN', emboss=False)#, text='Paints')
+                        if prefs.compactable: row.label(text='Paints')
+                        ob = context.object
+                        row = layout.row()
+                        row.label(text='Attempt to fix material')
+                        row = layout.row()
+                        row.template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
+                        row = layout.row(align=True)
+                        row.operator('hisanim.materialfix')
+                        row.operator('hisanim.revertfix')
+                        row = layout.row()
+                        row.template_icon_view(context.window_manager, 'hisanim_paints', show_labels=True, scale=4, scale_popup=4)
+                        row=layout.row(align=True)
+                        oper = row.operator('hisanim.paint', text = 'Add Paint')
+                        oper.PAINT = newuilist.paints[context.window_manager.hisanim_paints]
+                        row.operator('hisanim.paintclear')
+                    else:
+                        row.prop(props, 'ddpaints', icon='DISCLOSURE_TRI_RIGHT', emboss=False)#, text='Paints')
+                        row.label(text='Paints', icon='BRUSH_DATA')
+                        #row.prop(props, 'ddpaints', text='Paints', emboss=False)
+
+            if props.searched:
+                if props.ddsearch or not prefs.compactable:
+                    if prefs.compactable: row = layout.row()
+                    if prefs.compactable: row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_DOWN', emboss=False)
+                    if prefs.compactable: row.label(text='Search Results')
+                    if not prefs.compactable: layout.label(text='Search Results')
+                    hits = props.results
+                    split = layout.split(factor=0.2)
+                    row = layout.row()
+                    if len(hits) > 0:
+                        if len(hits) == 1:
+                            row.label(text=f'{len(hits)} Result')
+                        else:
+                            row.label(text=f'{len(hits)} Results')
+                        for ops in hits:
+                            # draw the search results as buttons
+                            split=layout.split(factor=0.2)
+                            row=split.row()
+                            row.label(text=ops.name.split("_-_")[1])
+                            row = split.row()
+                            OPER = row.operator('hisanim.loadcosmetic', text=ops.name.split('_-_')[0])
+                            OPER.LOAD = ops.name
+                    else: 
+                        layout = self.layout
+                        layout.label(text='Nothing found!')
+                else:
+                    row = layout.row()
+                    row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_RIGHT', emboss=False)#, text='Paints')
+                    row.label(text='Search Results', icon='VIEWZOOM')
+        
+        if props.tools == 'MERCDEPLOYER':
+            row = layout.row()
+            row.label(text='Deploy Mercenaries', icon='FORCE_DRAG')
+            cln = ["IK", "FK"]
+            mercs = ['scout', 'soldier', 'pyro', 'demo',
+                    'heavy', 'engineer', 'medic', 'sniper', 'spy']
+            if prefs.hisanim_paths.get('TF2-V3') != None:
+                #actualmercs = [i for i in mercs if prefs.hisanimpaths.get]
+                '''seconds = datetime.now()
+                seconds = int(seconds.strftime("%S"))
+                if seconds % 2 == 0:
+                    mercfiles = glob.glob("*.blend", rootdir=prefs.hisanimpaths.get('TF2-V3'))'''
+                if prefs.hisanim_paths.get('TF2-V3').this_is != 'FOLDER':
+                    row = layout.row()
+                    row.label('TF2-V3 contains an invalid path!')
+                else:
+                    row = layout.row(align=True)
+                    for i in mercs:
+                        row.label(text=i)
+                        col = layout.column()
+                        for ii in cln:
+                            MERC = row.operator('hisanim.loadmerc', text=ii)
+                            MERC.merc = i
+                            MERC.type = ii
+                        row = layout.row(align=True)
+                    row.prop(context.scene.hisanimvars, "bluteam")
+                    row = layout.row()
+                    row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
+                    row = layout.row()
+                    row.prop(props, 'wrinklemaps', text='Wrinkle Maps')
+            else:
+                row = layout.row()
+                row.label(text='TF2-V3 has not been added!')
+                row = layout.row()
+                row.label(text='If it is added, check name.')
+        if props.tools == 'BONEMERGE':
+            row = layout.row()
+            row.label(text='Attach TF2 cosmetics.', icon='DECORATE_LINKED')
+            ob = context.object
+            row = layout.row()
+            self.layout.prop_search(context.scene.hisanimvars, "hisanimtarget", bpy.data, "objects", text="Link to", icon='ARMATURE_DATA')
+            
+            row = layout.row()
+            row.operator('hisanim.attachto', icon="LINKED")
+            row=layout.row()
+            row.operator('hisanim.detachfrom', icon="UNLINKED")
+            row = layout.row()
+            row.prop(context.scene.hisanimvars, 'hisanimscale')
+            row = layout.row()
+            row.label(text='Bind facial cosmetics')
+            row = layout.row()
+            row.operator('hisanim.bindface')
+            row = layout.row()
+            row.label(text='Attempt to fix cosmetic')
+            row = layout.row()
+            row.operator('hisanim.attemptfix')
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')
@@ -204,7 +386,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             data_to.objects = [cos]
         list = [i.name for i in D.objects if not "_ARM" in i.name and cos in i.name]
         justadded = D.objects[sorted(list)[-1]]
-        skins = justadded['skin_groups']
+        skins = justadded.get('skin_groups')
         count = 0
         # updates the skin_groups dictionary on the object with its materials
         # previously it would iterate through the skin_groups dictionary, but this would not work if there were more entries than
@@ -243,7 +425,6 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                 if NODE.type == 'TEX_IMAGE':
                     if ReuseImage(NODE, p) == 'continue': # use existing images
                         continue
-        
         if bpy.context.scene.hisanimvars.wrdbbluteam: # this one speaks for itself
             var = False
             print("BLU")
@@ -305,38 +486,6 @@ class HISANIM_OT_Search(bpy.types.Operator):
             new = context.scene.hisanimvars.results.add()
             new.name = hit
         return {'FINISHED'}
-class WDRB_PT_PART2(bpy.types.Panel):
-    bl_label = "Search Results"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = addn
-    bl_icon = "MOD_CLOTH"
-    bl_parent_id = 'WDRB_PT_PART1'
-    @classmethod
-    def poll(cls, context):
-        return context.scene.hisanimvars.searched
-
-    def draw(self, context):
-        hits = context.scene.hisanimvars.results
-        layout = self.layout
-        split = layout.split(factor=0.2)
-        row = layout.row()
-        if len(hits) > 0:
-            if len(hits) == 1:
-                row.label(text=f'{len(hits)} Result')
-            else:
-                row.label(text=f'{len(hits)} Results')
-            for ops in hits:
-                # draw the search results as buttons
-                split=layout.split(factor=0.2)
-                row=split.row()
-                row.label(text=ops.name.split("_-_")[1])
-                row = split.row()
-                OPER = row.operator('hisanim.loadcosmetic', text=ops.name.split('_-_')[0])
-                OPER.LOAD = ops.name
-        else: 
-            layout = self.layout
-            layout.label(text='Nothing found!')
 
 class HISANIM_OT_ClearSearch(bpy.types.Operator): # clear the search
     bl_idname = 'hisanim.clearsearch'
@@ -421,6 +570,7 @@ class HISANIM_OT_PAINTS(bpy.types.Operator):
         except:
             MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = paintlist
         return {'FINISHED'}
+    
 class HISANIM_OT_PAINTCLEAR(bpy.types.Operator):
     bl_idname = 'hisanim.paintclear'
     bl_label = 'Clear Paint'
@@ -438,95 +588,10 @@ class HISANIM_OT_PAINTCLEAR(bpy.types.Operator):
         MAT.nodes.remove(MAT.nodes['DEFAULTPAINT'])
         return {'FINISHED'}
 
-class WDRB_PT_PART1(bpy.types.Panel):
-    """A Custom Panel in the Viewport Toolbar""" # for the searching segment.
-    bl_label = addn
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = addn
-    bl_icon = "MOD_CLOTH"
-    
-    def draw(self, context):
-        
-        props = bpy.context.scene.hisanimvars
-        layout = self.layout
-        row = layout.row()
-        row.prop(props, 'query', text="Search", icon="VIEWZOOM")
-        row = layout.row()
-        row.prop(context.scene.hisanimvars, 'hisanimweapons')
-        if props.hisanimweapons:
-            row = layout.row()
-            row.prop(props, 'autobind')
-        layout.label(text="Warning! Don't leave the text field empty!")
-        row=layout.row()
-        row.operator('hisanim.search', icon='VIEWZOOM')
-        row=layout.row()
-        row.operator('hisanim.clearsearch', icon='X')
-        layout.label(text='Material settings')
-        row=layout.row()
-        row.operator('hisanim.lightwarps')
-        row=layout.row()
-        row.operator('hisanim.removelightwarps')
-        row = layout.row()
-        row.prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
-        row = layout.row()
-        row.prop(context.scene.hisanimvars, 'wrdbbluteam')
-        row = layout.row()
-
-class WDRB_PT_PART3(bpy.types.Panel): # for the material fixer and selector segment.
-    bl_label = 'Material Fixer/Selector'
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = addn
-    bl_icon = "MOD_CLOTH"
-    bl_parent_id = 'WDRB_PT_PART1'
-    @classmethod
-    def poll(cls, context): # only show if an object is selected and has a dictionary property named 'skin_groups'.
-        try:
-            return True if not context.object.get('skin_groups') == None and len(context.selected_objects) > 0 else False
-        except:
-            return False
-    def draw(self, context):
-        if not context.object.get('skin_groups') == None:
-            layout = self.layout
-            ob = context.object
-            layout.label(text='Attempt to fix material')
-            row = layout.row()
-            row.template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
-            row = layout.row(align=True)
-            row.operator('hisanim.materialfix')
-            row.operator('hisanim.revertfix')
-
-#panel space for paints
-class WDRB_PT_PART4(bpy.types.Panel):
-    bl_label = 'Paints'
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = addn
-    bl_parent_id = 'WDRB_PT_PART1'
-    # check if the panel can be displayed
-    @classmethod
-    def poll(cls, context): # only show if an object is selected and has a dictionary property named 'skin_groups'.
-        try:
-            return True if not context.object.get('skin_groups') == None and len(context.selected_objects) > 0 else False
-        except:
-            return False
-    def draw(self, context):
-        layout = self.layout
-        row = layout.row()
-        row.template_icon_view(context.window_manager, 'hisanim_paints', show_labels=True, scale=4, scale_popup=4)
-        row=layout.row(align=True)
-        oper = row.operator('hisanim.paint', text = 'Add Paint')
-        oper.PAINT = newuilist.paints[context.window_manager.hisanim_paints]
-        row.operator('hisanim.paintclear')
-
 classes = [
             searchHits,
             hisanimvars,
             WDRB_PT_PART1,
-            WDRB_PT_PART2,
-            WDRB_PT_PART3,
-            WDRB_PT_PART4,
             HISANIM_OT_PAINTCLEAR,
             HISANIM_OT_LOAD,
             HISANIM_OT_PAINTS,

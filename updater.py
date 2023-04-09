@@ -40,10 +40,9 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         row = layout.row()
         row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
         row = layout.row()
-        try:
-            row.prop(context.scene.hisanimvars, 'savespace')
-        except:
-            pass
+        row.prop(context.scene.hisanimvars, 'savespace')
+        row = layout.row()
+        row.prop(context.preferences.addons[__package__].preferences, 'compactable', text='Wardrobe: Compactable View')
 class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_idname = 'hisanim.clsupdate'
     bl_label = 'Update Class'

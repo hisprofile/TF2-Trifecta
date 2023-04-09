@@ -246,7 +246,11 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 goto = bpy.data.collections['Deployed Mercs']
             # link the current object to 'Deployed Mercs'
             goto.objects.link(obj)
-
+            if obj.get('FLEXES') and not context.scene.hisanimvars.wrinklemaps:
+                bpy.data.objects.remove(obj)
+                continue
+            if obj.modifiers.get('FLEXES') != None and not context.scene.hisanimvars.wrinklemaps:
+                obj.modifiers.remove(obj.modifiers.get('FLEXES'))
             if obj.get('COSMETIC') != None:
                 # if Cosmetic Compatibility is enabled and a mesh is not compatible, delete it.
                 if context.scene.hisanimvars.cosmeticcompatibility and not obj['COSMETIC']:
@@ -276,8 +280,8 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                         ReuseImage(NODE, PATH + f'/{self.merc}.blend')
 
                 if mat in matblacklist:
-                    continue
-                # relevant towards BLU. if the material has already been swapped to BLU, continue.
+                    continue # relevant towards BLU. if the material has already been swapped to BLU, continue.
+                
                 if context.scene.hisanimvars.bluteam:
                     if (red := mat.node_tree.nodes.get('REDTEX')) != None and (blu := mat.node_tree.nodes.get('BLUTEX')) != None:
                         getconnect = red.outputs[0].links[0].to_node
@@ -357,8 +361,8 @@ class MD_PT_MERCDEPLOY(bpy.types.Panel):
         row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
 
 
-classes = [HISANIM_OT_LOADMERC,
-           MD_PT_MERCDEPLOY]
+classes = [HISANIM_OT_LOADMERC]
+           #MD_PT_MERCDEPLOY]
 
 
 def register():

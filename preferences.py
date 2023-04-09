@@ -104,6 +104,8 @@ class hisanimFilePaths(AddonPreferences):
     is_executed: BoolProperty(default=False)
     remove: CollectionProperty(type=ridOf)
     runonce_removepaths: IntProperty(default=0)
+    compactable: bpy.props.BoolProperty(default=True, description='Make the different sections of Wardrobe compactable.')
+    missing: bpy.props.BoolProperty(default=True)
     #removeindex: IntProperty(default=0)
     
     def draw(self, context):
@@ -113,7 +115,20 @@ class hisanimFilePaths(AddonPreferences):
             self.is_executed = True
         prefs = bpy.context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
+        remaining = [i for i in names if paths.get(i) == None]
         layout = self.layout
+        row = layout.row()
+        row.label(text='Every entry needs to ends in .blend, except for TF2-V3. TF2-V3 needs to be a folder.')
+        
+        if len(remaining) > 0:
+            row = layout.row()
+            row.label(text='Missing entries:') if len(remaining) != 1 else row.label(text='Missing entry:')
+            row = layout.row()
+            row.label(text=f'{", ".join(remaining)}')
+            row=layout.row()
+            self.missing = True
+        else:
+            self.missing = False
         row = layout.row()
         row.template_list('HISANIM_UL_ASSETS', 'Asset Paths',
                 self, 'hisanim_paths',
