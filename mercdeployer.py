@@ -1,6 +1,10 @@
 import bpy
 import os
+<<<<<<< HEAD
 import random
+=======
+
+>>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
 from pathlib import Path
 
 global path
@@ -10,6 +14,7 @@ cln = ["IK", "FK"]
 mercs = ['scout', 'soldier', 'pyro', 'demo',
          'heavy', 'engineer', 'medic', 'sniper', 'spy']
 
+<<<<<<< HEAD
 def MAP(x,a,b,c,d, clamp=None):
    y=(x-a)/(b-a)*(d-c)+c
    
@@ -17,6 +22,8 @@ def MAP(x,a,b,c,d, clamp=None):
        return min(max(y, c), d)
    else:
        return y
+=======
+>>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
 
 def append(a, b):  # get a class from TF2-V3
     blendfile = f'{bpy.context.preferences.addons[__package__].preferences.hisanim_paths["TF2-V3"].path}/{a}.blend'
@@ -343,6 +350,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         bpy.context.view_layer.active_layer_collection = bak
         return {'FINISHED'}
 
+<<<<<<< HEAD
 class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
     bl_idname = 'hisanim.randomizeface'
     bl_label = 'Randomize Face'
@@ -379,6 +387,8 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
 
         return {'FINISHED'}
 
+=======
+>>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
 
 class MD_PT_MERCDEPLOY(bpy.types.Panel):
     '''Rolling in the nonsense, deploy the fantasy!'''
@@ -404,9 +414,14 @@ class MD_PT_MERCDEPLOY(bpy.types.Panel):
         row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
 
 
+<<<<<<< HEAD
 classes = [HISANIM_OT_LOADMERC,
                 HISANIM_OT_RANDOMIZEFACE]
             #MD_PT_MERCDEPLOY]
+=======
+classes = [HISANIM_OT_LOADMERC]
+           #MD_PT_MERCDEPLOY]
+>>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
 
 
 def register():

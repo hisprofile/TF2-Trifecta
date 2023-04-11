@@ -196,10 +196,14 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     ddsearch: bpy.props.BoolProperty(default=True, name='')
     ddpaints: bpy.props.BoolProperty(default=True, name='')
     ddmatsettings: bpy.props.BoolProperty(default=True, name='')
+<<<<<<< HEAD
     wrinklemaps: bpy.props.BoolProperty(default=True)
     randomadditive: bpy.props.BoolProperty(name = 'Additive', description='Add onto the current face values')
     randomstrength: bpy.props.FloatProperty(name='Random Strength', min=0.0, max=1.0, description='Any random value calculated will be multiplied with this number', default=1.0)
     keyframe: bpy.props.BoolProperty(default=False, name='Keyframe Sliders', description='Keyframe the randomized changes.')
+=======
+    wrinklemaps: bpy.props.BoolProperty()
+>>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
 
 class WDRB_PT_PART1(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar""" # for the searching segment.
@@ -314,12 +318,23 @@ class WDRB_PT_PART1(bpy.types.Panel):
             mercs = ['scout', 'soldier', 'pyro', 'demo',
                     'heavy', 'engineer', 'medic', 'sniper', 'spy']
             if prefs.hisanim_paths.get('TF2-V3') != None:
+<<<<<<< HEAD
+=======
+                #actualmercs = [i for i in mercs if prefs.hisanimpaths.get]
+                '''seconds = datetime.now()
+                seconds = int(seconds.strftime("%S"))
+                if seconds % 2 == 0:
+                    mercfiles = glob.glob("*.blend", rootdir=prefs.hisanimpaths.get('TF2-V3'))'''
+>>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
                 if prefs.hisanim_paths.get('TF2-V3').this_is != 'FOLDER':
                     row = layout.row()
                     row.label('TF2-V3 contains an invalid path!')
                 else:
+<<<<<<< HEAD
                     row = layout.row()
                     row.label(text='Move face in custom properties under data tab.')
+=======
+>>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
                     row = layout.row(align=True)
                     for i in mercs:
                         row.label(text=i)
@@ -334,12 +349,16 @@ class WDRB_PT_PART1(bpy.types.Panel):
                     row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
                     row = layout.row()
                     row.prop(props, 'wrinklemaps', text='Wrinkle Maps')
+<<<<<<< HEAD
                     
+=======
+>>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
             else:
                 row = layout.row()
                 row.label(text='TF2-V3 has not been added!')
                 row = layout.row()
                 row.label(text='If it is added, check name.')
+<<<<<<< HEAD
             if context.active_object == None and len(context.selected_objects) == 0: return None
             if context.object.type == 'EMPTY': return None
             if context.object.data.get('aaa_fs') == None: return None
@@ -360,6 +379,8 @@ class WDRB_PT_PART1(bpy.types.Panel):
             row = layout.row()
             row.prop(context.object.data, '["aaa_fs"]')
 
+=======
+>>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
         if props.tools == 'BONEMERGE':
             row = layout.row()
             row.label(text='Attach TF2 cosmetics.', icon='DECORATE_LINKED')
