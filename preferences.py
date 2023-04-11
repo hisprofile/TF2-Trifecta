@@ -117,9 +117,9 @@ class hisanimFilePaths(AddonPreferences):
         paths = prefs.hisanim_paths
         remaining = [i for i in names if paths.get(i) == None]
         layout = self.layout
-        row = layout.row()
-        row.label(text='Every entry needs to ends in .blend, except for TF2-V3. TF2-V3 needs to be a folder.')
-        
+        #row = layout.row()
+        layout.row().label(text='Every entry needs to ends in .blend, except for TF2-V3. TF2-V3 needs to be a folder.')
+        layout.row().label(text='To view the name of an entry, press its button.')
         if len(remaining) > 0:
             row = layout.row()
             row.label(text='Missing entries:') if len(remaining) != 1 else row.label(text='Missing entry:')

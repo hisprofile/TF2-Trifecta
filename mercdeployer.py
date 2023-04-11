@@ -1,6 +1,6 @@
 import bpy
 import os
-
+import random
 from pathlib import Path
 
 global path
@@ -10,6 +10,13 @@ cln = ["IK", "FK"]
 mercs = ['scout', 'soldier', 'pyro', 'demo',
          'heavy', 'engineer', 'medic', 'sniper', 'spy']
 
+def MAP(x,a,b,c,d, clamp=None):
+   y=(x-a)/(b-a)*(d-c)+c
+   
+   if clamp:
+       return min(max(y, c), d)
+   else:
+       return y
 
 def append(a, b):  # get a class from TF2-V3
     blendfile = f'{bpy.context.preferences.addons[__package__].preferences.hisanim_paths["TF2-V3"].path}/{a}.blend'
@@ -336,6 +343,62 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         bpy.context.view_layer.active_layer_collection = bak
         return {'FINISHED'}
 
+class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
+    bl_idname = 'hisanim.randomizeface'
+    bl_label = 'Randomize Face'
+    bl_description = 'Randomize the values of the facial sliders'
+    bl_options = {'UNDO'}
+    reset: bpy.props.BoolProperty(default=False)
+
+    def execute(self, context):
+        props = context.scene.hisanimvars
+        data = context.object.data
+        for i in data.keys():
+            if i == 'aaa_fs':
+                continue
+            if (locklist := data.get('locklist')) != None:
+                if locklist.get(i) == True: continue
+            try:
+                prop = data.id_properties_ui(i).as_dict()
+            except:
+                continue
+            min = prop.get('min')
+            max = prop.get('max')
+            randval = random.random() 
+            randval = MAP(randval, 0, 1, min, max) * (1- self.reset) * props.randomstrength
+            if props.randomadditive and not self.reset:
+                data[i] = data[i] + randval
+            else:
+                data[i] = randval
+            
+            if props.keyframe:
+                data.keyframe_insert(data_path=f'["{i}"]')
+                context.scene.frame_current += 1
+                context.scene.frame_current += -1
+        
+        data.keyframe_insert(data_path='["aaa_fs"]')
+        data.keyframe_delete(data_path='["aaa_fs"]')
+
+        return {'FINISHED'}
+
+class HISANIM_OT_LOCK(bpy.types.Operator):
+    bl_idname = 'hisanim.lock'
+    bl_label = 'Lock Slider'
+    bl_options = {'UNDO'}
+
+    datapath: bpy.props.StringProperty()
+    key: bpy.props.StringProperty()
+
+    def execute(self, context):
+        obj = bpy.data.objects[self.datapath]
+        if (locklist := obj.data.get('locklist')) == None:
+            obj.data['locklist'] = {}
+            locklist = obj.data['locklist']
+        if (lockstate := locklist.get(self.key)) == None:
+            locklist[self.key] = True
+            return {'FINISHED'}
+        locklist[self.key] = 1 - lockstate
+        return {'FINISHED'}
 
 class MD_PT_MERCDEPLOY(bpy.types.Panel):
     '''Rolling in the nonsense, deploy the fantasy!'''
@@ -361,8 +424,10 @@ class MD_PT_MERCDEPLOY(bpy.types.Panel):
         row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
 
 
-classes = [HISANIM_OT_LOADMERC]
-           #MD_PT_MERCDEPLOY]
+classes =   [HISANIM_OT_LOADMERC,
+            HISANIM_OT_RANDOMIZEFACE,
+            HISANIM_OT_LOCK]
+            #MD_PT_MERCDEPLOY]
 
 
 def register():

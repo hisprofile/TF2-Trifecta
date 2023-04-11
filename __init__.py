@@ -112,6 +112,44 @@ def link(a, b, c): # get a class from TF2-V3
     
     bpy.ops.wm.link(filename=object, directory=directory)
 
+#def slideupdate(self, value):
+@persistent
+def updatefaces(scn):
+    props = bpy.context.scene.hisanimvars
+    try:
+        data = bpy.context.object.data
+    except:
+        return None
+    if data.get('aaa_fs') == None: return None
+    props.activeface = bpy.context.object
+
+    if props.activeface != props.lastactiveface:
+        props.sliders.clear()
+        for i in data.keys():
+            try:
+                data.id_properties_ui(i)
+                if props.lockfilter not in i: raise
+            except:
+                continue
+            new = props.sliders.add()
+            new.name = i
+    props.lastactiveface = props.activeface
+
+class HISANIM_UL_SLIDERS(bpy.types.UIList):
+
+    def draw_item(self, context,
+            layout, data,
+            item, icon,
+            active_data, active_propname,
+            index):
+        props = context.scene.hisanimvars
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(props.activeface.data, f'["{item.name}"]')
+
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label(text='')
+
 class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with a button
     bl_idname = 'hisanim.lightwarps'
     bl_label = 'Use Lightwarps (TF2 Style)'
@@ -161,6 +199,13 @@ class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
 class searchHits(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty()
 
+class faceslider(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty()
+    value: bpy.props.FloatProperty(name='', default=0.0)
+    split: bpy.props.BoolProperty(name='')
+    dragging: bpy.props.BoolProperty()
+    originalval: bpy.props.FloatProperty()
+
 class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs. Less to write for registering and unregistering
     bluteam: bpy.props.BoolProperty(
         name="Blu Team",
@@ -189,14 +234,27 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         items=(
         ('WARDROBE', 'Wardrobe', "Show Wardrobe's tools", 'MOD_CLOTH', 0),
         ('MERCDEPLOYER', 'Merc Deployer', "Show Merc Deployer's tools", 'FORCE_DRAG', 1),
-        ('BONEMERGE', 'Bonemerge', "Show Bonemerge's tools", 'GROUP_BONE', 2)
+        ('BONEMERGE', 'Bonemerge', "Show Bonemerge's tools", 'GROUP_BONE', 2),
+        ('FACEPOSER', 'Face Poser', 'Show the Face Poser tools', 'RESTRICT_SELECT_OFF', 3)
         ),
         name='Tool'
     )
     ddsearch: bpy.props.BoolProperty(default=True, name='')
     ddpaints: bpy.props.BoolProperty(default=True, name='')
     ddmatsettings: bpy.props.BoolProperty(default=True, name='')
-    wrinklemaps: bpy.props.BoolProperty()
+    ddfacepanel: bpy.props.BoolProperty(default=True, name='')
+    ddrandomize: bpy.props.BoolProperty(default=True, name='')
+    ddlocks: bpy.props.BoolProperty(default=True, name = '')
+    wrinklemaps: bpy.props.BoolProperty(default=True)
+    randomadditive: bpy.props.BoolProperty(name = 'Additive', description='Add onto the current face values')
+    randomstrength: bpy.props.FloatProperty(name='Random Strength', min=0.0, max=1.0, description='Any random value calculated will be multiplied with this number', default=1.0)
+    keyframe: bpy.props.BoolProperty(default=False, name='Keyframe Sliders', description='Keyframe the randomized changes.')
+    lockfilter: bpy.props.StringProperty()
+    activeslider: bpy.props.StringProperty()
+    activeface: bpy.props.PointerProperty(type=bpy.types.Object)
+    lastactiveface: bpy.props.PointerProperty(type=bpy.types.Object)
+    sliders: bpy.props.CollectionProperty(type=faceslider)
+    sliderindex: bpy.props.IntProperty()
 
 class WDRB_PT_PART1(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar""" # for the searching segment.
@@ -205,7 +263,6 @@ class WDRB_PT_PART1(bpy.types.Panel):
     bl_region_type = 'UI'
     bl_category = 'TF2-Trifecta'
     bl_icon = "MOD_CLOTH"
-    
 
     def draw(self, context):
         prefs = context.preferences.addons[__package__].preferences
@@ -296,6 +353,7 @@ class WDRB_PT_PART1(bpy.types.Panel):
                             row = split.row()
                             OPER = row.operator('hisanim.loadcosmetic', text=ops.name.split('_-_')[0])
                             OPER.LOAD = ops.name
+                            #row.operator()
                     else: 
                         layout = self.layout
                         layout.label(text='Nothing found!')
@@ -311,15 +369,12 @@ class WDRB_PT_PART1(bpy.types.Panel):
             mercs = ['scout', 'soldier', 'pyro', 'demo',
                     'heavy', 'engineer', 'medic', 'sniper', 'spy']
             if prefs.hisanim_paths.get('TF2-V3') != None:
-                #actualmercs = [i for i in mercs if prefs.hisanimpaths.get]
-                '''seconds = datetime.now()
-                seconds = int(seconds.strftime("%S"))
-                if seconds % 2 == 0:
-                    mercfiles = glob.glob("*.blend", rootdir=prefs.hisanimpaths.get('TF2-V3'))'''
                 if prefs.hisanim_paths.get('TF2-V3').this_is != 'FOLDER':
                     row = layout.row()
                     row.label('TF2-V3 contains an invalid path!')
                 else:
+                    row = layout.row()
+                    row.label(text='Move face in custom properties under data tab.')
                     row = layout.row(align=True)
                     for i in mercs:
                         row.label(text=i)
@@ -334,11 +389,13 @@ class WDRB_PT_PART1(bpy.types.Panel):
                     row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
                     row = layout.row()
                     row.prop(props, 'wrinklemaps', text='Wrinkle Maps')
+                    
             else:
                 row = layout.row()
                 row.label(text='TF2-V3 has not been added!')
                 row = layout.row()
                 row.label(text='If it is added, check name.')
+            
         if props.tools == 'BONEMERGE':
             row = layout.row()
             row.label(text='Attach TF2 cosmetics.', icon='DECORATE_LINKED')
@@ -361,6 +418,98 @@ class WDRB_PT_PART1(bpy.types.Panel):
             row = layout.row()
             row.operator('hisanim.attemptfix')
 
+        if props.tools == 'FACEPOSER':
+            rNone = False
+            if len(context.selected_objects) == 0: rNone = True
+            if context.object.type == 'EMPTY': rNone = True
+            if context.object.data.get('aaa_fs') == None: rNone = True
+
+            if rNone:
+                layout.label(text='Select a face!')
+                #props.activeface = None
+                #props.lastactiveface = None
+                return None
+            
+            if props.ddfacepanel or not prefs.compactable:
+                if prefs.compactable:
+                    row = layout.row()
+                    row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_DOWN', emboss=False)
+                    row.label(text='Face Poser')
+                
+                layout.row().template_list('HISANIM_UL_SLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
+                
+            else:
+                row = layout.row()
+                row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
+                row.label(text='Face Poser')
+            if props.ddrandomize or not prefs.compactable:
+                if prefs.compactable:
+                    row = layout.row()
+                    row.prop(props, 'ddrandomize', icon='DISCLOSURE_TRI_DOWN', emboss=False)
+                    row.label(text='Face Randomizer')
+                row = layout.row()
+                row.prop(props, 'keyframe')
+                row = layout.row()
+                row.prop(props, 'randomadditive')
+                row = layout.row()
+                row.prop(props, 'randomstrength', slider=True)
+                row =layout.row()
+                op = row.operator('hisanim.randomizeface')
+                op.reset = False
+                row = layout.row()
+                set0 = row.operator('hisanim.randomizeface', text='Reset Face')
+                set0.reset = True
+                row = layout.row()
+                row.prop(context.object.data, '["aaa_fs"]')
+            else:
+                row = layout.row()
+                row.prop(props, 'ddrandomize', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
+                row.label(text='Face Randomizer')
+
+            if props.ddlocks or not prefs.compactable:
+                if prefs.compactable:
+                    row = layout.row()
+                    row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_DOWN', emboss=False)
+                    row.label(text='Lock Sliders')
+                data = context.object.data
+                if data.get('locklist') == None:
+                    layout.row().label(text='Locking will prevent randomizing.')
+                row = layout.row()
+                
+                row.prop(props, 'lockfilter', text='Filter')
+                box = layout.box()
+                for i in data.keys():
+                    try:
+                        data.id_properties_ui(i)
+                        if props.lockfilter not in i: raise
+                    except:
+                        continue
+                    row = box.row(align=True)
+                    states = data.get('locklist')
+                    if states == None:
+                        state = False
+                    else:
+                        state = states.get(i)
+                        if state == None: state = False
+                    split = row.split(factor=0.2, align=True)
+                    op = split.operator('hisanim.lock', icon='LOCKED' if state else 'UNLOCKED', emboss=False, text='')
+                    op.datapath = bpy.context.object.name
+                    op.key = i
+                    split.prop(data, f'["{i}"]', text=i)
+                    '''split = row.split(factor=0.8, align=True)
+                    op = split.operator('hisanim.lock', text=i, depress=state)
+                    op.datapath = bpy.context.object.name
+                    op.key = i
+                    split.prop(data, f'["{i}"]', text='', )
+                    op = row.operator('hisanim.lock', icon='LOCKED' if state else 'UNLOCKED', emboss=False, text='')
+                    op.datapath = bpy.context.object.name
+                    op.key = i'''
+            else:
+                row = layout.row()
+                row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
+                row.label(text='Lock Sliders')
+            #props.lastactiveface = props.activeface
+            
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')
     bl_idname = 'hisanim.loadcosmetic'
@@ -590,6 +739,7 @@ class HISANIM_OT_PAINTCLEAR(bpy.types.Operator):
 
 classes = [
             searchHits,
+            faceslider,
             hisanimvars,
             WDRB_PT_PART1,
             HISANIM_OT_PAINTCLEAR,
@@ -600,7 +750,8 @@ classes = [
             HISANIM_OT_Search,
             HISANIM_OT_ClearSearch,
             HISANIM_OT_REVERTFIX,
-            HISANIM_OT_MATFIX
+            HISANIM_OT_MATFIX,
+            HISANIM_UL_SLIDERS
             ]
 def register():
     for cls in classes:
@@ -612,6 +763,7 @@ def register():
     newuilist.register()
     preferences.register()
     bonemerge.register()
+    bpy.app.handlers.depsgraph_update_post.append(updatefaces)
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
@@ -623,5 +775,6 @@ def unregister():
     preferences.unregister()
     bonemerge.unregister()
     del bpy.types.Scene.hisanimvars
+    bpy.app.handlers.depsgraph_update_post.remove(updatefaces)
 if __name__ == '__main__':
     register()
