@@ -188,7 +188,7 @@ class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
         return {'FINISHED'}
     
 classes = [
-    BM_PT_BONEMERGE,
+    #BM_PT_BONEMERGE,
     HISANIM_OT_ATTACH,
     HISANIM_OT_ATTEMPTFIX,
     HISANIM_OT_BINDFACE,

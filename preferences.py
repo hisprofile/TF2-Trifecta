@@ -13,8 +13,6 @@ class AssetPaths(PropertyGroup):
     def get_path(self):
         return self.get("path", "")
     def set_path(self, value):
-        #print('setting path')
-        prefs = bpy.context.preferences.addons[__package__].preferences
         value = bpy.path.abspath(value)
         self["path"] = value
         name = os.path.basename(value)
@@ -51,7 +49,9 @@ class AssetPaths(PropertyGroup):
     )
 
     toggle: BoolProperty(
-        default=False
+        default=False,
+        name='Show Name',
+        description='Show Name'
     )
 
 class HISANIM_UL_ASSETS(UIList):
@@ -101,20 +101,34 @@ class hisanimFilePaths(AddonPreferences):
     bl_idname = __package__
     hisanim_paths: CollectionProperty(type=AssetPaths)
     hisanim_pathsindex: IntProperty(default=0)
-    autonaming: BoolProperty(default=True)
     is_executed: BoolProperty(default=False)
     remove: CollectionProperty(type=ridOf)
     runonce_removepaths: IntProperty(default=0)
+    compactable: bpy.props.BoolProperty(default=True, description='Make the different sections of Wardrobe compactable.')
+    missing: bpy.props.BoolProperty(default=True)
     #removeindex: IntProperty(default=0)
     
     def draw(self, context):
         if not self.is_executed:
-            runpullpath()
-            #bpy.app.handlers.depsgraph_update_post.append(deleteOldPaths)
+            runpullpath() # get existing asset path entries
+            bpy.types.SpacePreferences.draw_handler_add(deleteOldPaths, (), 'WINDOW', 'POST_PIXEL') # delete the old asset paths, as they are no longer
             self.is_executed = True
         prefs = bpy.context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
+        remaining = [i for i in names if paths.get(i) == None]
         layout = self.layout
+        row = layout.row()
+        row.label(text='Every entry needs to ends in .blend, except for TF2-V3. TF2-V3 needs to be a folder.')
+        
+        if len(remaining) > 0:
+            row = layout.row()
+            row.label(text='Missing entries:') if len(remaining) != 1 else row.label(text='Missing entry:')
+            row = layout.row()
+            row.label(text=f'{", ".join(remaining)}')
+            row=layout.row()
+            self.missing = True
+        else:
+            self.missing = False
         row = layout.row()
         row.template_list('HISANIM_UL_ASSETS', 'Asset Paths',
                 self, 'hisanim_paths',
@@ -142,7 +156,7 @@ class HISANIM_OT_DETECTPATH(Operator):
         parent = Path(selectedpath).parents[0]
         parent2 = Path(selectedpath).parents[1]
         
-        for i in glob.glob('*.blend', root_dir=parent):
+        '''for i in glob.glob('*.blend', root_dir=parent):
             path = os.path.join(parent, i)
             name = os.path.basename(path)
             name = name[:name.rfind('.')]
@@ -150,7 +164,7 @@ class HISANIM_OT_DETECTPATH(Operator):
                 if file in name and paths.get(file) == None:
                     newitem = paths.add()
                     newitem.path = path
-                    newitem.name = file
+                    newitem.name = file'''
 
         for i in glob.glob('**/*.blend', root_dir=parent2):
             path = os.path.join(parent2, i)
@@ -243,7 +257,7 @@ def runpullpath():
         newitem.path = assetpath.path
         newitem.name = assetpath.name
 
-def deleteOldPaths(scn):
+def deleteOldPaths():
 
     ''' This purpose of this function was meant to be occur alongside runpullpath,
     but because I require the bpy.ops.preferences.asset_library_remove operator,
@@ -259,10 +273,9 @@ def deleteOldPaths(scn):
         prefs.runonce_removepaths = True
         for i in prefs.remove:
                 bpy.ops.preferences.asset_library_remove(index=libraries.find(i.name))
-        bpy.app.handlers.depsgraph_update_post.remove(deleteOldPaths)
+        #bpy.app.handlers.depsgraph_update_post.remove(deleteOldPaths)
+        bpy.types.SpacePreferences.draw_handler_remove(deleteOldPaths)
         return None
-
-#bpy.app.handlers.depsgraph_update_post.append(deleteOldPaths)
 
 def register():
     for i in classes:

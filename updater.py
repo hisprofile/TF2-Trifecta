@@ -1,9 +1,10 @@
 import bpy, os, shutil, shutil, glob, json, zipfile
 from pathlib import Path
-from . import dload, icons, mercdeployer, preferences
+from . import dload, icons, mercdeployer
 from urllib import request
 global blend_files
 global files
+
 files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
 classes = mercdeployer.classes
 allclasses = ['allclass', 'allclass2', 'allclass3']
@@ -40,7 +41,8 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
         row = layout.row()
         row.prop(context.scene.hisanimvars, 'savespace')
-
+        row = layout.row()
+        row.prop(context.preferences.addons[__package__].preferences, 'compactable', text='Wardrobe: Compactable View')
 class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_idname = 'hisanim.clsupdate'
     bl_label = 'Update Class'
@@ -117,7 +119,7 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
                 print('Deleted!')
             else:
                 print("Nothing to delete!")
-        DLOADTO = GET[:GET.rfind('/')+1]
+        DLOADTO = GET.path[:GET.path.rfind('/')+1]
         if switch == False:
             print(f"Deleting old file from {GET}...")
             if os.path.exists(GET):
@@ -188,7 +190,41 @@ class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
     bl_description = "Download Hectoris919's version of hisanimation's port, complete with a face rig and phonemes"
 
     def execute(self, execute):
-        self.report({'INFO'}, 'Not ready yet!')
+        prefs = bpy.context.preferences.addons[__package__].preferences
+        try:
+            githubResponse = request.urlopen("https://gitlab.com/hisprofile/the-tf2-collection/blob/main/TF2-HECTORIS.zip")
+        except:
+            self.report({'INFO', 'Not ready yet!'})
+            return {'CANCELLED'}
+        #DLOADTO = bpy.context.preferences.filepaths.asset_libraries['TF2-V3'].path + "/"
+        if (GET := prefs.hisanim_paths.get('TF2-V3')) == None:
+            self.report({'INFO'}, 'No entry for TF2-V3!')
+            return {'CANCELLED'}
+        GET = GET.path
+        print('Deleting old .blend files...')
+        for i in glob.glob("*.blend", root_dir=GET):
+            os.remove(os.path.join(GET, i))
+            print(f'Deleted {i}..')
+        '''for i in files:
+            try:
+                os.remove(f'{DLOADTO + i}.blend')
+                print(f'Deleted {i}.blend')
+            except:
+                print(f'Could not delete {i}.blend!')'''
+        DLOADTO = GET
+        print(f"Downloading Hectoris919's TF2-V3 port...")
+        dload.save('https://gitlab.com/hisprofile/the-tf2-collection/raw/main/TF2-HECTORIS.zip')
+        print('''hisanimations' port downloaded!''')
+        print('Moving to asset library path...')
+        shutil.move(str(Path(__file__).parent) + f"/TF2-HECTORIS.zip", DLOADTO)
+        print('Moved!')
+        print('Extracting .zip file...')
+        zipfile.ZipFile(os.path.join(DLOADTO, 'TF2-HECTORIS.zip'), 'r').extractall(DLOADTO)
+        print('Extracted!')
+        print('Removing .zip flie...')
+        os.remove(os.path.join(DLOADTO, 'TF2-HECTORIS.zip'))
+        print('Removed!')
+        print("Downloaded Hectoris919's port!")
         return {'FINISHED'}
     
 class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
@@ -250,22 +286,29 @@ class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
             bl_description = 'Press to reload the TF2-Trifecta'
 
             def execute(self, context):
-                class restoreAssetsPaths(bpy.types.PropertyGroup):
+                '''class restoreAssetsPaths(bpy.types.PropertyGroup):
                     assets: bpy.props.CollectionProperty(type=preferences.AssetPaths)
                 prefs = context.preferences.addons[__package__].preferences
                 bpy.utils.register_class(restoreAssetsPaths)
                 bpy.types.Scene.restoreassets = bpy.props.PointerProperty(type=restoreAssetsPaths)
                 for i in context.preferences.addons[__package__].preferences.hisanim_paths:
-                    new = bpy.context.scene.restoreassets.add()
+                    new = bpy.context.scene.restoreassets.assets.add()
+                    new.path = i.path
+                    new.name = i.name
+                    new.this_is = i.this_is'''
+
+
+                bpy.ops.preferences.addon_enable(module=__package__)
+                '''prefs = context.preferences.addons[__package__].preferences
+                prefs.is_executed = True
+                for i in context.scene.restoreassets.assets:
+                    new = prefs.hisanim_paths.add()
                     new.path = i.path
                     new.name = i.name
                     new.this_is = i.this_is
 
-
-                bpy.ops.preferences.addon_enable(module=__package__)
-
-                prefs.is_executed = True
-
+                bpy.utils.unregister_class(restoreAssetsPaths)
+                del bpy.types.Scene.restoreassets'''
                 bpy.utils.unregister_class(HISANIM_PT_tempPanel)
                 bpy.utils.unregister_class(HISANIM_OT_reloadAddon)
                 self.report({'INFO'}, 'Addon successfully updated!')
@@ -282,6 +325,9 @@ class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
                 layout = self.layout
                 row = layout.row()
                 row.operator('temp.reloadaddon')
+                row = layout.row()
+                row.label(icon='ERROR')
+                row.label(text='Blender may crash!')
         
         bpy.utils.register_class(HISANIM_OT_reloadAddon)
         bpy.utils.register_class(HISANIM_PT_tempPanel)
