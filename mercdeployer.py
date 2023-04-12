@@ -1,14 +1,6 @@
 import bpy
 import os
-<<<<<<< HEAD
-<<<<<<< HEAD
 import random
-=======
-
->>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
-=======
-import random
->>>>>>> c4ecd78007f64fc93a5863083f28e5831a7c9b76
 from pathlib import Path
 
 global path
@@ -18,10 +10,6 @@ cln = ["IK", "FK"]
 mercs = ['scout', 'soldier', 'pyro', 'demo',
          'heavy', 'engineer', 'medic', 'sniper', 'spy']
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> c4ecd78007f64fc93a5863083f28e5831a7c9b76
 def MAP(x,a,b,c,d, clamp=None):
    y=(x-a)/(b-a)*(d-c)+c
    
@@ -29,11 +17,6 @@ def MAP(x,a,b,c,d, clamp=None):
        return min(max(y, c), d)
    else:
        return y
-<<<<<<< HEAD
-=======
->>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
-=======
->>>>>>> c4ecd78007f64fc93a5863083f28e5831a7c9b76
 
 def append(a, b):  # get a class from TF2-V3
     blendfile = f'{bpy.context.preferences.addons[__package__].preferences.hisanim_paths["TF2-V3"].path}/{a}.blend'
@@ -360,10 +343,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         bpy.context.view_layer.active_layer_collection = bak
         return {'FINISHED'}
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> c4ecd78007f64fc93a5863083f28e5831a7c9b76
 class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
     bl_idname = 'hisanim.randomizeface'
     bl_label = 'Randomize Face'
@@ -377,11 +356,8 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
         for i in data.keys():
             if i == 'aaa_fs':
                 continue
-<<<<<<< HEAD
-=======
             if (locklist := data.get('locklist')) != None:
                 if locklist.get(i) == True: continue
->>>>>>> c4ecd78007f64fc93a5863083f28e5831a7c9b76
             try:
                 prop = data.id_properties_ui(i).as_dict()
             except:
@@ -397,23 +373,14 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
             
             if props.keyframe:
                 data.keyframe_insert(data_path=f'["{i}"]')
-<<<<<<< HEAD
-                data.keyframe_delete(data_path=f'["{i}"]')
-                data.keyframe_insert(data_path=f'["{i}"]')
-=======
                 context.scene.frame_current += 1
                 context.scene.frame_current += -1
->>>>>>> c4ecd78007f64fc93a5863083f28e5831a7c9b76
         
         data.keyframe_insert(data_path='["aaa_fs"]')
         data.keyframe_delete(data_path='["aaa_fs"]')
 
         return {'FINISHED'}
 
-<<<<<<< HEAD
-=======
->>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
-=======
 class HISANIM_OT_LOCK(bpy.types.Operator):
     bl_idname = 'hisanim.lock'
     bl_label = 'Lock Slider'
@@ -432,7 +399,6 @@ class HISANIM_OT_LOCK(bpy.types.Operator):
             return {'FINISHED'}
         locklist[self.key] = 1 - lockstate
         return {'FINISHED'}
->>>>>>> c4ecd78007f64fc93a5863083f28e5831a7c9b76
 
 class MD_PT_MERCDEPLOY(bpy.types.Panel):
     '''Rolling in the nonsense, deploy the fantasy!'''
@@ -458,21 +424,10 @@ class MD_PT_MERCDEPLOY(bpy.types.Panel):
         row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-classes = [HISANIM_OT_LOADMERC,
-                HISANIM_OT_RANDOMIZEFACE]
-            #MD_PT_MERCDEPLOY]
-=======
-classes = [HISANIM_OT_LOADMERC]
-           #MD_PT_MERCDEPLOY]
->>>>>>> 72c1682d262f9db71fef74b3b2df6fb84f5f71b7
-=======
 classes =   [HISANIM_OT_LOADMERC,
             HISANIM_OT_RANDOMIZEFACE,
             HISANIM_OT_LOCK]
             #MD_PT_MERCDEPLOY]
->>>>>>> c4ecd78007f64fc93a5863083f28e5831a7c9b76
 
 
 def register():
