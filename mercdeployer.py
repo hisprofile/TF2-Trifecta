@@ -269,9 +269,21 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     continue
             for mat in obj.material_slots:
                 # if Save Space is enabled, this is useless as all material contents will be linked.
+                mat = mat.material
+                if mat in matblacklist:
+                    continue
+                if context.scene.hisanimvars.bluteam:
+                    print('blue!')
+                    if (red := mat.node_tree.nodes.get('REDTEX')) != None and (blu := mat.node_tree.nodes.get('BLUTEX')) != None:
+                        getconnect = red.outputs[0].links[0].to_node
+                        mat.node_tree.links.new(
+                            blu.outputs[0], getconnect.inputs[0])
+                        matblacklist.append(mat)
+                        break
                 if context.scene.hisanimvars.savespace:
                     break
-                mat = mat.material
+
+                
                 for NODE in mat.node_tree.nodes:
                     # use existing nodegroups
                     if Collapse(NODE, 'TF2 BVLG') == "continue":
@@ -286,16 +298,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     if NODE.type == 'TEX_IMAGE':
                         ReuseImage(NODE, PATH + f'/{self.merc}.blend')
 
-                if mat in matblacklist:
-                    continue # relevant towards BLU. if the material has already been swapped to BLU, continue.
-                
-                if context.scene.hisanimvars.bluteam:
-                    if (red := mat.node_tree.nodes.get('REDTEX')) != None and (blu := mat.node_tree.nodes.get('BLUTEX')) != None:
-                        getconnect = red.outputs[0].links[0].to_node
-                        mat.node_tree.links.new(
-                            blu.outputs[0], getconnect.inputs[0])
-                        matblacklist.append(mat)
-                        break
+                 # relevant towards BLU. if the material has already been swapped to BLU, continue.
         armature = bpy.data.collections[justadded].objects[0]
         while armature.parent != None:  # get the absolute root of the objects
             armature = armature.parent
@@ -373,11 +376,8 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
             
             if props.keyframe:
                 data.keyframe_insert(data_path=f'["{i}"]')
-                context.scene.frame_current += 1
-                context.scene.frame_current += -1
         
-        data.keyframe_insert(data_path='["aaa_fs"]')
-        data.keyframe_delete(data_path='["aaa_fs"]')
+        props.activeface.data.update()
 
         return {'FINISHED'}
 
