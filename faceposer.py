@@ -2,6 +2,18 @@ import bpy
 from bpy.app.handlers import persistent
 from . import mercdeployer
 
+upperFace = ['BrowInV', 'BrowOutV', 'Frown', 'InnerSquint',
+             'OuterSquint', 'ScalpD', 'CloseLid',
+             'multi_CloseLid']
+
+midFace = ['NoseV', 'NostrilFlare', 'CheekV', 'CheekH']
+
+lowerFace = ['JawV', 'JawD', 'JawH', 'LipsV', 'LipUpV',
+             'LipLoV', 'FoldLipUp', 'FoldLipLo', 'PuckerLipLo',
+             'PuckerLipUp', 'PuffLipUp', 'PuffLipLo',
+             'Smile', 'multi_Smile', 'Platysmus', 'LipCnrTwst',
+             'Dimple']
+facesections = [upperFace, midFace, lowerFace]
 @persistent
 def updatefaces(scn = None):
     props = bpy.context.scene.hisanimvars
@@ -9,9 +21,9 @@ def updatefaces(scn = None):
         data = bpy.context.object.data
     except:
         return None
+    
     if data.get('aaa_fs') == None: return None
     props.activeface = bpy.context.object
-
     if props.activeface != props.lastactiveface:
         props.sliders.clear()
         k = data.keys()
@@ -35,6 +47,18 @@ def updatefaces(scn = None):
                 new.L = z[i+1][1]
                 new.realvalue = False
                 new.name = z[i][1]
+                NAME = new.name.split('_')[-1]
+                for sectstr, sect in zip(['UPPER', 'MID', 'LOWER'], facesections):
+                    if NAME in sect:
+                        new.Type = sectstr
+                        break
+            else:
+                name = new.name[4:]
+                for sectstr, sect in zip(['UPPER', 'MID', 'LOWER'], facesections):
+                    if name in sect:
+                        new.Type = sectstr
+                        break
+    
     props.lastactiveface = props.activeface
 
 class HISANIM_OT_SLIDEKEYFRAME(bpy.types.Operator):
@@ -74,6 +98,11 @@ class HISANIM_OT_SLIDERESET(bpy.types.Operator):
         props = context.scene.hisanimvars
         face = bpy.context.object
         if self.stop:
+            
+            return {'FINISHED'}
+
+        if event.value == 'RELEASE':
+            self.stop = True
             bpy.context.scene.hisanimvars.dragging = False
             #bpy.context.scene.hisanimvars.sliders[bpy.context.scene.hisanimvars.activeslider].value = 0
             context.scene.hisanimvars.dragging = False
@@ -96,10 +125,6 @@ class HISANIM_OT_SLIDERESET(bpy.types.Operator):
             
             props.updating = False
             props.callonce = False
-            return {'FINISHED'}
-
-        if event.value == 'RELEASE':
-            self.stop = True
 
         return {'PASS_THROUGH'}
     def invoke(self, context, event):
@@ -144,7 +169,7 @@ class faceslider(bpy.types.PropertyGroup):
     #def set_val():
 
     name: bpy.props.StringProperty()
-    value: bpy.props.FloatProperty(name='', default=0.0, update=slideupdate, min=-1, max=1)
+    value: bpy.props.FloatProperty(name='', default=0.0, update=slideupdate, min=-1, max=1, options=set())
     split: bpy.props.BoolProperty(name='')
     mini: bpy.props.FloatProperty()
     maxi: bpy.props.FloatProperty()
@@ -154,6 +179,14 @@ class faceslider(bpy.types.PropertyGroup):
     R: bpy.props.StringProperty()
     L: bpy.props.StringProperty()
     changed: bpy.props.BoolProperty(default=False)
+    Type: bpy.props.EnumProperty(items=(
+        ('NONE', 'None', '', '', 0),
+        ('UPPER', 'Upper Face', '', '', 1),
+        ('MID', 'Mid Face', '', '', 2),
+        ('LOWER', 'Lower Face', '', '', 3)
+        ),
+        name='type'
+    )
 
 class HISANIM_OT_FIXFACEPOSER(bpy.types.Operator):
     bl_idname = 'hisanim.fixfaceposer'

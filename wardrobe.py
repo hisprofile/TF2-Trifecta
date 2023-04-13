@@ -149,27 +149,27 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     bluteam: bpy.props.BoolProperty(
         name="Blu Team",
         description="Swap classes",
-        default = False)
+        default = False, options=set())
     query: bpy.props.StringProperty(default="")
     cosmeticcompatibility: BoolProperty(
         name="Low Quality (Cosmetic Compatible)",
         description="Use cosmetic compatible bodygroups that don't intersect with cosmetics. Disabling will use SFM bodygroups",
-        default = True)
+        default = True, options=set())
     wrdbbluteam: BoolProperty(
         name="Blu Team",
         description="Swap classes",
-        default = False)
-    hisanimweapons: BoolProperty(name='Search For Weapons')
+        default = False, options=set())
+    hisanimweapons: BoolProperty(name='Search For Weapons', options=set())
     hisanimrimpower: FloatProperty(name='Rim Power',
                                 description='Multiply the overall rim boost by this number',
-                                default=0.400, min=0.0, max=1.0)
-    hisanimscale: bpy.props.BoolProperty(default=False, name='Scale With', description='Scales cosmetics with targets bones. Disabled by default')
+                                default=0.400, min=0.0, max=1.0, options=set())
+    hisanimscale: bpy.props.BoolProperty(default=False, name='Scale With', description='Scales cosmetics with targets bones. Disabled by default', options=set())
     hisanimtarget: bpy.props.PointerProperty(type=bpy.types.Object, poll=bonemerge.IsArmature)
-    savespace: bpy.props.BoolProperty(default=True, name='Save Space', description='When enabled, The TF2-Trifecta will link textures from source files')
-    autobind: bpy.props.BoolProperty(default=False, name='Auto BoneMerge', description='When enabled, weapons will automatically bind to mercs')
+    savespace: bpy.props.BoolProperty(default=True, name='Save Space', description='When enabled, The TF2-Trifecta will link textures from source files', options=set())
+    autobind: bpy.props.BoolProperty(default=False, name='Auto BoneMerge', description='When enabled, weapons will automatically bind to mercs', options=set())
     results: bpy.props.CollectionProperty(type=searchHits)
-    resultindex: bpy.props.IntProperty()
-    searched: bpy.props.BoolProperty()
+    resultindex: bpy.props.IntProperty(options=set())
+    searched: bpy.props.BoolProperty(options=set())
     tools: bpy.props.EnumProperty(
         items=(
         ('WARDROBE', 'Wardrobe', "Show Wardrobe's tools", 'MOD_CLOTH', 0),
@@ -177,29 +177,32 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         ('BONEMERGE', 'Bonemerge', "Show Bonemerge's tools", 'GROUP_BONE', 2),
         ('FACEPOSER', 'Face Poser', 'Show the Face Poser tools', 'RESTRICT_SELECT_OFF', 3)
         ),
-        name='Tool'
+        name='Tool', options=set()
     )
-    ddsearch: bpy.props.BoolProperty(default=True, name='')
-    ddpaints: bpy.props.BoolProperty(default=True, name='')
-    ddmatsettings: bpy.props.BoolProperty(default=True, name='')
-    ddfacepanel: bpy.props.BoolProperty(default=True, name='')
-    ddrandomize: bpy.props.BoolProperty(default=True, name='')
-    ddlocks: bpy.props.BoolProperty(default=True, name = '')
-    wrinklemaps: bpy.props.BoolProperty(default=True)
-    randomadditive: bpy.props.BoolProperty(name = 'Additive', description='Add onto the current face values')
-    randomstrength: bpy.props.FloatProperty(name='Random Strength', min=0.0, max=1.0, description='Any random value calculated will be multiplied with this number', default=1.0)
-    keyframe: bpy.props.BoolProperty(default=False, name='Keyframe Sliders', description='Keyframe the randomized changes.')
+    ddsearch: bpy.props.BoolProperty(default=True, name='', options=set())
+    ddpaints: bpy.props.BoolProperty(default=True, name='', options=set())
+    ddmatsettings: bpy.props.BoolProperty(default=True, name='', options=set())
+    ddfacepanel: bpy.props.BoolProperty(default=True, name='', options=set())
+    ddrandomize: bpy.props.BoolProperty(default=True, name='', options=set())
+    ddlocks: bpy.props.BoolProperty(default=True, name = '', options=set())
+    wrinklemaps: bpy.props.BoolProperty(default=True, options=set())
+    randomadditive: bpy.props.BoolProperty(name = 'Additive', description='Add onto the current face values', options=set())
+    randomstrength: bpy.props.FloatProperty(name='Random Strength', min=0.0, max=1.0, description='Any random value calculated will be multiplied with this number', default=1.0, options=set())
+    keyframe: bpy.props.BoolProperty(default=False, name='Keyframe Sliders', description='Keyframe the randomized changes.', options=set())
     lockfilter: bpy.props.StringProperty()
     activeslider: bpy.props.StringProperty()
     activeface: bpy.props.PointerProperty(type=bpy.types.Object)
     lastactiveface: bpy.props.PointerProperty(type=bpy.types.Object)
     sliders: bpy.props.CollectionProperty(type=faceposer.faceslider)
-    sliderindex: bpy.props.IntProperty()
-    dragging: bpy.props.BoolProperty(default=False)
-    sensitivity: bpy.props.FloatProperty(min=0, max=1, default=1)#, description=''
-    updating: bpy.props.BoolProperty(default = False)
-    callonce: bpy.props.BoolProperty(default = False)
-    LR: bpy.props.FloatProperty(default=0.5, min=0.0, max=1.0, name='L <-> R', description='Which way flexing will lean more towards', step=50)
+    sliderindex: bpy.props.IntProperty(options=set())
+    dragging: bpy.props.BoolProperty(default=False, options=set())
+    sensitivity: bpy.props.FloatProperty(min=0, max=1, default=1, options=set())#, description=''
+    updating: bpy.props.BoolProperty(default = False, options=set())
+    callonce: bpy.props.BoolProperty(default = False, options=set())
+    LR: bpy.props.FloatProperty(default=0.5, options=set(), min=0.0, max=1.0, name='L <-> R', description='Which way flexing will lean more towards', step=50)
+    up: bpy.props.BoolProperty(default=False, options=set())
+    mid: bpy.props.BoolProperty(default=False, options=set())
+    low: bpy.props.BoolProperty(default=False, options=set())
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')

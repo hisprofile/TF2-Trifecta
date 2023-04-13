@@ -1,30 +1,14 @@
 import bpy
 from . import bonemerge, mercdeployer, newuilist
 
-'''def hasKey(obj, slider: str, slideobj = None) -> bool:
-        data = obj.data
-        if data.animation_data == None:
-            return False
-        scene = bpy.context.scene
-        action = data.animation_data.action
-
-
-        for curv in action.fcurves:
-            if curv.data_path == f'["{slider}"]' or curv.data_path == f'["{slideobj.L}"]':
-                for point in curv.keyframe_points:
-                    if scene.frame_current == point.co.x:
-                        return True
-                else:
-                    return False
-        else:
-            return False'''
-
 def hasKey(obj, slider) -> bool:
         data = obj.data
         if data.animation_data == None:
             return False
         scene = bpy.context.scene
         action = data.animation_data.action
+        if action == None:
+            return False
 
 
         for curv in action.fcurves:
@@ -35,46 +19,84 @@ def hasKey(obj, slider) -> bool:
         else:
             return False
 
+
+
+
+
 class HISANIM_UL_SLIDERS(bpy.types.UIList):
+
+    def filter_items(self, context, data, propname):
+        props = context.scene.hisanimvars
+        items = getattr(data, propname)
+
+        filtered = [self.bitflag_filter_item] * len(items)
+
+
+
+        for i, item in enumerate(items):
+            if self.filter_name.lower() not in item.name.lower():
+                filtered[i] &= ~self.bitflag_filter_item
+                
+            if props.up or props.mid or props.low:
+                
+                if item.Type == 'NONE':
+                    filtered[i] &= ~self.bitflag_filter_item
+
+                if item.Type == 'UPPER':
+                    if not props.up:
+                        filtered[i] &= ~self.bitflag_filter_item
+                
+                if item.Type == 'MID':
+                    if not props.mid:
+                        filtered[i] &= ~self.bitflag_filter_item
+
+                if item.Type == 'LOWER':
+                    if not props.low:
+                        filtered[i] &= ~self.bitflag_filter_item
+
+        return filtered, []
 
     def draw_item(self, context,
             layout, data,
             item, icon,
             active_data, active_propname,
             index):
+        #layout.alignment = 'CENTER'
+        #layout.use_property_split = False
         props = context.scene.hisanimvars
         isKeyed = hasKey(bpy.context.object, item)
         #if 'left' in item.name: return None
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if props.activeslider != item.name and props.activeslider != '': layout.enabled = False
             if item.split:
+                row = layout.row(align=True)
                 Name = item.name.split('_')[-1]
                 if not item.realvalue:
 
-                    split = layout.split(factor=0.7, align=True)
+                    split = row.split(factor=0.7, align=True)
                     split.prop(item, 'value', slider=True, text=Name)
                     split.prop(props, 'LR', slider=True, text='L-R')
 
                 else:
 
-                    layout.prop(props.activeface.data, f'["{item.R}"]', text='Right')
-                    layout.prop(props.activeface.data, f'["{item.L}"]', text='Left')
-                op = layout.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='')
+                    row.prop(props.activeface.data, f'["{item.R}"]', text='Right')
+                    row.prop(props.activeface.data, f'["{item.L}"]', text='Left')
+                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='')
                 op.delete = isKeyed
                 op.slider = item.name
-                layout.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')
+                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')
 
             else:
-
+                row = layout.row(align=True)
                 Name = item.name.split('_')[-1]
                 if not item.realvalue:
-                    layout.prop(item, 'value', slider=True, text=Name)
+                    row.prop(item, 'value', slider=True, text=Name)
                 else:
-                    layout.prop(props.activeface.data, f'["{item.name}"]', text=item.name[4:])
-                op = layout.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='')
+                    row.prop(props.activeface.data, f'["{item.name}"]', text=item.name[4:])
+                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='')
                 op.delete = isKeyed
                 op.slider = item.name
-                layout.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')
+                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
@@ -98,6 +120,8 @@ class HISANIM_UL_LOCKSLIDER(bpy.types.UIList):
             stateR = states.get(item.R)
             stateL = states.get(item.L)
             if state == None: state = False
+            if stateR == None: stateR = False
+            if stateL == None: stateL = False
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if item.split:
                 split = layout.split(factor=0.2, align=True)
@@ -319,6 +343,10 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 #row.enabled = props.dragging
                 op = row.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
                 layout.row().prop(props, 'LR', slider=True)
+                row = layout.row(align=True)
+                row.prop(props, 'up', text='Upper', toggle=True)
+                row.prop(props, 'mid', text='Mid', toggle=True)
+                row.prop(props, 'low', text='Lower', toggle=True)
                 layout.row().prop(props, 'sensitivity', slider=True, text='Sensitivity')
                 
             else:
@@ -407,3 +435,10 @@ def register():
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
+
+import bpy
+from bpy.props import StringProperty, IntProperty, CollectionProperty, BoolProperty
+from bpy.types import PropertyGroup, UIList, Operator, Panel
+
+
+    
