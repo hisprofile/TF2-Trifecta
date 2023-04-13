@@ -11,12 +11,12 @@ mercs = ['scout', 'soldier', 'pyro', 'demo',
          'heavy', 'engineer', 'medic', 'sniper', 'spy']
 
 def MAP(x,a,b,c,d, clamp=None):
-   y=(x-a)/(b-a)*(d-c)+c
-   
-   if clamp:
-       return min(max(y, c), d)
-   else:
-       return y
+    y=(x-a)/(b-a)*(d-c)+c
+    
+    if clamp:
+        return min(max(y, c), d)
+    else:
+        return y
 
 def append(a, b):  # get a class from TF2-V3
     blendfile = f'{bpy.context.preferences.addons[__package__].preferences.hisanim_paths["TF2-V3"].path}/{a}.blend'

@@ -196,7 +196,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     sliders: bpy.props.CollectionProperty(type=faceposer.faceslider)
     sliderindex: bpy.props.IntProperty()
     dragging: bpy.props.BoolProperty(default=False)
-    sensitivity: bpy.props.FloatProperty(min=0, max=1, default=0.5)#, description=''
+    sensitivity: bpy.props.FloatProperty(min=0, max=1, default=1)#, description=''
     updating: bpy.props.BoolProperty(default = False)
     callonce: bpy.props.BoolProperty(default = False)
     LR: bpy.props.FloatProperty(default=0.5, min=0.0, max=1.0, name='L <-> R', description='Which way flexing will lean more towards', step=50)

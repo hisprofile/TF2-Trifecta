@@ -35,12 +35,6 @@ def updatefaces(scn = None):
                 new.L = z[i+1][1]
                 new.realvalue = False
                 new.name = z[i][1]
-                '''if props.activeface.get('LRpref') == None:
-                    props.activeface['LRpref'] = {}
-                if (value := props.activeface['LRpref'].get(new.name)) != None:
-                    new.LR = value
-                else:
-                    props.activeface['LRpref'][new.name] = 0.5'''
     props.lastactiveface = props.activeface
 
 class HISANIM_OT_SLIDEKEYFRAME(bpy.types.Operator):
@@ -48,10 +42,26 @@ class HISANIM_OT_SLIDEKEYFRAME(bpy.types.Operator):
     bl_label = 'Keyframe Slider'
     bl_description = 'Keyframe this slider'
 
-    delete = bpy.props.BoolProperty(default=False)
-
+    delete: bpy.props.BoolProperty(default=False)
+    slider: bpy.props.StringProperty()
     def execute(self, context):
-        pass
+        props = context.scene.hisanimvars
+        slider = props.sliders[self.slider]
+        data = bpy.context.object.data
+        if slider.split:
+            if self.delete:
+                data.keyframe_delete(data_path=f'["{slider.R}"]')
+                data.keyframe_delete(data_path=f'["{slider.L}"]')
+            else:
+                data.keyframe_insert(data_path=f'["{slider.R}"]')
+                data.keyframe_insert(data_path=f'["{slider.L}"]')
+        else:
+            if self.delete:
+                data.keyframe_delete(data_path=f'["{slider.name}"]')
+            else:
+                data.keyframe_insert(data_path=f'["{slider.name}"]')
+
+        return {'FINISHED'}
         
 
 class HISANIM_OT_SLIDERESET(bpy.types.Operator):
@@ -62,33 +72,31 @@ class HISANIM_OT_SLIDERESET(bpy.types.Operator):
 
     def modal(self, context, event):
         props = context.scene.hisanimvars
+        face = bpy.context.object
         if self.stop:
             bpy.context.scene.hisanimvars.dragging = False
             #bpy.context.scene.hisanimvars.sliders[bpy.context.scene.hisanimvars.activeslider].value = 0
             context.scene.hisanimvars.dragging = False
             props.updating = True
             for i in context.scene.hisanimvars.sliders:
+                if context.scene.tool_settings.use_keyframe_insert_auto:
+                    if i.changed:
+                        if i.split:
+                            if i.originalval != face.data[i.R]:
+                                face.data.keyframe_insert(data_path=f'["{i.R}"]')
+                            if i.originalvalL != face.data[i.L]:
+                                face.data.keyframe_insert(data_path=f'["{i.L}"]')
+                        else:
+                            if i.originalval != face.data[i.name]:
+                                face.data.keyframe_insert(data_path=f'["{i.name}"]')
+                            
                 i.value = 0
-
-            '''if context.scene.tool_settings.use_keyframe_insert_auto:
-                for i in props.sliders:
-                    if i.originalval != props.activeface.data[i.name]:
-                        props.activeface.data.keyframe_insert(data_path=f'["{i.name}"]')'''
+                i.changed = False
             props.activeslider = ''
             
             props.updating = False
             props.callonce = False
             return {'FINISHED'}
-
-        '''if event.type in {'RIGHTMOUSE', 'ESC'}:
-            context.scene.hisanimvars.dragging = False
-            props.updating = True
-            for i in context.scene.hisanimvars.sliders:
-                i.value = 0
-            props.updating = False
-            props.callonce = False
-            self.stop = True
-            return {'CANCELLED'}'''
 
         if event.value == 'RELEASE':
             self.stop = True
@@ -103,6 +111,7 @@ def slideupdate(self, value):
     props = bpy.context.scene.hisanimvars
     if props.updating: return None
     if props.dragging:
+        self.changed = True
         ignore = False if props.activeslider != self.name else True
         if not self.split:
             props.activeface.data[self.name] = min(max(self.originalval + (self.value * props.sensitivity), self.mini), self.maxi)
@@ -144,6 +153,7 @@ class faceslider(bpy.types.PropertyGroup):
     realvalue: bpy.props.BoolProperty(default=True)
     R: bpy.props.StringProperty()
     L: bpy.props.StringProperty()
+    changed: bpy.props.BoolProperty(default=False)
 
 class HISANIM_OT_FIXFACEPOSER(bpy.types.Operator):
     bl_idname = 'hisanim.fixfaceposer'
@@ -164,7 +174,8 @@ class HISANIM_OT_FIXFACEPOSER(bpy.types.Operator):
 classes = [
     faceslider,
     HISANIM_OT_SLIDERESET,
-    HISANIM_OT_FIXFACEPOSER
+    HISANIM_OT_FIXFACEPOSER,
+    HISANIM_OT_SLIDEKEYFRAME
 ]
 
 def register():

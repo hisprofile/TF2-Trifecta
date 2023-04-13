@@ -1,6 +1,40 @@
 import bpy
 from . import bonemerge, mercdeployer, newuilist
 
+'''def hasKey(obj, slider: str, slideobj = None) -> bool:
+        data = obj.data
+        if data.animation_data == None:
+            return False
+        scene = bpy.context.scene
+        action = data.animation_data.action
+
+
+        for curv in action.fcurves:
+            if curv.data_path == f'["{slider}"]' or curv.data_path == f'["{slideobj.L}"]':
+                for point in curv.keyframe_points:
+                    if scene.frame_current == point.co.x:
+                        return True
+                else:
+                    return False
+        else:
+            return False'''
+
+def hasKey(obj, slider) -> bool:
+        data = obj.data
+        if data.animation_data == None:
+            return False
+        scene = bpy.context.scene
+        action = data.animation_data.action
+
+
+        for curv in action.fcurves:
+            if (curv.data_path == f'["{slider.name}"]') or (curv.data_path == f'["{slider.L}"]'):
+                for point in curv.keyframe_points:
+                    if scene.frame_current == point.co.x:
+                        return True
+        else:
+            return False
+
 class HISANIM_UL_SLIDERS(bpy.types.UIList):
 
     def draw_item(self, context,
@@ -9,25 +43,37 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
             active_data, active_propname,
             index):
         props = context.scene.hisanimvars
+        isKeyed = hasKey(bpy.context.object, item)
         #if 'left' in item.name: return None
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if props.activeslider != item.name and props.activeslider != '': layout.enabled = False
             if item.split:
                 Name = item.name.split('_')[-1]
                 if not item.realvalue:
+
                     split = layout.split(factor=0.7, align=True)
                     split.prop(item, 'value', slider=True, text=Name)
                     split.prop(props, 'LR', slider=True, text='L-R')
+
                 else:
+
                     layout.prop(props.activeface.data, f'["{item.R}"]', text='Right')
                     layout.prop(props.activeface.data, f'["{item.L}"]', text='Left')
+                op = layout.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='')
+                op.delete = isKeyed
+                op.slider = item.name
                 layout.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')
+
             else:
+
                 Name = item.name.split('_')[-1]
                 if not item.realvalue:
                     layout.prop(item, 'value', slider=True, text=Name)
                 else:
                     layout.prop(props.activeface.data, f'["{item.name}"]', text=item.name[4:])
+                op = layout.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='')
+                op.delete = isKeyed
+                op.slider = item.name
                 layout.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')
 
         elif self.layout_type in {'GRID'}:
@@ -35,7 +81,6 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
             layout.label(text='')
 
 class HISANIM_UL_LOCKSLIDER(bpy.types.UIList):
-
     def draw_item(self, context,
             layout, data,
             item, icon,
@@ -46,17 +91,33 @@ class HISANIM_UL_LOCKSLIDER(bpy.types.UIList):
         states = DATA.get('locklist')
         if states == None:
             state = False
+            stateR = False
+            stateL = False
         else:
             state = states.get(item.name)
+            stateR = states.get(item.R)
+            stateL = states.get(item.L)
             if state == None: state = False
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            split = layout.split(factor=0.2, align=True)
-            #state = props.activeface.data.get(item.name)
-            op = split.operator('hisanim.lock', icon='LOCKED' if state else 'UNLOCKED', emboss=True, text='', depress=state)
-            op.datapath = bpy.context.object.name
-            op.key = item.name
-            DATA = props.activeface.data
-            split.prop(DATA, f'["{item.name}"]', text=item.name)
+            if item.split:
+                split = layout.split(factor=0.2, align=True)
+                op = split.operator('hisanim.lock', icon='LOCKED' if stateR else 'UNLOCKED', emboss=True, text='', depress=stateR)
+                op.datapath = bpy.context.object.name
+                op.key = item.R
+                split.prop(DATA, f'["{item.R}"]', text=item.R[4:])
+                split = layout.split(factor=0.2, align=True)
+                op = split.operator('hisanim.lock', icon='LOCKED' if stateL else 'UNLOCKED', emboss=True, text='', depress=stateL)
+                op.datapath = bpy.context.object.name
+                op.key = item.L
+                split.prop(DATA, f'["{item.L}"]', text=item.L[4:])
+                pass
+            else:
+                split = layout.split(factor=0.2, align=True)
+                op = split.operator('hisanim.lock', icon='LOCKED' if state else 'UNLOCKED', emboss=True, text='', depress=state)
+                op.datapath = bpy.context.object.name
+                op.key = item.name
+                DATA = bpy.context.object.data
+                split.prop(DATA, f'["{item.name}"]', text=item.name[4:])
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
@@ -169,14 +230,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                             row.label(text=f'{len(hits)} Result')
                         else:
                             row.label(text=f'{len(hits)} Results')
-                        '''for ops in hits:
-                            # draw the search results as buttons
-                            split=layout.split(factor=0.2)
-                            row=split.row()
-                            row.label(text=ops.name.split("_-_")[1])
-                            row = split.row()
-                            OPER = row.operator('hisanim.loadcosmetic', text=ops.name.split('_-_')[0])
-                            OPER.LOAD = ops.name'''
                         layout.row().template_list('HISANIM_UL_RESULTS', 'Results', props, 'results', props, 'resultindex')
                             #row.operator()
                     else: 
@@ -196,7 +249,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             if prefs.hisanim_paths.get('TF2-V3') != None:
                 if prefs.hisanim_paths.get('TF2-V3').this_is != 'FOLDER':
                     row = layout.row()
-                    row.label('TF2-V3 contains an invalid path!')
+                    row.label(text='TF2-V3 contains an invalid path!')
                 else:
                     row = layout.row()
                     row.label(text='Move face in custom properties under data tab.')
@@ -304,8 +357,8 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 data = context.object.data
                 if data.get('locklist') == None:
                     layout.row().label(text='Locking will prevent randomizing.')
-                #layout.row().template_list('HISANIM_UL_LOCKSLIDER', 'Lock Sliders', props, 'sliders', props, 'sliderindex')
-                row = layout.row()
+                layout.row().template_list('HISANIM_UL_LOCKSLIDER', 'Lock Sliders', props, 'sliders', props, 'sliderindex')
+                '''row = layout.row()
                 
                 row.prop(props, 'lockfilter', text='Filter')
                 box = layout.box()
@@ -326,7 +379,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     op = split.operator('hisanim.lock', icon='LOCKED' if state else 'UNLOCKED', emboss=True, text='', depress=state)
                     op.datapath = bpy.context.object.name
                     op.key = i
-                    split.prop(data, f'["{i}"]', text=i)
+                    split.prop(data, f'["{i}"]', text=i)'''
                 '''split = row.split(factor=0.8, align=True)
                     op = split.operator('hisanim.lock', text=i, depress=state)
                     op.datapath = bpy.context.object.name
