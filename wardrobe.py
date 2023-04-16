@@ -203,6 +203,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     up: bpy.props.BoolProperty(default=False, options=set())
     mid: bpy.props.BoolProperty(default=False, options=set())
     low: bpy.props.BoolProperty(default=False, options=set())
+    #hwm: bpy.props.BoolProperty(default=True, )
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')

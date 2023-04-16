@@ -174,6 +174,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
 
     def execute(self, context):
         prefs = bpy.context.preferences.addons[__package__].preferences
+        props = bpy.context.scene.hisanimvars
         if prefs.hisanim_paths.get('TF2-V3') == None:
             self.report(
                 {'ERROR'}, 'No Mercs Found! Make sure you have TF2-V3 setup as an entry!')
@@ -194,7 +195,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             bpy.data.objects.remove(bpy.data.objects[name])
             bpy.context.scene.collection.children.link(
                 bpy.data.collections[name].make_local())
-
             '''
             This is to make everything but images and node groups localized. Everything must be localized in order,
             or duplicates will form. The order is
@@ -223,7 +223,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if i.type != 'EMPTY':
                     continue
                 i.make_local()
-
             armature = bpy.data.collections[name].objects[0]
             while armature.parent != None:  # get the absolute root of the objects
                 armature = armature.parent
@@ -239,25 +238,24 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         # this mostly pertains to blu switching. any material added has been switched to BLU and will therefore be skipped.
         matblacklist = []
         armature = bpy.data.collections[justadded].objects[0]
-        while armature.parent != None:  # get the absolute root of the objects
-            armature = armature.parent
-        armature.location = bpy.context.scene.cursor.location
         if (text := armature.get('rig_ui')) != None:
             text.as_module()
         # iterate through collection of objects
         for obj in bpy.data.collections[justadded].objects:
             if (goto := bpy.data.collections.get('Deployed Mercs')) == None:
                 # If the collection 'Deployed Mercs' does not exist yet, create it
-                bpy.context.scene.collection.children.link(
-                    bpy.data.collections.new('Deployed Mercs'))
+                bpy.context.scene.collection.children.link(bpy.data.collections.new('Deployed Mercs'))
                 goto = bpy.data.collections['Deployed Mercs']
             # link the current object to 'Deployed Mercs'
             goto.objects.link(obj)
-            if obj.get('FLEXES') and not context.scene.hisanimvars.wrinklemaps:
+
+            if obj.get('FLEXES') and not props.wrinklemaps: # if the object has wrinkle map support, but wrinkle maps are disabled, then remove
                 bpy.data.objects.remove(obj)
                 continue
-            if obj.modifiers.get('FLEXES') != None and not context.scene.hisanimvars.wrinklemaps:
+
+            if obj.modifiers.get('FLEXES') != None and not context.scene.hisanimvars.wrinklemaps: # remove the geometry nodes modifier
                 obj.modifiers.remove(obj.modifiers.get('FLEXES'))
+
             if obj.get('COSMETIC') != None:
                 # if Cosmetic Compatibility is enabled and a mesh is not compatible, delete it.
                 if context.scene.hisanimvars.cosmeticcompatibility and not obj['COSMETIC']:
@@ -267,6 +265,16 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if not context.scene.hisanimvars.cosmeticcompatibility and obj['COSMETIC']:
                     bpy.data.objects.remove(obj)
                     continue
+            armature = bpy.data.collections[justadded].objects[0]
+        while armature.parent != None:  # get the absolute root of the objects
+            armature = armature.parent
+        for i in armature.children_recursive:
+                if i.type != 'ARMATURE':
+                    continue
+                i.make_local().data.make_local()
+        armature.make_local().data.make_local()
+        armature.location = bpy.context.scene.cursor.location # set the character to 3d cursor location
+        for obj in bpy.data.collections[justadded].objects: # go through the collection 
             for mat in obj.material_slots:
                 # if Save Space is enabled, this is useless as all material contents will be linked.
                 mat = mat.material
@@ -279,13 +287,22 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                         mat.node_tree.links.new(
                             blu.outputs[0], getconnect.inputs[0])
                         matblacklist.append(mat)
-                        break
-                if context.scene.hisanimvars.savespace:
-                    break
+                        #break
+
+                
 
                 
                 for NODE in mat.node_tree.nodes:
                     # use existing nodegroups
+
+                    if NODE.type == 'GROUP':
+                        if NODE.node_tree.name == 'TF2 BVLG':
+                            print(NODE.name, mat.name)
+                            NODE.inputs['Rim boost'].default_value = NODE.inputs['Rim boost'].default_value * props.hisanimrimpower
+                            
+
+                    if context.scene.hisanimvars.savespace: continue
+
                     if Collapse(NODE, 'TF2 BVLG') == "continue":
                         continue
 
@@ -297,6 +314,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     # use existing images
                     if NODE.type == 'TEX_IMAGE':
                         ReuseImage(NODE, PATH + f'/{self.merc}.blend')
+                matblacklist.append(mat)
 
                  # relevant towards BLU. if the material has already been swapped to BLU, continue.
         armature = bpy.data.collections[justadded].objects[0]
@@ -320,7 +338,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             bpy.data.collections['MDSHAPES'].objects.link(i.custom_shape)
             shape = i.custom_shape.name
 
-            if ".0" in shape:
+            if ".0" in shape: # if .0 is in the name, it's most likely a duplicate. search for the original.
                 try:
                     DELETE = shape
                     if DELETE not in pending:
@@ -344,6 +362,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         PurgeImages()
         PurgeNodeGroups()
         bpy.context.view_layer.active_layer_collection = bak
+        bpy.ops.outliner.orphans_purge(do_recursive=True)
         return {'FINISHED'}
 
 class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):

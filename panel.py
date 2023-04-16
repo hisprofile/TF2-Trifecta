@@ -19,10 +19,6 @@ def hasKey(obj, slider) -> bool:
         else:
             return False
 
-
-
-
-
 class HISANIM_UL_SLIDERS(bpy.types.UIList):
 
     def filter_items(self, context, data, propname):
@@ -61,27 +57,22 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
             item, icon,
             active_data, active_propname,
             index):
-        #layout.alignment = 'CENTER'
-        #layout.use_property_split = False
         props = context.scene.hisanimvars
         isKeyed = hasKey(bpy.context.object, item)
-        #if 'left' in item.name: return None
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if props.activeslider != item.name and props.activeslider != '': layout.enabled = False
+            layout.row()
             if item.split:
                 row = layout.row(align=True)
                 Name = item.name.split('_')[-1]
                 if not item.realvalue:
-
                     split = row.split(factor=0.7, align=True)
                     split.prop(item, 'value', slider=True, text=Name)
                     split.prop(props, 'LR', slider=True, text='L-R')
-
                 else:
-
                     row.prop(props.activeface.data, f'["{item.R}"]', text='Right')
                     row.prop(props.activeface.data, f'["{item.L}"]', text='Left')
-                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='')
+                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
                 op.delete = isKeyed
                 op.slider = item.name
                 row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')
@@ -93,7 +84,7 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
                     row.prop(item, 'value', slider=True, text=Name)
                 else:
                     row.prop(props.activeface.data, f'["{item.name}"]', text=item.name[4:])
-                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='')
+                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
                 op.delete = isKeyed
                 op.slider = item.name
                 row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')
@@ -110,36 +101,18 @@ class HISANIM_UL_LOCKSLIDER(bpy.types.UIList):
             index):
         props = context.scene.hisanimvars
         DATA = props.activeface.data
-        states = DATA.get('locklist')
-        if states == None:
-            state = False
-            stateR = False
-            stateL = False
-        else:
-            state = states.get(item.name)
-            stateR = states.get(item.R)
-            stateL = states.get(item.L)
-            if state == None: state = False
-            if stateR == None: stateR = False
-            if stateL == None: stateL = False
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if item.split:
                 split = layout.split(factor=0.2, align=True)
-                op = split.operator('hisanim.lock', icon='LOCKED' if stateR else 'UNLOCKED', emboss=True, text='', depress=stateR)
-                op.datapath = bpy.context.object.name
-                op.key = item.R
+                split.prop(item, 'locked', icon='LOCKED' if item.locked else 'UNLOCKED')
                 split.prop(DATA, f'["{item.R}"]', text=item.R[4:])
                 split = layout.split(factor=0.2, align=True)
-                op = split.operator('hisanim.lock', icon='LOCKED' if stateL else 'UNLOCKED', emboss=True, text='', depress=stateL)
-                op.datapath = bpy.context.object.name
-                op.key = item.L
+                split.prop(item, 'lockedL', icon='LOCKED' if item.lockedL else 'UNLOCKED')
                 split.prop(DATA, f'["{item.L}"]', text=item.L[4:])
                 pass
             else:
                 split = layout.split(factor=0.2, align=True)
-                op = split.operator('hisanim.lock', icon='LOCKED' if state else 'UNLOCKED', emboss=True, text='', depress=state)
-                op.datapath = bpy.context.object.name
-                op.key = item.name
+                split.prop(item, 'locked', icon='LOCKED' if item.locked else 'UNLOCKED')
                 DATA = bpy.context.object.data
                 split.prop(DATA, f'["{item.name}"]', text=item.name[4:])
 
@@ -166,7 +139,7 @@ class HISANIM_UL_RESULTS(bpy.types.UIList):
             layout.label(text='')
 
 class TRIFECTA_PT_PANEL(bpy.types.Panel):
-    """A Custom Panel in the Viewport Toolbar""" # for the searching segment.
+    """A Custom Panel in the Viewport Toolbar"""
     bl_label = 'TF2-Trifecta'
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -287,10 +260,10 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                             MERC.type = ii
                         row = layout.row(align=True)
                     row.prop(context.scene.hisanimvars, "bluteam")
-                    row = layout.row()
-                    row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
-                    row = layout.row()
-                    row.prop(props, 'wrinklemaps', text='Wrinkle Maps')
+                    layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
+                    layout.row().prop(props, 'wrinklemaps', text='Wrinkle Maps')
+                    layout.row().prop(props, 'hisanimrimpower', slider=True)
+
                     
             else:
                 row = layout.row()
@@ -348,6 +321,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row.prop(props, 'mid', text='Mid', toggle=True)
                 row.prop(props, 'low', text='Lower', toggle=True)
                 layout.row().prop(props, 'sensitivity', slider=True, text='Sensitivity')
+                layout.row().operator('hisanim.keyeverything')
                 
             else:
                 row = layout.row()
@@ -386,36 +360,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 if data.get('locklist') == None:
                     layout.row().label(text='Locking will prevent randomizing.')
                 layout.row().template_list('HISANIM_UL_LOCKSLIDER', 'Lock Sliders', props, 'sliders', props, 'sliderindex')
-                '''row = layout.row()
-                
-                row.prop(props, 'lockfilter', text='Filter')
-                box = layout.box()
-                for i in data.keys():
-                    try:
-                        data.id_properties_ui(i)
-                        if props.lockfilter not in i: raise
-                    except:
-                        continue
-                    row = box.row(align=True)
-                    states = data.get('locklist')
-                    if states == None:
-                        state = False
-                    else:
-                        state = states.get(i)
-                        if state == None: state = False
-                    split = row.split(factor=0.2, align=True)
-                    op = split.operator('hisanim.lock', icon='LOCKED' if state else 'UNLOCKED', emboss=True, text='', depress=state)
-                    op.datapath = bpy.context.object.name
-                    op.key = i
-                    split.prop(data, f'["{i}"]', text=i)'''
-                '''split = row.split(factor=0.8, align=True)
-                    op = split.operator('hisanim.lock', text=i, depress=state)
-                    op.datapath = bpy.context.object.name
-                    op.key = i
-                    split.prop(data, f'["{i}"]', text='', )
-                    op = row.operator('hisanim.lock', icon='LOCKED' if state else 'UNLOCKED', emboss=False, text='')
-                    op.datapath = bpy.context.object.name
-                    op.key = i'''
             else:
                 row = layout.row()
                 row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
