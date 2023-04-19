@@ -365,60 +365,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         bpy.ops.outliner.orphans_purge(do_recursive=True)
         return {'FINISHED'}
 
-class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
-    bl_idname = 'hisanim.randomizeface'
-    bl_label = 'Randomize Face'
-    bl_description = 'Randomize the values of the facial sliders'
-    bl_options = {'UNDO'}
-    reset: bpy.props.BoolProperty(default=False)
-
-    def execute(self, context):
-        props = context.scene.hisanimvars
-        data = context.object.data
-        for i in data.keys():
-            if i == 'aaa_fs':
-                continue
-            if (locklist := data.get('locklist')) != None:
-                if locklist.get(i) == True: continue
-            try:
-                prop = data.id_properties_ui(i).as_dict()
-            except:
-                continue
-            min = prop.get('min')
-            max = prop.get('max')
-            randval = random.random() 
-            randval = MAP(randval, 0, 1, min, max) * (1- self.reset) * props.randomstrength
-            if props.randomadditive and not self.reset:
-                data[i] = data[i] + randval
-            else:
-                data[i] = randval
-            
-            if props.keyframe:
-                data.keyframe_insert(data_path=f'["{i}"]')
-        
-        props.activeface.data.update()
-
-        return {'FINISHED'}
-
-class HISANIM_OT_LOCK(bpy.types.Operator):
-    bl_idname = 'hisanim.lock'
-    bl_label = 'Lock Slider'
-    bl_options = {'UNDO'}
-
-    datapath: bpy.props.StringProperty()
-    key: bpy.props.StringProperty()
-
-    def execute(self, context):
-        obj = bpy.data.objects[self.datapath]
-        if (locklist := obj.data.get('locklist')) == None:
-            obj.data['locklist'] = {}
-            locklist = obj.data['locklist']
-        if (lockstate := locklist.get(self.key)) == None:
-            locklist[self.key] = True
-            return {'FINISHED'}
-        locklist[self.key] = 1 - lockstate
-        return {'FINISHED'}
-
 class MD_PT_MERCDEPLOY(bpy.types.Panel):
     '''Rolling in the nonsense, deploy the fantasy!'''
     bl_label = "Merc Deployer"
@@ -443,9 +389,7 @@ class MD_PT_MERCDEPLOY(bpy.types.Panel):
         row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
 
 
-classes =   [HISANIM_OT_LOADMERC,
-            HISANIM_OT_RANDOMIZEFACE,
-            HISANIM_OT_LOCK]
+classes =   [HISANIM_OT_LOADMERC]
             #MD_PT_MERCDEPLOY]
 
 

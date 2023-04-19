@@ -180,6 +180,8 @@ def slideupdate(self, value):
     return None
 
 class faceslider(bpy.types.PropertyGroup):
+
+    
     def set_lock(self, value):
         obj = bpy.context.object
         if (locklist := obj.data.get('locklist')) == None:
@@ -208,13 +210,6 @@ class faceslider(bpy.types.PropertyGroup):
             return None
         locklist[self.L] = 1 - lockstate
         return None
-    
-    def get_lock(self):
-        obj = bpy.context.object
-        if (locklist := obj.data.get('locklist')) == None: return False
-        locklist = obj.data['locklist']
-        if (lockstate := locklist.get(self.name)) == None: return False
-        return lockstate
     
     def get_lock(self):
         obj = bpy.context.object
