@@ -124,8 +124,8 @@ class HISANIM_OT_SLIDERESET(bpy.types.Operator):
             context.scene.hisanimvars.dragging = False
             props.updating = True
             for i in context.scene.hisanimvars.sliders:
-                if context.scene.tool_settings.use_keyframe_insert_auto:
-                    if i.changed:
+                if i.changed:
+                    if context.scene.tool_settings.use_keyframe_insert_auto:
                         if i.split:
                             if i.originalval != face.data[i.R]:
                                 face.data.keyframe_insert(data_path=f'["{i.R}"]')
@@ -161,17 +161,24 @@ def slideupdate(self, value):
             Lmult = MAP(props.LR, 1.0, 0.5, 0.0, 1.0, True)
             props.activeface.data[self.R] = min(max(self.originalval + (self.value * props.sensitivity * Rmult), self.mini), self.maxi)
             props.activeface.data[self.L] = min(max(self.originalvalL + (self.value * props.sensitivity * Lmult), self.mini), self.maxi)
-
+        if props.activeslider == '': props.activeslider = self.name
         props.activeface.data.update()
-        props.activeslider = self.name
+        print(props.activeslider)
     else: # do this once
-        if not self.split:
+        '''if not self.split:
             self.originalval = props.activeface.data[self.name]
         else:
             self.originalval = props.activeface.data[self.R]
-            self.originalvalL = props.activeface.data[self.L]
+            self.originalvalL = props.activeface.data[self.L]'''
+        for slide in props.sliders:
+            #print(slide)
+            if not slide.split:
+                slide.originalval = bpy.context.object.data[slide.name]
+            else:
+                slide.originalval = bpy.context.object.data[slide.R]
+                slide.originalvalL = bpy.context.object.data[slide.L]
         # define original values to add off of and produce a final result. an original value is the value of a slider before manipulating took place.
-        props.activeslider = self.name
+        
         #print(self.name)
         props.dragging = True
         if not props.callonce: bpy.ops.hisanim.resetslider('INVOKE_DEFAULT')
@@ -181,7 +188,6 @@ def slideupdate(self, value):
 
 class faceslider(bpy.types.PropertyGroup):
 
-    
     def set_lock(self, value):
         obj = bpy.context.object
         if (locklist := obj.data.get('locklist')) == None:
