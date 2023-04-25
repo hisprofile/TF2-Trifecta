@@ -60,7 +60,7 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
         props = context.scene.hisanimvars
         isKeyed = hasKey(bpy.context.object, item)
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            if props.activeslider != item.name and props.activeslider != '': layout.enabled = False
+            #if props.activeslider != item.name and props.activeslider != '': layout.enabled = False
             layout.row()
             if item.split:
                 row = layout.row(align=True)

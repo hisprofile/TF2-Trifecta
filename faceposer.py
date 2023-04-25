@@ -111,34 +111,62 @@ class HISANIM_OT_SLIDERESET(bpy.types.Operator):
     slider = bpy.props.StringProperty()
     stop: bpy.props.BoolProperty(default = False)
 
+    '''This operator decides what will happen to the sliders once
+    the user stops manipulating them. It only deals with keyframing and resetting.
+    If the sliders were changed and auto keyframing is enabled, keyframe.
+    If one slider was cancelled, then all were cancelled, and reset
+    the face to its original position.'''
+
+    def resetsliders(self, sliders, context):
+        face = context.object
+        for i in sliders:
+            if i.split:
+                face.data[i.R] = i.originalval
+                face.data[i.L] = i.originalvalL
+            else:
+                face.data[i.name] = i.originalval
+        face.data.update()
+
     def modal(self, context, event):
         props = context.scene.hisanimvars
         face = bpy.context.object
+        scn = context.scene
         if self.stop:
             
             return {'FINISHED'}
 
         if event.value == 'RELEASE':
+            print('RELEASE')
             self.stop = True
-            bpy.context.scene.hisanimvars.dragging = False # allow sliders to initialize original values again
-            context.scene.hisanimvars.dragging = False
+            props.dragging = False # allow sliders to initialize original values again
             props.updating = True
-            for i in context.scene.hisanimvars.sliders:
-                if i.changed:
+
+            for i in scn.activesliders:
+                if i.split:
+                    if (i.originalval == face.data[i.R] or i.originalvalL == face.data[i.L]) and i.value == 0:
+                        self.resetsliders(scn.activesliders, context)
+                        break
+                else:
+                    if i.originalval == face.data[i.name] and i.value == 0:
+                        self.resetsliders(scn.activesliders, context)
+                        break
+            else:
+                for i in scn.activesliders:
+                    #if i.changed:
                     if context.scene.tool_settings.use_keyframe_insert_auto:
                         if i.split:
-                            if i.originalval != face.data[i.R]:
-                                face.data.keyframe_insert(data_path=f'["{i.R}"]')
-                            if i.originalvalL != face.data[i.L]:
-                                face.data.keyframe_insert(data_path=f'["{i.L}"]')
+                            #if i.originalval != face.data[i.R]:
+                            face.data.keyframe_insert(data_path=f'["{i.R}"]')
+                            #if i.originalvalL != face.data[i.L]:
+                            face.data.keyframe_insert(data_path=f'["{i.L}"]')
                         else:
-                            if i.originalval != face.data[i.name]:
-                                face.data.keyframe_insert(data_path=f'["{i.name}"]')
-                            
+                            #if i.originalval != face.data[i.name]:
+                            face.data.keyframe_insert(data_path=f'["{i.name}"]')
+            for i in scn.activesliders:                
                 i.value = 0
                 i.changed = False
             props.activeslider = ''
-            
+            bpy.context.scene.activesliders.clear()
             props.updating = False
             props.callonce = False
 
@@ -149,6 +177,7 @@ class HISANIM_OT_SLIDERESET(bpy.types.Operator):
         return {'RUNNING_MODAL'}
 
 def slideupdate(self, value):
+    scn = bpy.context.scene
     props = bpy.context.scene.hisanimvars
     if props.updating: return None
     if props.dragging: # do this every time after once
@@ -156,30 +185,26 @@ def slideupdate(self, value):
         ignore = False if props.activeslider != self.name else True
         if not self.split:
             props.activeface.data[self.name] = min(max(self.originalval + (self.value * props.sensitivity), self.mini), self.maxi)
+            if not self in scn.activesliders: scn.activesliders.append(self) # add sliders to a list of sliders being changed by the user
         else:
             Rmult = MAP(props.LR, 0.0, 0.5, 0.0, 1.0, True)
             Lmult = MAP(props.LR, 1.0, 0.5, 0.0, 1.0, True)
             props.activeface.data[self.R] = min(max(self.originalval + (self.value * props.sensitivity * Rmult), self.mini), self.maxi)
             props.activeface.data[self.L] = min(max(self.originalvalL + (self.value * props.sensitivity * Lmult), self.mini), self.maxi)
+            if not self in scn.activesliders: scn.activesliders.append(self) # add sliders to a list of sliders being changed by the user
+        
         if props.activeslider == '': props.activeslider = self.name
-        props.activeface.data.update()
-        print(props.activeslider)
+        props.activeface.data.update() # update the face with the new face values
+
     else: # do this once
-        '''if not self.split:
-            self.originalval = props.activeface.data[self.name]
-        else:
-            self.originalval = props.activeface.data[self.R]
-            self.originalvalL = props.activeface.data[self.L]'''
         for slide in props.sliders:
-            #print(slide)
             if not slide.split:
                 slide.originalval = bpy.context.object.data[slide.name]
             else:
                 slide.originalval = bpy.context.object.data[slide.R]
                 slide.originalvalL = bpy.context.object.data[slide.L]
         # define original values to add off of and produce a final result. an original value is the value of a slider before manipulating took place.
-        
-        #print(self.name)
+        # all must be initialized if one were to move, as the previous method did not work
         props.dragging = True
         if not props.callonce: bpy.ops.hisanim.resetslider('INVOKE_DEFAULT')
         props.callonce = True
@@ -334,8 +359,10 @@ def register():
     for i in classes:
         bpy.utils.register_class(i)
     bpy.app.handlers.depsgraph_update_post.append(updatefaces)
+    bpy.types.Scene.activesliders = []
 
 def unregister():
     for i in reversed(classes):
         bpy.utils.unregister_class(i)
     bpy.app.handlers.depsgraph_update_post.remove(updatefaces)
+    del bpy.types.Scene.activesliders
