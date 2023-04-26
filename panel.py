@@ -24,11 +24,7 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
     def filter_items(self, context, data, propname):
         props = context.scene.hisanimvars
         items = getattr(data, propname)
-
         filtered = [self.bitflag_filter_item] * len(items)
-
-
-
         for i, item in enumerate(items):
             if self.filter_name.lower() not in item.name.lower():
                 filtered[i] &= ~self.bitflag_filter_item
@@ -60,8 +56,7 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
         props = context.scene.hisanimvars
         isKeyed = hasKey(bpy.context.object, item)
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            #if props.activeslider != item.name and props.activeslider != '': layout.enabled = False
-            layout.row()
+            layout.row() # used as a little space to set the active item
             if item.split:
                 row = layout.row(align=True)
                 Name = item.name.split('_')[-1]
@@ -70,8 +65,8 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
                     split.prop(item, 'value', slider=True, text=Name)
                     split.prop(props, 'LR', slider=True, text='L-R')
                 else:
-                    row.prop(props.activeface.data, f'["{item.R}"]', text='Right')
-                    row.prop(props.activeface.data, f'["{item.L}"]', text='Left')
+                    row.prop(props.activeface.data, f'["{item.R}"]', text='R')
+                    row.prop(props.activeface.data, f'["{item.L}"]', text='L')
                 op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
                 op.delete = isKeyed
                 op.slider = item.name

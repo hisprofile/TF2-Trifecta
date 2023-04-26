@@ -210,6 +210,9 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if i.type != 'MESH':
                     continue
                 NEW = i.make_local()
+                for mod in NEW.modifiers:
+                    if mod.type == 'NODES':
+                        mod.node_group.make_local()
                 NEW.data.make_local()
 
             for i in bpy.data.collections[name].objects:

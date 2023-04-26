@@ -132,11 +132,9 @@ class HISANIM_OT_SLIDERESET(bpy.types.Operator):
         face = bpy.context.object
         scn = context.scene
         if self.stop:
-            
             return {'FINISHED'}
 
         if event.value == 'RELEASE':
-            print('RELEASE')
             self.stop = True
             props.dragging = False # allow sliders to initialize original values again
             props.updating = True
@@ -144,28 +142,27 @@ class HISANIM_OT_SLIDERESET(bpy.types.Operator):
             for i in scn.activesliders:
                 if i.split:
                     if (i.originalval == face.data[i.R] or i.originalvalL == face.data[i.L]) and i.value == 0:
+                        # if at least one slider was reset back to its original value, then reset all
                         self.resetsliders(scn.activesliders, context)
                         break
                 else:
                     if i.originalval == face.data[i.name] and i.value == 0:
+                        # if at least one slider was reset back to its original value, then reset all
                         self.resetsliders(scn.activesliders, context)
                         break
-            else:
-                for i in scn.activesliders:
-                    #if i.changed:
-                    if context.scene.tool_settings.use_keyframe_insert_auto:
+            else: # if the previous for loop did not break, then nothing was cancelled/reset. keyframe if auto-keyframing is enabled.
+                if context.scene.tool_settings.use_keyframe_insert_auto:
+                    for i in scn.activesliders:
                         if i.split:
-                            #if i.originalval != face.data[i.R]:
                             face.data.keyframe_insert(data_path=f'["{i.R}"]')
-                            #if i.originalvalL != face.data[i.L]:
                             face.data.keyframe_insert(data_path=f'["{i.L}"]')
                         else:
-                            #if i.originalval != face.data[i.name]:
                             face.data.keyframe_insert(data_path=f'["{i.name}"]')
+
             for i in scn.activesliders:                
                 i.value = 0
                 i.changed = False
-            props.activeslider = ''
+
             bpy.context.scene.activesliders.clear()
             props.updating = False
             props.callonce = False
@@ -179,10 +176,9 @@ class HISANIM_OT_SLIDERESET(bpy.types.Operator):
 def slideupdate(self, value):
     scn = bpy.context.scene
     props = bpy.context.scene.hisanimvars
-    if props.updating: return None
+    if props.updating: return None # allow slider values to be reset back to 0 without undergoing any updates
     if props.dragging: # do this every time after once
         self.changed = True
-        ignore = False if props.activeslider != self.name else True
         if not self.split:
             props.activeface.data[self.name] = min(max(self.originalval + (self.value * props.sensitivity), self.mini), self.maxi)
             if not self in scn.activesliders: scn.activesliders.append(self) # add sliders to a list of sliders being changed by the user
@@ -193,7 +189,6 @@ def slideupdate(self, value):
             props.activeface.data[self.L] = min(max(self.originalvalL + (self.value * props.sensitivity * Lmult), self.mini), self.maxi)
             if not self in scn.activesliders: scn.activesliders.append(self) # add sliders to a list of sliders being changed by the user
         
-        if props.activeslider == '': props.activeslider = self.name
         props.activeface.data.update() # update the face with the new face values
 
     else: # do this once
@@ -290,7 +285,7 @@ class HISANIM_OT_FIXFACEPOSER(bpy.types.Operator):
     def execute(self, context):
         props = context.scene.hisanimvars
         props.dragging = False
-        props.activeslider = ''
+        bpy.context.scene.activesliders.clear()
         bpy.ops.hisanim.resetslider('INVOKE_DEFAULT', stop=True)
         return {'FINISHED'}
 
@@ -310,7 +305,7 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
             if (locklist := data.get('locklist')) != None:
                 if locklist.get(i) == True: continue
             try:
-                prop = data.id_properties_ui(i).as_dict()
+                prop = data.id_properties_ui(i).as_dict() # if the key is not a numerical value, skip
             except:
                 continue
             min = prop.get('min')
@@ -339,7 +334,7 @@ class HISANIM_OT_KEYEVERY(bpy.types.Operator):
         data = bpy.context.object.data
         for i in data.keys():
             try:
-                prop = data.id_properties_ui(i).as_dict()
+                prop = data.id_properties_ui(i).as_dict() # if the key is not a numerical value, skip
             except:
                 continue
             data.keyframe_insert(data_path=f'["{i}"]')
@@ -359,7 +354,7 @@ def register():
     for i in classes:
         bpy.utils.register_class(i)
     bpy.app.handlers.depsgraph_update_post.append(updatefaces)
-    bpy.types.Scene.activesliders = []
+    bpy.types.Scene.activesliders = [] # used to store all sliders being changed by the user.
 
 def unregister():
     for i in reversed(classes):
