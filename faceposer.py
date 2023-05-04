@@ -203,7 +203,6 @@ def slideupdate(self, value):
         props.dragging = True
         if not props.callonce: bpy.ops.hisanim.resetslider('INVOKE_DEFAULT')
         props.callonce = True
-    #print(self.name)
     return None
 
 class faceslider(bpy.types.PropertyGroup):

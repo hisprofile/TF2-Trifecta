@@ -237,7 +237,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         # updates the skin_groups dictionary on the object with its materials
         # previously it would iterate through the skin_groups dictionary, but this would not work if there were more entries than
         # material slots. it will now only iterate through the minimum between how many material slots there are and how many entries there are.
-        for num in range(min(len(justadded.material_slots), len(skins))):
+        for num in range(min(int(len(justadded.material_slots)//len(skins['0'])), len(skins))):
             Range = count + len(skins[str(num)]) # make a range between the last range (0 if first iteration) and the last range + how many entries are in this skin group
             newmatlist = []
             for i in range(count, Range):
