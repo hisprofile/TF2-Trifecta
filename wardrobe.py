@@ -3,9 +3,6 @@ from pathlib import Path
 from bpy.props import *
 from bpy.types import *
 from mathutils import *
-
-from datetime import datetime
-import importlib, sys
 from . import bonemerge, mercdeployer, faceposer
 
 def RemoveNodeGroups(a): # iterate through every node and node group by using the "tree" method and removing said nodes
@@ -90,11 +87,6 @@ def link(a, b, c): # get a class from TF2-V3
     directory = blendfile + section
     
     bpy.ops.wm.link(filename=object, directory=directory)
-
-
-
-
-
 
 class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with a button
     bl_idname = 'hisanim.lightwarps'
@@ -185,6 +177,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     ddfacepanel: bpy.props.BoolProperty(default=True, name='', options=set())
     ddrandomize: bpy.props.BoolProperty(default=True, name='', options=set())
     ddlocks: bpy.props.BoolProperty(default=True, name = '', options=set())
+    ddposelib: bpy.props.BoolProperty(default=True, name='', options=set())
     wrinklemaps: bpy.props.BoolProperty(default=True, options=set())
     randomadditive: bpy.props.BoolProperty(name = 'Additive', description='Add onto the current face values', options=set())
     randomstrength: bpy.props.FloatProperty(name='Random Strength', min=0.0, max=1.0, description='Any random value calculated will be multiplied with this number', default=1.0, options=set())
@@ -196,7 +189,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     sliders: bpy.props.CollectionProperty(type=faceposer.faceslider)
     sliderindex: bpy.props.IntProperty(options=set())
     dragging: bpy.props.BoolProperty(default=False, options=set())
-    sensitivity: bpy.props.FloatProperty(min=0, max=1, default=1, options=set())#, description=''
+    sensitivity: bpy.props.FloatProperty(min=0, max=1, default=1, options=set())
     updating: bpy.props.BoolProperty(default = False, options=set())
     callonce: bpy.props.BoolProperty(default = False, options=set())
     LR: bpy.props.FloatProperty(default=0.5, options=set(), min=0.0, max=1.0, name='L <-> R', description='Which way flexing will lean more towards', step=50)
@@ -205,6 +198,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     low: bpy.props.BoolProperty(default=False, options=set())
     usesliders: bpy.props.BoolProperty(default = True)
     useshapekeys: bpy.props.BoolProperty(default=False)
+    merc: StringProperty(default='')
     #hwm: bpy.props.BoolProperty(default=True, )
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
@@ -237,7 +231,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         # updates the skin_groups dictionary on the object with its materials
         # previously it would iterate through the skin_groups dictionary, but this would not work if there were more entries than
         # material slots. it will now only iterate through the minimum between how many material slots there are and how many entries there are.
-        for num in range(min(int(len(justadded.material_slots)//len(skins['0'])), len(skins))):
+        for num in range(min(len(justadded.material_slots)//max(len(skins['0']), 1), len(skins))):
             Range = count + len(skins[str(num)]) # make a range between the last range (0 if first iteration) and the last range + how many entries are in this skin group
             newmatlist = []
             for i in range(count, Range):

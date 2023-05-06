@@ -1,5 +1,6 @@
 import bpy
 from . import bonemerge, mercdeployer, newuilist
+from bpy.types import (UIList)
 
 def hasKey(obj, slider) -> bool:
         data = obj.data
@@ -133,6 +134,91 @@ class HISANIM_UL_RESULTS(bpy.types.UIList):
             layout.alignment = 'CENTER'
             layout.label(text='')
 
+class HISANIM_UL_USESLIDERS(bpy.types.UIList):
+
+    def filter_items(self, context, data, propname):
+        props = context.scene.hisanimvars
+        items = getattr(data, propname)
+        filtered = [self.bitflag_filter_item] * len(items)
+        for i, item in enumerate(items):
+            if self.filter_name.lower() not in item.name.lower():
+                filtered[i] &= ~self.bitflag_filter_item
+                
+            if props.up or props.mid or props.low:
+                
+                if item.Type == 'NONE':
+                    filtered[i] &= ~self.bitflag_filter_item
+
+                if item.Type == 'UPPER':
+                    if not props.up:
+                        filtered[i] &= ~self.bitflag_filter_item
+                
+                if item.Type == 'MID':
+                    if not props.mid:
+                        filtered[i] &= ~self.bitflag_filter_item
+
+                if item.Type == 'LOWER':
+                    if not props.low:
+                        filtered[i] &= ~self.bitflag_filter_item
+
+        sortedItems = bpy.types.UI_UL_list.sort_items_helper([(num, item) for num, item in enumerate(items)], key=lambda a: a[1].use, reverse=True)
+        #print()
+        #SORT = sort_items(sort_data=items, key=lambda a: a.use, reverse=False)
+        return filtered, sortedItems
+
+    def draw_item(self, context,
+            layout, data,
+            item, icon,
+            active_data, active_propname,
+            index):
+        props = context.scene.hisanimvars
+        isKeyed = hasKey(bpy.context.object, item)
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.row() # used as a little space to set the active item
+            if True == True:
+                row = layout.row(align=True)
+                row.prop(item, 'use')
+                row.label(text=item.name.split('_')[-1])
+                '''if not item.realvalue:
+                    split = row.split(factor=0.7, align=True)
+                    split.prop(item, 'value', slider=True, text=Name)
+                    split.prop(props, 'LR', slider=True, text='L-R')
+                else:
+                    row.prop(props.activeface.data, f'["{item.R}"]', text='R')
+                    row.prop(props.activeface.data, f'["{item.L}"]', text='L')
+                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
+                op.delete = isKeyed
+                op.slider = item.name
+                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')'''
+
+            else:
+                row = layout.row(align=True)
+                row.prop(item, 'use')
+                row.label(text=item.name.split('_')[-1])
+                '''Name = item.name.split('_')[-1]
+                if not item.realvalue:
+                    row.prop(item, 'value', slider=True, text=Name)
+                else:
+                    row.prop(props.activeface.data, f'["{item.name}"]', text=item.name[4:])
+                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
+                op.delete = isKeyed
+                op.slider = item.name
+                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')'''
+
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label(text='')
+
+class POSELIB_UL_panel(UIList):
+    def draw_item(self, context,
+            layout, data,
+            item, icon,
+            active_data, active_propname,
+            index):
+        props = context.scene.poselibVars
+        row = layout.row()
+        row.label(text=item.name)
+
 class TRIFECTA_PT_PANEL(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar"""
     bl_label = 'TF2-Trifecta'
@@ -144,6 +230,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
     def draw(self, context):
         prefs = context.preferences.addons[__package__].preferences
         props = bpy.context.scene.hisanimvars
+        poselib = bpy.context.scene.poselibVars
         layout = self.layout
         row = layout.row()
         row.prop(props, 'tools')
@@ -318,11 +405,34 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row.prop(props, 'low', text='Lower', toggle=True)
                 layout.row().prop(props, 'sensitivity', slider=True, text='Sensitivity')
                 layout.row().operator('hisanim.keyeverything')
-                
             else:
                 row = layout.row()
                 row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Face Poser')
+
+            if props.ddposelib or not prefs.compactable:
+                if prefs.compactable:
+                    row = layout.row()
+                    row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_DOWN', emboss=False)
+                    row.label(text='Pose Library')
+
+                row = layout.row()
+                if poselib.stage == 'SELECT':
+                    row.template_list('POSELIB_UL_panel', 'Pose Library', poselib, 'visemesCol', poselib, 'activeViseme')
+                    layout.row().operator('poselib.prepareadd')
+                    layout.row().operator('poselib.rename')
+                if poselib.stage == 'ADD':
+                    row.template_list('HISANIM_UL_USESLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
+                    layout.row().prop(poselib, 'name')
+                    layout.row().operator('poselib.add')
+                    layout.row().operator('poselib.cancel')
+
+                layout.row().operator('poselib.refresh')
+            else:
+                row = layout.row()
+                row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
+                row.label(text='Pose Library')
+
             if props.ddrandomize or not prefs.compactable:
                 if prefs.compactable:
                     row = layout.row()
@@ -367,6 +477,8 @@ classes = [
     HISANIM_UL_SLIDERS,
     HISANIM_UL_RESULTS,
     HISANIM_UL_LOCKSLIDER,
+    POSELIB_UL_panel,
+    HISANIM_UL_USESLIDERS
 ]
 
 def register():

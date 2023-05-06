@@ -2,7 +2,7 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
-    "version" : (2, 0, 7, 1),
+    "version" : (2, 0, 8),
     "blender" : (3, 5, 0),
     "location" : "View3d > TF2-Trifecta",
     "support" : "COMMUNITY",
@@ -10,21 +10,21 @@ bl_info = {
     "doc_url": "https://github.com/hisprofile/TF2-Trifecta/blob/main/README.md"
 }
 
-import bpy, json, os
-from pathlib import Path
+import os
 from bpy.props import *
 from bpy.types import *
 from mathutils import *
 from bpy.app.handlers import persistent
-from datetime import datetime
 import importlib, sys
 for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__))) if f.endswith(".py") ]:
     if filename == os.path.basename(__file__): continue
     module = sys.modules.get("{}.{}".format(__name__,filename[:-3]))
     if module: importlib.reload(module)
-from bpy.app.handlers import persistent
 # borrowed from BST
-from . import bonemerge, mercdeployer, icons, updater, newuilist, preferences, wardrobe, panel, faceposer
+from . import (bonemerge, mercdeployer, icons,
+               updater, newuilist, preferences,
+               wardrobe, panel, faceposer,
+               poselib)
 
 def register():
     faceposer.register()
@@ -36,6 +36,9 @@ def register():
     preferences.register()
     bonemerge.register()
     panel.register()
+    poselib.register()
+
+
 def unregister():
     faceposer.unregister()
     wardrobe.unregister()
@@ -46,5 +49,8 @@ def unregister():
     preferences.unregister()
     bonemerge.unregister()
     panel.unregister()
+    poselib.unregister()
+
+
 if __name__ == '__main__':
     register()
