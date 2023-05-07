@@ -1,5 +1,7 @@
 import bpy, random
 from bpy.app.handlers import persistent
+from . import poselib, mercdeployer
+
 
 upperFace = ['BrowInV', 'BrowOutV', 'Frown', 'InnerSquint',
              'OuterSquint', 'ScalpD', 'CloseLid',
@@ -40,6 +42,12 @@ def updatefaces(scn = None):
         return None
     
     if data.get('aaa_fs') == None: return None
+
+    for i in mercdeployer.mercs:
+            if i in data.name:
+                props.merc = i
+                break
+
     props.activeface = bpy.context.object
     if props.activeface != props.lastactiveface:
         props.sliders.clear()
@@ -76,8 +84,9 @@ def updatefaces(scn = None):
                     if name in sect:
                         new.Type = sectstr
                         break
-    
+        poselib.updateVCol()
     props.lastactiveface = props.activeface # use this to see if a new face has been selected. if the same face has been selected twice, do nothing.
+    
 
 class HISANIM_OT_SLIDEKEYFRAME(bpy.types.Operator):
     bl_idname = 'hisanim.keyslider'
@@ -203,7 +212,6 @@ def slideupdate(self, value):
         props.dragging = True
         if not props.callonce: bpy.ops.hisanim.resetslider('INVOKE_DEFAULT')
         props.callonce = True
-    #print(self.name)
     return None
 
 class faceslider(bpy.types.PropertyGroup):
@@ -251,6 +259,24 @@ class faceslider(bpy.types.PropertyGroup):
         if (lockstate := locklist.get(self.L)) == None: return False
         return lockstate
 
+    def Use(self, value):
+        if not bpy.context.scene.poselibVars.adding: return None
+        data = bpy.context.object.data
+        if self.split:
+            if self.use:
+                data[self.R] = self.originalval
+                data[self.L] = self.originalvalL
+            else:
+                data[self.R] = 0.0
+                data[self.L] = 0.0
+        else:
+            if self.use:
+                data[self.name] = self.originalval
+            else:
+                data[self.name] = 0.0
+        data.update()
+
+
     name: bpy.props.StringProperty()
     value: bpy.props.FloatProperty(name='', default=0.0, update=slideupdate, min=-1, max=1, options=set())
     split: bpy.props.BoolProperty(name='')
@@ -272,6 +298,7 @@ class faceslider(bpy.types.PropertyGroup):
     )
     locked: bpy.props.BoolProperty(name='', default = False, set=set_lock, get=get_lock, options=set())
     lockedL: bpy.props.BoolProperty(default = False, name='', set=set_lockL, get=get_lockL, options=set())
+    use: bpy.props.BoolProperty(default=False, update=Use)
 
 class HISANIM_OT_FIXFACEPOSER(bpy.types.Operator):
     bl_idname = 'hisanim.fixfaceposer'

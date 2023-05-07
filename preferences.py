@@ -20,12 +20,15 @@ class AssetPaths(PropertyGroup):
             self.this_is = 'EMPTY'
         elif name.endswith('.blend'):
             self.this_is = 'BLEND'
+            name = name[:name.rfind('.') if "." in name else None]
+            if 'cosmetics' in name: name = name.replace('cosmetics', '')
         elif os.path.exists(value[:value.rfind('.') if '.' in value else None]):
             self.this_is = 'FOLDER'
+            name = os.path.basename(Path(value))
         else:
             self.this_is = 'UNKNOWN'
-        name = name[:name.rfind('.') if "." in name else None]
-        self['name'] = name
+        
+        self.name = name
 
     path: StringProperty(
         default = '',
@@ -45,13 +48,7 @@ class AssetPaths(PropertyGroup):
     )
 
     name: StringProperty(
-        default='Path:'
-    )
-
-    toggle: BoolProperty(
-        default=False,
-        name='Show Name',
-        description='Show Name'
+        default='New Entry'
     )
 
 class HISANIM_UL_ASSETS(UIList):
@@ -78,16 +75,13 @@ class HISANIM_UL_ASSETS(UIList):
             item.toggle = False
 
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            layout.label(icon=ICON)
-            if item.toggle:
-                layout.prop(item, "name", emboss=True, icon_value=icon, icon_only=True)
-                layout.prop(item, 'toggle', icon='DOT', text='', emboss=True)
+            row = layout.row()
+            if ICON != 'BLANK1':
+                row.label(icon=ICON)
+            if item == paths[pathsindex]:
+                row.prop(item, "name", text='')
             else:
-                layout.prop(item, "path", emboss=False, icon_value=icon, icon_only=True)
-                if item == paths[pathsindex]:
-                    layout.prop(item, 'toggle', icon='RADIOBUT_ON' if paths[pathsindex] == item else 'RADIOBUT_OFF', text='', emboss=True)
-                else:
-                    layout.label(icon='RADIOBUT_OFF')     
+                row.label(text=item.name)
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
@@ -106,7 +100,6 @@ class hisanimFilePaths(AddonPreferences):
     runonce_removepaths: IntProperty(default=0)
     compactable: bpy.props.BoolProperty(default=True, description='Make the different sections of Wardrobe compactable.')
     missing: bpy.props.BoolProperty(default=True)
-    #removeindex: IntProperty(default=0)
     
     def draw(self, context):
         if not self.is_executed:
@@ -117,9 +110,8 @@ class hisanimFilePaths(AddonPreferences):
         paths = prefs.hisanim_paths
         remaining = [i for i in names if paths.get(i) == None]
         layout = self.layout
-        #row = layout.row()
-        layout.row().label(text='Every entry needs to ends in .blend, except for TF2-V3. TF2-V3 needs to be a folder.')
-        layout.row().label(text='To view the name of an entry, press its button.')
+        layout.row().label(text='Every entry needs to end in .blend, except for TF2-V3. TF2-V3 needs to be a folder.')
+        layout.row().label(text='Names are held in the window below.')
         if len(remaining) > 0:
             row = layout.row()
             row.label(text='Missing entries:') if len(remaining) != 1 else row.label(text='Missing entry:')
@@ -140,7 +132,10 @@ class hisanimFilePaths(AddonPreferences):
         row.separator()
         row = row.column()
         row.operator('hisanim.detectpath', icon='VIEWZOOM', text='')
-        row.enabled = True if len(paths) > 0 else False    
+        row.enabled = True if len(paths) > 0 else False
+        row = layout.row()
+        if len(prefs.hisanim_paths) != 0:
+            row.prop(paths[prefs.hisanim_pathsindex], 'path', text='Path')
 
 class HISANIM_OT_DETECTPATH(Operator):
     bl_idname = 'hisanim.detectpath'
@@ -155,16 +150,6 @@ class HISANIM_OT_DETECTPATH(Operator):
 
         parent = Path(selectedpath).parents[0]
         parent2 = Path(selectedpath).parents[1]
-        
-        '''for i in glob.glob('*.blend', root_dir=parent):
-            path = os.path.join(parent, i)
-            name = os.path.basename(path)
-            name = name[:name.rfind('.')]
-            for file in names:
-                if file in name and paths.get(file) == None:
-                    newitem = paths.add()
-                    newitem.path = path
-                    newitem.name = file'''
 
         for i in glob.glob('**/*.blend', root_dir=parent2):
             path = os.path.join(parent2, i)
@@ -273,7 +258,6 @@ def deleteOldPaths():
         prefs.runonce_removepaths = True
         for i in prefs.remove:
                 bpy.ops.preferences.asset_library_remove(index=libraries.find(i.name))
-        #bpy.app.handlers.depsgraph_update_post.remove(deleteOldPaths)
         bpy.types.SpacePreferences.draw_handler_remove(deleteOldPaths)
         return None
 

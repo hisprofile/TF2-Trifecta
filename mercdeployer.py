@@ -1,7 +1,5 @@
 import bpy
 import os
-import random
-from pathlib import Path
 
 global path
 global cln
@@ -240,9 +238,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         justadded = str(self.merc + self.type)
         # this mostly pertains to blu switching. any material added has been switched to BLU and will therefore be skipped.
         matblacklist = []
-        armature = bpy.data.collections[justadded].objects[0]
-        if (text := armature.get('rig_ui')) != None:
-            text.as_module()
         # iterate through collection of objects
         for obj in bpy.data.collections[justadded].objects:
             if (goto := bpy.data.collections.get('Deployed Mercs')) == None:
@@ -268,7 +263,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if not context.scene.hisanimvars.cosmeticcompatibility and obj['COSMETIC']:
                     bpy.data.objects.remove(obj)
                     continue
-            armature = bpy.data.collections[justadded].objects[0]
+        armature = bpy.data.collections[justadded].objects[0]
         while armature.parent != None:  # get the absolute root of the objects
             armature = armature.parent
         for i in armature.children_recursive:
@@ -276,6 +271,8 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     continue
                 i.make_local().data.make_local()
         armature.make_local().data.make_local()
+        if (text := armature.get('rig_ui')) != None:
+            text.as_module()
         armature.location = bpy.context.scene.cursor.location # set the character to 3d cursor location
         for obj in bpy.data.collections[justadded].objects: # go through the collection 
             for mat in obj.material_slots:
@@ -291,9 +288,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                             blu.outputs[0], getconnect.inputs[0])
                         matblacklist.append(mat)
                         #break
-
-                
-
                 
                 for NODE in mat.node_tree.nodes:
                     # use existing nodegroups
@@ -301,8 +295,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     if NODE.type == 'GROUP':
                         if NODE.node_tree.name == 'TF2 BVLG':
                             print(NODE.name, mat.name)
-                            NODE.inputs['Rim boost'].default_value = NODE.inputs['Rim boost'].default_value * props.hisanimrimpower
-                            
+                            NODE.inputs['Rim boost'].default_value = NODE.inputs['Rim boost'].default_value * props.hisanimrimpower     
 
                     if context.scene.hisanimvars.savespace: continue
 
@@ -391,15 +384,11 @@ class MD_PT_MERCDEPLOY(bpy.types.Panel):
         row = layout.row()
         row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
 
-
 classes =   [HISANIM_OT_LOADMERC]
-            #MD_PT_MERCDEPLOY]
-
 
 def register():
     for i in classes:
         bpy.utils.register_class(i)
-
 
 def unregister():
     for i in reversed(classes):
