@@ -294,6 +294,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             if rNone: 
                 layout.label(text='Select a face!')
                 return None
+            if context.object == None: return None
             if context.object.type == 'EMPTY': rNone = True
             if context.object.data.get('aaa_fs') == None: rNone = True
             if rNone:
