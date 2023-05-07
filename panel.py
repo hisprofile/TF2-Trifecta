@@ -56,6 +56,9 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
             index):
         props = context.scene.hisanimvars
         isKeyed = hasKey(bpy.context.object, item)
+        if context.scene.poselibVars.stage != 'SELECT':
+            layout.row().label(text='Operation in progress.')
+            return None
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             layout.row() # used as a little space to set the active item
             if item.split:
@@ -97,6 +100,9 @@ class HISANIM_UL_LOCKSLIDER(bpy.types.UIList):
             index):
         props = context.scene.hisanimvars
         DATA = props.activeface.data
+        if context.scene.poselibVars.stage != 'SELECT':
+            layout.row().label(text='Operation in progress.')
+            return None
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if item.split:
                 split = layout.split(factor=0.2, align=True)
@@ -175,35 +181,9 @@ class HISANIM_UL_USESLIDERS(bpy.types.UIList):
         isKeyed = hasKey(bpy.context.object, item)
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             layout.row() # used as a little space to set the active item
-            if True == True:
-                row = layout.row(align=True)
-                row.prop(item, 'use')
-                row.label(text=item.name.split('_')[-1])
-                '''if not item.realvalue:
-                    split = row.split(factor=0.7, align=True)
-                    split.prop(item, 'value', slider=True, text=Name)
-                    split.prop(props, 'LR', slider=True, text='L-R')
-                else:
-                    row.prop(props.activeface.data, f'["{item.R}"]', text='R')
-                    row.prop(props.activeface.data, f'["{item.L}"]', text='L')
-                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
-                op.delete = isKeyed
-                op.slider = item.name
-                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')'''
-
-            else:
-                row = layout.row(align=True)
-                row.prop(item, 'use')
-                row.label(text=item.name.split('_')[-1])
-                '''Name = item.name.split('_')[-1]
-                if not item.realvalue:
-                    row.prop(item, 'value', slider=True, text=Name)
-                else:
-                    row.prop(props.activeface.data, f'["{item.name}"]', text=item.name[4:])
-                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
-                op.delete = isKeyed
-                op.slider = item.name
-                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')'''
+            row = layout.row(align=True)
+            row.prop(item, 'use', text='')
+            row.label(text="_".join(item.name.split('_')[1:]))
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
@@ -418,8 +398,17 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
 
                 row = layout.row()
                 if poselib.stage == 'SELECT':
-                    row.template_list('POSELIB_UL_panel', 'Pose Library', poselib, 'visemesCol', poselib, 'activeViseme')
-                    layout.row().operator('poselib.prepareadd')
+                    col = row.column()
+                    col.template_list('POSELIB_UL_panel', 'Pose Library', poselib, 'visemesCol', poselib, 'activeViseme')
+                    col = row.column()
+                    op = col.operator('poselib.move', text='', icon='TRIA_UP')
+                    op.pos = 1
+                    op1 = col.operator('poselib.move', text='', icon='TRIA_DOWN')
+                    op1.pos = -1
+                    col.label(text='', icon='BLANK1')
+                    col.operator('poselib.prepareadd', text='', icon='ADD')
+                    col.operator('poselib.remove'   , text='', icon='REMOVE')
+                    #layout.row().operator('poselib.prepareadd')
                     layout.row().operator('poselib.rename')
                 if poselib.stage == 'ADD':
                     row.template_list('HISANIM_UL_USESLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')

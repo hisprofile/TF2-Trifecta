@@ -22,9 +22,9 @@ for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__
     if module: importlib.reload(module)
 # borrowed from BST
 from . import (bonemerge, mercdeployer, icons,
-               updater, newuilist, preferences,
-               wardrobe, panel, faceposer,
-               poselib)
+                updater, newuilist, preferences,
+                wardrobe, panel, faceposer,
+                poselib)
 
 def register():
     faceposer.register()
