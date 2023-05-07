@@ -298,7 +298,7 @@ class faceslider(bpy.types.PropertyGroup):
     )
     locked: bpy.props.BoolProperty(name='', default = False, set=set_lock, get=get_lock, options=set())
     lockedL: bpy.props.BoolProperty(default = False, name='', set=set_lockL, get=get_lockL, options=set())
-    use: bpy.props.BoolProperty(default=False, update=Use)
+    use: bpy.props.BoolProperty(default=False, update=Use, options=set())
 
 class HISANIM_OT_FIXFACEPOSER(bpy.types.Operator):
     bl_idname = 'hisanim.fixfaceposer'

@@ -1,8 +1,7 @@
 import bpy, json, os
 from bpy.props import *
-from bpy.types import (Context, Operator, Panel, PropertyGroup)
+from bpy.types import (Operator, PropertyGroup)
 from pathlib import Path
-from . import mercdeployer
 
 def jsonPath() -> str:
     addonPath = Path(__file__)
@@ -58,8 +57,7 @@ def updateVCol() -> None:
     for vis in lib.keys():
         new = props.visemesCol.add()
         new.name = vis
-    props.activeViseme = min(props.activeViseme, len(props.visemesCol))
-    if len(props.visemesCol) != 0: props.visemeName = props.visemesCol[props.activeViseme].name
+    props.activeViseme = max(min(props.activeViseme, len(props.visemesCol) - 1 ), 0)
     return None
 
 
@@ -68,50 +66,47 @@ def mix(a, b, factor) -> float:
 
 
 class visemes(PropertyGroup):
-    
-    def updateName(self, value) -> None:
-        props = bpy.context.scene.poselibVars
-        Fprops = bpy.context.scene.hisanimvars
-        lastName = props.visemeName
-        newName = self.name
-
-        jsonData = getJson()
-        dictData = jsonData[Fprops.merc][lastName]
-        del jsonData[Fprops.merc][lastName]
-        jsonData[Fprops.merc][newName] = dictData
-        writeJson(jsonData)
-
-    name: StringProperty(default='')#, update=updateName)
+    name: StringProperty(default='')
 
 class dictVis(PropertyGroup):
-    name: StringProperty(default='')
-    value: FloatProperty(default=0.0)
-    original: FloatProperty(default=0.0)
-    use: BoolProperty(default=True)
-
-class poselibVars(PropertyGroup):
-    def lastName(self, value) -> None:
-        self.visemeName = self.visemesCol[self.activeViseme].name
-
-    def applyVisemes(self, value) -> None:
+    def noUse(self, value):
         C = bpy.context
         obj = C.object
         data = obj.data
         scn = C.scene
-        Fprops = scn.hisanimvars
+        props = scn.poselibVars
+        if self.use: data[self.name] = mix(self.original, self.value, props.value)
+        else: data[self.name] = self.original
+        data.update()
+
+    name: StringProperty(default='')
+    value: FloatProperty(default=0.0, options=set())
+    original: FloatProperty(default=0.0, options=set())
+    use: BoolProperty(default=True, update=noUse, options=set())
+
+class poselibVars(PropertyGroup):
+
+    def applyVisemes(self = None, value = None) -> None:
+        if self == None: self = bpy.context.scene.poselibVars
+        C = bpy.context
+        obj = C.object
+        data = obj.data
+        scn = C.scene
         props = scn.poselibVars
 
         for vis in props.dictVisemes:
             if not vis.use:
                 data[vis.name] = vis.original
                 continue
-            data[vis.name] = mix(vis.original, vis.value, value)
+            data[vis.name] = mix(vis.original, vis.value, self.value)
             continue
+        data.update()
 
 
     visemesCol: CollectionProperty(type=visemes)
     dictVisemes: CollectionProperty(type=dictVis)
-    activeViseme: IntProperty(default=0, update=lastName)
+    activeViseme: IntProperty(default=0, options=set())
+    activeItem: IntProperty(default=0, name='', options=set())
     visemeName: StringProperty(default='')
     stage: EnumProperty(
         items=(
@@ -122,8 +117,10 @@ class poselibVars(PropertyGroup):
         name = 'Stages'
     )
     name: StringProperty(default='', name='Name')
-    adding: BoolProperty(default=False)
-    value: FloatProperty(default=1.0, name='Mix', min=0.0, max=1.0)
+    adding: BoolProperty(default=False, options=set())
+    value: FloatProperty(default=1.0, name='Mix', min=0.0, max=1.0, update=applyVisemes, options=set())
+    keyframe: BoolProperty(default = True, name='Keyframe')
+    sort: BoolProperty(default=True, name='Sort', options=set())
 
 class POSELIB_OT_refreshJson(Operator):
     bl_idname = 'poselib.refresh'
@@ -171,9 +168,14 @@ class POSELIB_OT_cancelApply(Operator):
         scn = C.scene
         Fprops = scn.hisanimvars
         props = scn.poselibVars
+        props.stage = 'SELECT'
 
         for vis in props.dictVisemes:
             data[vis.name] = vis.original
+
+        props.dictVisemes.clear()
+        data.update()
+        return {'FINISHED'}
 
 class POSELIB_OT_prepareAdd(Operator):
     bl_idname = 'poselib.prepareadd'
@@ -189,7 +191,7 @@ class POSELIB_OT_prepareAdd(Operator):
         props = scn.poselibVars
         props.stage = 'ADD'
         props.adding = False
-        #bpy.types.SpaceView3D.draw_handler_add(SP3Dhandle, (self, context), 'WINDOW', 'POST_PIXEL')
+        Fprops.sliderindex = 0
 
         for slider in Fprops.sliders:
             slider.use = False
@@ -201,7 +203,6 @@ class POSELIB_OT_prepareAdd(Operator):
                 if not slider.use:
                     data[slider.R] = 0.0
                     data[slider.L] = 0.0
-
             else:
                 slider.originalval = data[slider.name]
                 if data[slider.name] != 0:
@@ -286,20 +287,17 @@ class POSELIB_OT_rename(Operator):
         dictKeys = dictMerc.keys()
         dictItems = list(dictMerc.items())
         index = list(dictKeys).index(lastName)
+        data = dictItems[index][1]
+        dictItems.pop(index)
+        dictItems.insert(index, (self.name, data))
         jsonData[Fprops.merc].clear()
-
-        for num, val in enumerate(list(dictItems)):
-            print(num, val)
-            key, value = val
-            if num == index:
-                jsonData[Fprops.merc][self.name] = value
-            else:
-                jsonData[Fprops.merc][key] = value
+        jsonData[Fprops.merc] = {key: value for key, value in dictItems}
         writeJson(jsonData)
         updateVCol()
         return {'FINISHED'}
 
     def invoke(self, context, event):
+        self.name = ''
         return context.window_manager.invoke_props_dialog(self)
     
     def draw(self, context):
@@ -322,7 +320,6 @@ class POSELIB_OT_move(Operator):
         props = bpy.context.scene.poselibVars
         Fprops = bpy.context.scene.hisanimvars
         active = props.activeViseme
-        print(active, len(props.visemesCol))
         if self.pos > 0:
             if active == 0:
                 return {'CANCELLED'}
@@ -335,7 +332,6 @@ class POSELIB_OT_move(Operator):
         selected = items[active]
         items.pop(active)
         items.insert(min(max(active - self.pos, 0), len(props.visemesCol)), selected)
-        print(items)
         jsonData[Fprops.merc] = {key: value for key, value in items}
 
         writeJson(jsonData)
@@ -347,6 +343,20 @@ class POSELIB_OT_remove(Operator):
     bl_idname = 'poselib.remove'
     bl_label = 'Remove'
     bl_description = 'Remove this item'
+
+    @classmethod
+    def poll(cls, context):
+        if len(bpy.context.scene.poselibVars.visemesCol) != 0:
+            return True
+        else:
+            return False
+        return len(bpy.context.scene.poselibVars.visemesCol) != 0
+
+    def invoke(self, context, event):
+        if not self.poll(context):
+            return {'CANCELLED'}
+        context.window_manager.invoke_confirm(self, event)
+        return {'FINISHED'}
 
     def execute(self, context):
         props = bpy.context.scene.poselibVars
@@ -363,6 +373,52 @@ class POSELIB_OT_remove(Operator):
 
 class POSELIB_OT_prepareApply(Operator):
     bl_idname = 'poselib.prepareapply'
+    bl_label = 'Apply'
+    bl_description = 'Apply this viseme'
+    viseme: StringProperty(default='')
+
+    def execute(self, context):
+        C = bpy.context
+        obj = C.object
+        data = obj.data
+        scn = C.scene
+        Fprops = scn.hisanimvars
+        props = scn.poselibVars
+        props.stage = 'APPLY'
+        props.dictVisemes.clear()
+        props.visemeName = self.viseme
+
+        jsonData = getJson()
+        lib = jsonData[Fprops.merc][self.viseme]
+        items = list(lib.items())
+
+        for item in items:
+            new = props.dictVisemes.add()
+            new.name = item[0]
+            new.value = item[1]
+            new.original = data[item[0]]
+        poselibVars.applyVisemes(props, 'poop')
+        return {'FINISHED'}
+
+class POSELIB_OT_apply(Operator):
+    bl_idname = 'poselib.apply'
+    bl_label = 'Apply'
+    bl_description = 'Apply this pose'
+
+    def execute(self, context):
+        C = bpy.context
+        obj = C.object
+        data = obj.data
+        scn = C.scene
+        props = scn.poselibVars
+        props.stage = 'SELECT'
+
+        if props.keyframe:
+            for item in props.dictVisemes:
+                data.keyframe_insert(data_path=f'["{item.name}"]')
+
+        props.dictVisemes.clear()
+        return {'FINISHED'}
 
 classes = (
             dictVis,
@@ -374,8 +430,11 @@ classes = (
             POSELIB_OT_add,
             POSELIB_OT_rename,
             POSELIB_OT_move,
-            POSELIB_OT_remove
-        )
+            POSELIB_OT_remove,
+            POSELIB_OT_cancelApply,
+            POSELIB_OT_prepareApply,
+            POSELIB_OT_apply
+            )
 
 def register():
     for i in classes:

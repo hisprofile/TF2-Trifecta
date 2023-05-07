@@ -143,6 +143,7 @@ class HISANIM_UL_RESULTS(bpy.types.UIList):
 class HISANIM_UL_USESLIDERS(bpy.types.UIList):
 
     def filter_items(self, context, data, propname):
+        poselib = context.scene.poselibVars
         props = context.scene.hisanimvars
         items = getattr(data, propname)
         filtered = [self.bitflag_filter_item] * len(items)
@@ -168,9 +169,7 @@ class HISANIM_UL_USESLIDERS(bpy.types.UIList):
                         filtered[i] &= ~self.bitflag_filter_item
 
         sortedItems = bpy.types.UI_UL_list.sort_items_helper([(num, item) for num, item in enumerate(items)], key=lambda a: a[1].use, reverse=True)
-        #print()
-        #SORT = sort_items(sort_data=items, key=lambda a: a.use, reverse=False)
-        return filtered, sortedItems
+        return filtered, sortedItems if poselib.sort else []
 
     def draw_item(self, context,
             layout, data,
@@ -183,7 +182,10 @@ class HISANIM_UL_USESLIDERS(bpy.types.UIList):
             layout.row() # used as a little space to set the active item
             row = layout.row(align=True)
             row.prop(item, 'use', text='')
-            row.label(text="_".join(item.name.split('_')[1:]))
+            if item.split:
+                row.label(text="_".join(item.name.split('_')[2:]))
+            else:
+                row.label(text="_".join(item.name.split('_')[1:]))
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
@@ -198,6 +200,19 @@ class POSELIB_UL_panel(UIList):
         props = context.scene.poselibVars
         row = layout.row()
         row.label(text=item.name)
+        op = row.operator('poselib.prepareapply', text='', icon='FORWARD')
+        op.viseme = item.name
+
+class POSELIB_UL_visemes(UIList):
+    def draw_item(self, context,
+            layout, data,
+            item, icon,
+            active_data, active_propname,
+            index):
+        props = context.scene.poselibVars
+        row = layout.row()
+        row.prop(item, 'use', text='')
+        row.label(text="_".join(item.name.split("_")[1:]))
 
 class TRIFECTA_PT_PANEL(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar"""
@@ -254,7 +269,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 if context.object.get('skin_groups') != None:
                     row = layout.row()
                     if props.ddpaints or not prefs.compactable:
-                        if prefs.compactable: row.prop(props, 'ddpaints', icon='DISCLOSURE_TRI_DOWN', emboss=False)#, text='Paints')
+                        if prefs.compactable: row.prop(props, 'ddpaints', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                         if prefs.compactable: row.label(text='Paints')
                         ob = context.object
                         row = layout.row()
@@ -271,9 +286,8 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                         oper.PAINT = newuilist.paints[context.window_manager.hisanim_paints]
                         row.operator('hisanim.paintclear')
                     else:
-                        row.prop(props, 'ddpaints', icon='DISCLOSURE_TRI_RIGHT', emboss=False)#, text='Paints')
+                        row.prop(props, 'ddpaints', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                         row.label(text='Paints', icon='BRUSH_DATA')
-                        #row.prop(props, 'ddpaints', text='Paints', emboss=False)
 
             if props.searched:
                 if props.ddsearch or not prefs.compactable:
@@ -290,13 +304,12 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                         else:
                             row.label(text=f'{len(hits)} Results')
                         layout.row().template_list('HISANIM_UL_RESULTS', 'Results', props, 'results', props, 'resultindex')
-                            #row.operator()
                     else: 
                         layout = self.layout
                         layout.label(text='Nothing found!')
                 else:
                     row = layout.row()
-                    row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_RIGHT', emboss=False)#, text='Paints')
+                    row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                     row.label(text='Search Results', icon='VIEWZOOM')
         
         if props.tools == 'MERCDEPLOYER':
@@ -374,9 +387,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                     row.label(text='Face Poser')
                 row = layout.row()
-                #row.enabled = True
                 row.template_list('HISANIM_UL_SLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
-                #row.enabled = props.dragging
                 op = row.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
                 layout.row().prop(props, 'LR', slider=True)
                 row = layout.row(align=True)
@@ -401,26 +412,37 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     col = row.column()
                     col.template_list('POSELIB_UL_panel', 'Pose Library', poselib, 'visemesCol', poselib, 'activeViseme')
                     col = row.column()
+                    col.operator('poselib.prepareadd', text='', icon='ADD')
+                    col.operator('poselib.remove', text='', icon='REMOVE')
+                    col.label(text='', icon='BLANK1')
                     op = col.operator('poselib.move', text='', icon='TRIA_UP')
                     op.pos = 1
                     op1 = col.operator('poselib.move', text='', icon='TRIA_DOWN')
                     op1.pos = -1
-                    col.label(text='', icon='BLANK1')
-                    col.operator('poselib.prepareadd', text='', icon='ADD')
-                    col.operator('poselib.remove'   , text='', icon='REMOVE')
-                    #layout.row().operator('poselib.prepareadd')
                     layout.row().operator('poselib.rename')
                 if poselib.stage == 'ADD':
                     row.template_list('HISANIM_UL_USESLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
+                    row = layout.row(align=True)
+                    row.prop(poselib, 'sort', toggle=True)
+                    row.prop(props, 'up', text='Upper', toggle=True)
+                    row.prop(props, 'mid', text='Mid', toggle=True)
+                    row.prop(props, 'low', text='Lower', toggle=True)
                     layout.row().prop(poselib, 'name')
                     layout.row().operator('poselib.add')
                     layout.row().operator('poselib.cancel')
-
+                if poselib.stage == 'APPLY':
+                    row.label(text=poselib.visemeName)
+                    layout.row().template_list('POSELIB_UL_visemes', 'Items', poselib, 'dictVisemes', poselib, 'activeItem')
+                    layout.row().prop(poselib, 'value', slider=True)
+                    layout.row().prop(poselib, 'keyframe')
+                    layout.row().operator('poselib.apply')
+                    layout.row().operator('poselib.cancelapply')
                 layout.row().operator('poselib.refresh')
             else:
                 row = layout.row()
                 row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Pose Library')
+                
 
             if props.ddrandomize or not prefs.compactable:
                 if prefs.compactable:
@@ -459,7 +481,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row = layout.row()
                 row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Lock Sliders')
-            #props.lastactiveface = props.activeface
 
 classes = [
     TRIFECTA_PT_PANEL,
@@ -467,7 +488,8 @@ classes = [
     HISANIM_UL_RESULTS,
     HISANIM_UL_LOCKSLIDER,
     POSELIB_UL_panel,
-    HISANIM_UL_USESLIDERS
+    HISANIM_UL_USESLIDERS,
+    POSELIB_UL_visemes
 ]
 
 def register():
