@@ -248,10 +248,10 @@ class POSELIB_OT_add(Operator):
 
         for slider in filter(lambda a: a.use, Fprops.sliders):
             if slider.split:
-                dictDat[slider.R] = data[slider.R]
-                dictDat[slider.L] = data[slider.L]
+                dictDat[slider.R] = round(data[slider.R], 4)
+                dictDat[slider.L] = round(data[slider.L], 4)
             else:
-                dictDat[slider.name] = data[slider.name]
+                dictDat[slider.name] = round(data[slider.name], 4)
 
 
         jsonData = getJson()
