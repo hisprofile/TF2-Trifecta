@@ -51,7 +51,7 @@ def updatefaces(scn = None):
     props.activeface = bpy.context.object
     if props.activeface != props.lastactiveface:
         props.sliders.clear()
-        k = data.keys()
+        k = sorted(data.keys())
         z = list(zip(range(len(k)), k))
         for i in range(len(data.keys())):
             try:

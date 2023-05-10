@@ -42,7 +42,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         row = layout.row()
         row.prop(context.scene.hisanimvars, 'savespace')
         row = layout.row()
-        row.prop(context.preferences.addons[__package__].preferences, 'compactable', text='Wardrobe: Compactable View')
+        row.prop(context.preferences.addons[__package__].preferences, 'compactable', text='Compactable View')
 class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_idname = 'hisanim.clsupdate'
     bl_label = 'Update Class'
@@ -192,9 +192,9 @@ class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
     def execute(self, execute):
         prefs = bpy.context.preferences.addons[__package__].preferences
         try:
-            githubResponse = request.urlopen("https://gitlab.com/hisprofile/the-tf2-collection/blob/main/TF2-HECTORIS.zip")
+            githubResponse = request.urlopen("https://gitlab.com/hisprofile/the-tf2-collection/raw/main/TF2-HECTORIS.zip")
         except:
-            self.report({'INFO', 'Not ready yet!'})
+            self.report({'ERROR'}, 'Not ready yet!')
             return {'CANCELLED'}
         #DLOADTO = bpy.context.preferences.filepaths.asset_libraries['TF2-V3'].path + "/"
         if (GET := prefs.hisanim_paths.get('TF2-V3')) == None:
@@ -286,29 +286,7 @@ class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
             bl_description = 'Press to reload the TF2-Trifecta'
 
             def execute(self, context):
-                '''class restoreAssetsPaths(bpy.types.PropertyGroup):
-                    assets: bpy.props.CollectionProperty(type=preferences.AssetPaths)
-                prefs = context.preferences.addons[__package__].preferences
-                bpy.utils.register_class(restoreAssetsPaths)
-                bpy.types.Scene.restoreassets = bpy.props.PointerProperty(type=restoreAssetsPaths)
-                for i in context.preferences.addons[__package__].preferences.hisanim_paths:
-                    new = bpy.context.scene.restoreassets.assets.add()
-                    new.path = i.path
-                    new.name = i.name
-                    new.this_is = i.this_is'''
-
-
                 bpy.ops.preferences.addon_enable(module=__package__)
-                '''prefs = context.preferences.addons[__package__].preferences
-                prefs.is_executed = True
-                for i in context.scene.restoreassets.assets:
-                    new = prefs.hisanim_paths.add()
-                    new.path = i.path
-                    new.name = i.name
-                    new.this_is = i.this_is
-
-                bpy.utils.unregister_class(restoreAssetsPaths)
-                del bpy.types.Scene.restoreassets'''
                 bpy.utils.unregister_class(HISANIM_PT_tempPanel)
                 bpy.utils.unregister_class(HISANIM_OT_reloadAddon)
                 self.report({'INFO'}, 'Addon successfully updated!')

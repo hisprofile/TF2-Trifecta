@@ -178,7 +178,6 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     ddrandomize: bpy.props.BoolProperty(default=True, name='', options=set())
     ddlocks: bpy.props.BoolProperty(default=True, name = '', options=set())
     ddposelib: bpy.props.BoolProperty(default=True, name='', options=set())
-    wrinklemaps: bpy.props.BoolProperty(default=True, options=set())
     randomadditive: bpy.props.BoolProperty(name = 'Additive', description='Add onto the current face values', options=set())
     randomstrength: bpy.props.FloatProperty(name='Random Strength', min=0.0, max=1.0, description='Any random value calculated will be multiplied with this number', default=1.0, options=set())
     keyframe: bpy.props.BoolProperty(default=False, name='Keyframe Sliders', description='Keyframe the randomized changes.', options=set())
@@ -199,7 +198,6 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     usesliders: bpy.props.BoolProperty(default = True)
     useshapekeys: bpy.props.BoolProperty(default=False)
     merc: StringProperty(default='')
-    #hwm: bpy.props.BoolProperty(default=True, )
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')
