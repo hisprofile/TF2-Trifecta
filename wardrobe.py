@@ -211,6 +211,8 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         CLASS = self.LOAD.split("_-_")[1]
         COSMETIC = self.LOAD.split("_-_")[0]
 
+        nothing = True if len(bpy.context.selected_objects) == 0 else False
+
         prefs = context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
         if (p := paths.get(CLASS)) == None:
@@ -243,15 +245,21 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             wardcol = bpy.data.collections.new('Wardrobe')
             context.scene.collection.children.link(wardcol)
         
-        justaddedParent = justadded.parent
-        wardcol.objects.link(justaddedParent) # link everything and its children to the 'Wardrobe' collection for better management.
-        justaddedParent.use_fake_user = False
+        if justadded.parent != None:
 
-        for child in justaddedParent.children:
-            wardcol.objects.link(child)
-            child.use_fake_user = False
+            justaddedParent = justadded.parent
+            wardcol.objects.link(justaddedParent) # link everything and its children to the 'Wardrobe' collection for better management.
+            justaddedParent.use_fake_user = False
 
-        justaddedParent.location = context.scene.cursor.location
+            for child in justaddedParent.children:
+                wardcol.objects.link(child)
+                child.use_fake_user = False
+
+            justaddedParent.location = context.scene.cursor.location
+        
+        else:
+            wardcol.objects.link(justadded)
+            justadded.location = context.scene.cursor.location
 
         for mat in justadded.material_slots:
             for NODE in mat.material.node_tree.nodes:
@@ -285,8 +293,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                 del SKIN, OBJMAT
             except:
                 pass
-
-        if bpy.context.object == None: return {'FINISHED'}
+        if (bpy.context.object == None) or nothing or (justadded.parent == None): return {'FINISHED'}
 
         select = bpy.context.object
         # if a Bonemerge compatible rig or mesh parented to one is selected, automatically bind the cosmetic
