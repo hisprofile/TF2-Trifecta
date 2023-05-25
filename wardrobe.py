@@ -2,7 +2,6 @@ import bpy, json, os
 from pathlib import Path
 from bpy.props import *
 from bpy.types import *
-from bpy.types import Context
 from mathutils import *
 from . import bonemerge, mercdeployer, faceposer
 
@@ -189,6 +188,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     sliders: bpy.props.CollectionProperty(type=faceposer.faceslider)
     sliderindex: bpy.props.IntProperty(options=set())
     dragging: bpy.props.BoolProperty(default=False, options=set())
+    sensitivity: bpy.props.FloatProperty(min=0, max=1, default=1, options=set())
     updating: bpy.props.BoolProperty(default = False, options=set())
     callonce: bpy.props.BoolProperty(default = False, options=set())
     LR: bpy.props.FloatProperty(default=0.5, options=set(), min=0.0, max=1.0, name='L <-> R', description='Which way flexing will lean more towards', step=50)
@@ -415,7 +415,7 @@ class HISANIM_OT_PAINTS(bpy.types.Operator):
         except:
             MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = paintlist
         return {'FINISHED'}
-
+    
 class HISANIM_OT_PAINTCLEAR(bpy.types.Operator):
     bl_idname = 'hisanim.paintclear'
     bl_label = 'Clear Paint'
@@ -432,29 +432,6 @@ class HISANIM_OT_PAINTCLEAR(bpy.types.Operator):
             MAT.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = list(MAT.nodes['DEFAULTPAINT'].outputs[0].default_value)
         MAT.nodes.remove(MAT.nodes['DEFAULTPAINT'])
         return {'FINISHED'}
-    
-class HISANIM_OT_relocatePaths(bpy.types.Operator):
-    bl_idname = 'hisanim.relocatepaths'
-    bl_label = 'Relocate Paths'
-    bl_description = 'Redefine libraries in file based on entries in the TF2-Trifecta'
-
-    def execute(self, context):
-        prefs = context.preferences.addons[__package__].preferences
-        paths = prefs.hisanim_paths
-        files = list(map(lambda a: a +'cosmetics.blend', mercdeployer.mercs)) + ['allclass.blend', 'allclass2.blend', 'allclass3.blend']
-        filesDict = {key: key.replace('cosmetics', '').replace('.blend', '') for key in files}
-        TF2_V3 = list(map(lambda a: a + '.blend', mercdeployer.mercs))
-        for file in files:
-            if (lib := bpy.data.libraries.get(file)) != None:
-                if paths.get(filesDict[file]) == None: continue
-                lib.filepath = paths[filesDict[file]].path
-                lib.reload()
-        if (path := paths.get('TF2-V3')) == None: return {'FINISHED'}
-        for merc in TF2_V3:
-            if (lib := bpy.data.libraries.get(merc)) != None:
-                lib.filepath = os.path.join(path.path, merc)
-                lib.reload()
-        return {'FINISHED'}
 
 classes = [
             searchHits,
@@ -468,7 +445,6 @@ classes = [
             HISANIM_OT_ClearSearch,
             HISANIM_OT_REVERTFIX,
             HISANIM_OT_MATFIX,
-            HISANIM_OT_relocatePaths
             ]
 def register():
     for cls in classes:

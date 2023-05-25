@@ -145,7 +145,6 @@ class POSELIB_OT_cancel(Operator):
         props = scn.poselibVars
         props.stage = 'SELECT'
         props.adding = False
-        
 
         for slider in Fprops.sliders:
             slider.use = False
@@ -169,8 +168,6 @@ class POSELIB_OT_cancelApply(Operator):
         scn = C.scene
         Fprops = scn.hisanimvars
         props = scn.poselibVars
-        data = Fprops.activeface.data
-        if props.stage == 'SELECT': return {'CANCELLED'}
         props.stage = 'SELECT'
 
         for vis in props.dictVisemes:
@@ -305,7 +302,8 @@ class POSELIB_OT_rename(Operator):
     
     def draw(self, context):
         layout = self.layout
-        layout.row().prop(self, 'name', text='Name')
+        layout.row().label(text='Rename:')
+        layout.row().prop(self, 'name')
 
 class POSELIB_OT_move(Operator):
     bl_idname = 'poselib.move'
