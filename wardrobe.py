@@ -139,6 +139,23 @@ class searchHits(bpy.types.PropertyGroup):
     name: bpy.props.StringProperty()
 
 class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs. Less to write for registering and unregistering
+    def sW(self, val):
+        bpy.context.scene.hisanimvars.tools = 'WARDROBE'
+    def gW(self):
+        return bpy.context.scene.hisanimvars.tools == 'WARDROBE'
+    def sM(self, val):
+        bpy.context.scene.hisanimvars.tools = 'MERC DEPLOYER'
+    def gM(self):
+        return bpy.context.scene.hisanimvars.tools == 'MERC DEPLOYER'
+    def sB(self, val):
+        bpy.context.scene.hisanimvars.tools = 'BONEMERGE'
+    def gB(self):
+        return bpy.context.scene.hisanimvars.tools == 'BONEMERGE'
+    def sF(self, val):
+        bpy.context.scene.hisanimvars.tools = 'FACE POSER'
+    def gF(self):
+        return bpy.context.scene.hisanimvars.tools == 'FACE POSER'
+    
     bluteam: bpy.props.BoolProperty(
         name="Blu Team",
         description="Swap classes",
@@ -166,12 +183,18 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     tools: bpy.props.EnumProperty(
         items=(
         ('WARDROBE', 'Wardrobe', "Show Wardrobe's tools", 'MOD_CLOTH', 0),
-        ('MERCDEPLOYER', 'Merc Deployer', "Show Merc Deployer's tools", 'FORCE_DRAG', 1),
+        ('MERC DEPLOYER', 'Merc Deployer', "Show Merc Deployer's tools", 'FORCE_DRAG', 1),
         ('BONEMERGE', 'Bonemerge', "Show Bonemerge's tools", 'GROUP_BONE', 2),
-        ('FACEPOSER', 'Face Poser', 'Show the Face Poser tools', 'RESTRICT_SELECT_OFF', 3)
+        ('FACE POSER', 'Face Poser', 'Show the Face Poser tools', 'RESTRICT_SELECT_OFF', 3)
         ),
         name='Tool', options=set()
     )
+    wr: bpy.props.BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
+    md: bpy.props.BoolProperty(default=True, name='', options=set(), set=sM, get=gM)
+    bm: bpy.props.BoolProperty(default=True, name='', options=set(), set=sB, get=gB)
+    fp: bpy.props.BoolProperty(default=True, name='', options=set(), set=sF, get=gF)
+    wardrobe: bpy.props.BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
+    wardrobe: bpy.props.BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
     ddsearch: bpy.props.BoolProperty(default=True, name='', options=set())
     ddpaints: bpy.props.BoolProperty(default=True, name='', options=set())
     ddmatsettings: bpy.props.BoolProperty(default=True, name='', options=set())
@@ -444,6 +467,8 @@ class HISANIM_OT_relocatePaths(bpy.types.Operator):
         files = list(map(lambda a: a +'cosmetics.blend', mercdeployer.mercs)) + ['allclass.blend', 'allclass2.blend', 'allclass3.blend']
         filesDict = {key: key.replace('cosmetics', '').replace('.blend', '') for key in files}
         TF2_V3 = list(map(lambda a: a + '.blend', mercdeployer.mercs))
+        for lib in bpy.data.libraries:
+            lib.name = os.path.basename(lib.filepath)
         for file in files:
             if (lib := bpy.data.libraries.get(file)) != None:
                 if paths.get(filesDict[file]) == None: continue

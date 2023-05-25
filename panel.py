@@ -227,8 +227,17 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
         props = bpy.context.scene.hisanimvars
         poselib = bpy.context.scene.poselibVars
         layout = self.layout
-        row = layout.row()
-        row.prop(props, 'tools')
+        
+        if prefs.quickswitch:
+            row = layout.row()
+            row.label(text=f'Tool: {props.tools.title()}')
+            row.prop(props, 'wr', icon='MOD_CLOTH', text='', toggle=True)
+            row.prop(props, 'md', icon='FORCE_DRAG', text='', toggle=True)
+            row.prop(props, 'bm', icon='GROUP_BONE', text='', toggle=True)
+            row.prop(props, 'fp', icon='RESTRICT_SELECT_OFF', text='', toggle=True)
+        else:
+            layout.row().prop(props, 'tools')
+
         if props.tools == 'WARDROBE':
             row = layout.row()
             row.label(text='Spawn TF2 Cosmetics', icon='MOD_CLOTH')
@@ -312,7 +321,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                     row.label(text='Search Results', icon='VIEWZOOM')
         
-        if props.tools == 'MERCDEPLOYER':
+        if props.tools == 'MERC DEPLOYER':
             row = layout.row()
             row.label(text='Deploy Mercenaries', icon='FORCE_DRAG')
             cln = ["IK", "FK"]
@@ -367,7 +376,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             row = layout.row()
             row.operator('hisanim.attemptfix')
 
-        if props.tools == 'FACEPOSER':
+        if props.tools == 'FACE POSER':
             rNone = False
             if len(context.selected_objects) == 0: rNone = True
             if rNone: 

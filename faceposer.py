@@ -1,6 +1,7 @@
-import bpy, random
+import bpy, random, time
 from bpy.app.handlers import persistent
 from . import poselib, mercdeployer
+#random.seed = 0
 
 
 upperFace = ['BrowInV', 'BrowOutV', 'Frown', 'InnerSquint',
@@ -326,11 +327,12 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
     bl_options = {'UNDO', 'REGISTER'}
     reset: bpy.props.BoolProperty(default=False)
     seed: bpy.props.IntProperty(default=0)
+    time: bpy.props.IntProperty(default=0)
 
     def execute(self, context):
         props = context.scene.hisanimvars
         data = context.object.data
-        for i in data.keys():
+        for x, i in enumerate(data.keys()):
             if i == 'aaa_fs':
                 continue
             if (locklist := data.get('locklist')) != None:
@@ -341,7 +343,7 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
                 continue
             min = prop.get('min')
             max = prop.get('max')
-            random.seed()
+            random.seed(self.time + self.seed + x)
             randval = random.random() 
             randval = MAP(randval, 0, 1, min, max) * (1- self.reset) * props.randomstrength
             if props.randomadditive and not self.reset:
@@ -357,11 +359,10 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
         return {'FINISHED'}
     
     def invoke(self, context, event):
+        self.time = int(time.time())
         self.seed = 0
-        self.execute(context)
+        self.execute(context) 
         return self.execute(context)
-        #if not self.reset:  return context.window_manager.invoke_props_popup(self, event)
-        #else: return self.execute(context)
     
     def draw(self, context):
         layout = self.layout

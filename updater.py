@@ -44,6 +44,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         row.prop(context.scene.hisanimvars, 'savespace')
         row = layout.row()
         row.prop(context.preferences.addons[__package__].preferences, 'compactable', text='Compactable View')
+        layout.row().prop(context.preferences.addons[__package__].preferences, 'quickswitch')
 class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_idname = 'hisanim.clsupdate'
     bl_label = 'Update Class'
