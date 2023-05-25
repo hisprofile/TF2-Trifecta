@@ -39,6 +39,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         layout.label(text='Open the console to view progress!')
         row = layout.row()
         row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
+        layout.row().operator('hisanim.relocatepaths', text='Redefine Library Paths', icon='FILE_REFRESH')
         row = layout.row()
         row.prop(context.scene.hisanimvars, 'savespace')
         row = layout.row()
@@ -112,6 +113,7 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
                 return {'CANCELLED'}
         else:
             DLOADTO = GET.path[:GET.path.rfind('/')+1]
+        #print(DLOADTO)
         if switch == False:
             print(f"Deleting old file from {GET.path}...")
             if os.path.exists(GET.path):
@@ -119,7 +121,6 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
                 print('Deleted!')
             else:
                 print("Nothing to delete!")
-        DLOADTO = GET.path[:GET.path.rfind('/')+1]
         if switch == False:
             print(f"Deleting old file from {GET}...")
             if os.path.exists(GET):

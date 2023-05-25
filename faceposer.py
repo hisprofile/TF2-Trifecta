@@ -4,16 +4,16 @@ from . import poselib, mercdeployer
 
 
 upperFace = ['BrowInV', 'BrowOutV', 'Frown', 'InnerSquint',
-             'OuterSquint', 'ScalpD', 'CloseLid',
-             'multi_CloseLid']
+                'OuterSquint', 'ScalpD', 'CloseLid',
+                'multi_CloseLid']
 
 midFace = ['NoseV', 'NostrilFlare', 'CheekV', 'CheekH']
 
 lowerFace = ['JawV', 'JawD', 'JawH', 'LipsV', 'LipUpV',
-             'LipLoV', 'FoldLipUp', 'FoldLipLo', 'PuckerLipLo',
-             'PuckerLipUp', 'PuffLipUp', 'PuffLipLo',
-             'Smile', 'multi_Smile', 'Platysmus', 'LipCnrTwst',
-             'Dimple']
+                'LipLoV', 'FoldLipUp', 'FoldLipLo', 'PuckerLipLo',
+                'PuckerLipUp', 'PuffLipUp', 'PuffLipLo',
+                'Smile', 'multi_Smile', 'Platysmus', 'LipCnrTwst',
+                'Dimple']
 
 facesections = [upperFace, midFace, lowerFace]
 
@@ -41,7 +41,9 @@ def updatefaces(scn = None):
     except:
         return None
     
-    if data.get('aaa_fs') == None: return None
+    if data.get('aaa_fs') == None:
+        #bpy.ops.poselib.cancelapply()
+        return None
 
     for i in mercdeployer.mercs:
             if i in data.name:
@@ -50,6 +52,7 @@ def updatefaces(scn = None):
 
     props.activeface = bpy.context.object
     if props.activeface != props.lastactiveface:
+        #bpy.ops.poselib.cancelapply()
         props.sliders.clear()
         k = sorted(data.keys())
         z = list(zip(range(len(k)), k))
@@ -189,13 +192,13 @@ def slideupdate(self, value):
     if props.dragging: # do this every time after once
         self.changed = True
         if not self.split:
-            props.activeface.data[self.name] = min(max(self.originalval + (self.value * props.sensitivity), self.mini), self.maxi)
+            props.activeface.data[self.name] = min(max(self.originalval + self.value, self.mini), self.maxi)
             if not self in scn.activesliders: scn.activesliders.append(self) # add sliders to a list of sliders being changed by the user
         else:
             Rmult = MAP(props.LR, 0.0, 0.5, 0.0, 1.0, True)
             Lmult = MAP(props.LR, 1.0, 0.5, 0.0, 1.0, True)
-            props.activeface.data[self.R] = min(max(self.originalval + (self.value * props.sensitivity * Rmult), self.mini), self.maxi)
-            props.activeface.data[self.L] = min(max(self.originalvalL + (self.value * props.sensitivity * Lmult), self.mini), self.maxi)
+            props.activeface.data[self.R] = min(max(self.originalval + (self.value * Rmult), self.mini), self.maxi)
+            props.activeface.data[self.L] = min(max(self.originalvalL + (self.value * Lmult), self.mini), self.maxi)
             if not self in scn.activesliders: scn.activesliders.append(self) # add sliders to a list of sliders being changed by the user
         
         props.activeface.data.update() # update the face with the new face values
@@ -320,8 +323,9 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
     bl_idname = 'hisanim.randomizeface'
     bl_label = 'Randomize Face'
     bl_description = 'Randomize the values of the facial sliders'
-    bl_options = {'UNDO'}
+    bl_options = {'UNDO', 'REGISTER'}
     reset: bpy.props.BoolProperty(default=False)
+    seed: bpy.props.IntProperty(default=0)
 
     def execute(self, context):
         props = context.scene.hisanimvars
@@ -337,6 +341,7 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
                 continue
             min = prop.get('min')
             max = prop.get('max')
+            random.seed()
             randval = random.random() 
             randval = MAP(randval, 0, 1, min, max) * (1- self.reset) * props.randomstrength
             if props.randomadditive and not self.reset:
@@ -351,15 +356,26 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
 
         return {'FINISHED'}
     
+    def invoke(self, context, event):
+        self.seed = 0
+        self.execute(context)
+        return self.execute(context)
+        #if not self.reset:  return context.window_manager.invoke_props_popup(self, event)
+        #else: return self.execute(context)
+    
+    def draw(self, context):
+        layout = self.layout
+        layout.row().prop(self, 'seed', text='Seed')
+    
 class HISANIM_OT_KEYEVERY(bpy.types.Operator):
     bl_idname = 'hisanim.keyeverything'
     bl_label = 'Key Every Slider'
-    bl_description = 'Add a keyframe to every slider on this frame.'
+    bl_description = 'Add a keyframe to every slider on this frame'
     bl_options = {'UNDO'}
 
     def execute(self, context):
         data = bpy.context.object.data
-        for i in data.keys():
+        for i in sorted(data.keys()):
             try:
                 prop = data.id_properties_ui(i).as_dict() # if the key is not a numerical value, skip
             except:

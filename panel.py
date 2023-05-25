@@ -393,8 +393,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row.prop(props, 'up', text='Upper', toggle=True)
                 row.prop(props, 'mid', text='Mid', toggle=True)
                 row.prop(props, 'low', text='Lower', toggle=True)
-                layout.row().prop(props, 'sensitivity', slider=True, text='Sensitivity')
-                layout.row().operator('hisanim.keyeverything')
+                layout.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME')
             else:
                 row = layout.row()
                 row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
@@ -413,7 +412,8 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     col = row.column()
                     col.operator('poselib.prepareadd', text='', icon='ADD')
                     col.operator('poselib.remove', text='', icon='REMOVE')
-                    col.label(text='', icon='BLANK1')
+                    #col.label(text='', icon='BLANK1')  
+                    col.operator('poselib.refresh', icon='FILE_REFRESH', text='', emboss=False)
                     op = col.operator('poselib.move', text='', icon='TRIA_UP')
                     op.pos = 1
                     op1 = col.operator('poselib.move', text='', icon='TRIA_DOWN')
@@ -436,7 +436,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     layout.row().prop(poselib, 'keyframe')
                     layout.row().operator('poselib.apply')
                     layout.row().operator('poselib.cancelapply')
-                layout.row().operator('poselib.refresh')
             else:
                 row = layout.row()
                 row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
