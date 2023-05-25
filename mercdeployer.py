@@ -6,7 +6,7 @@ global cln
 cln = ["IK", "FK"]
 
 mercs = ['scout', 'soldier', 'pyro', 'demo',
-         'heavy', 'engineer', 'medic', 'sniper', 'spy']
+            'heavy', 'engineer', 'medic', 'sniper', 'spy']
 
 def MAP(x,a,b,c,d, clamp=None):
     y=(x-a)/(b-a)*(d-c)+c
