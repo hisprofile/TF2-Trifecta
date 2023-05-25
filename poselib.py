@@ -321,11 +321,9 @@ class POSELIB_OT_move(Operator):
         Fprops = bpy.context.scene.hisanimvars
         active = props.activeViseme
         if self.pos > 0:
-            if active == 0:
-                return {'CANCELLED'}
+            if active == 0: return {'CANCELLED'}
         else:
-            if active == (len(props.visemesCol) - 1):
-                return {'CANCELLED'}
+            if active == (len(props.visemesCol) - 1): return {'CANCELLED'}
         jsonData = getJson()
         lib = jsonData[Fprops.merc]
         items = list(lib.items())

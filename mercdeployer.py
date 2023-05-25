@@ -247,13 +247,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             # link the current object to 'Deployed Mercs'
             goto.objects.link(obj)
 
-            if obj.get('FLEXES') and not props.wrinklemaps: # if the object has wrinkle map support, but wrinkle maps are disabled, then remove
-                bpy.data.objects.remove(obj)
-                continue
-
-            if obj.modifiers.get('FLEXES') != None and not context.scene.hisanimvars.wrinklemaps: # remove the geometry nodes modifier
-                obj.modifiers.remove(obj.modifiers.get('FLEXES'))
-
             if obj.get('COSMETIC') != None:
                 # if Cosmetic Compatibility is enabled and a mesh is not compatible, delete it.
                 if context.scene.hisanimvars.cosmeticcompatibility and not obj['COSMETIC']:

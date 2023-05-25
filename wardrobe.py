@@ -178,7 +178,6 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     ddrandomize: bpy.props.BoolProperty(default=True, name='', options=set())
     ddlocks: bpy.props.BoolProperty(default=True, name = '', options=set())
     ddposelib: bpy.props.BoolProperty(default=True, name='', options=set())
-    wrinklemaps: bpy.props.BoolProperty(default=True, options=set())
     randomadditive: bpy.props.BoolProperty(name = 'Additive', description='Add onto the current face values', options=set())
     randomstrength: bpy.props.FloatProperty(name='Random Strength', min=0.0, max=1.0, description='Any random value calculated will be multiplied with this number', default=1.0, options=set())
     keyframe: bpy.props.BoolProperty(default=False, name='Keyframe Sliders', description='Keyframe the randomized changes.', options=set())
@@ -199,7 +198,6 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     usesliders: bpy.props.BoolProperty(default = True)
     useshapekeys: bpy.props.BoolProperty(default=False)
     merc: StringProperty(default='')
-    #hwm: bpy.props.BoolProperty(default=True, )
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')
@@ -212,6 +210,8 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         D = bpy.data
         CLASS = self.LOAD.split("_-_")[1]
         COSMETIC = self.LOAD.split("_-_")[0]
+
+        nothing = True if len(bpy.context.selected_objects) == 0 else False
 
         prefs = context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
@@ -245,15 +245,21 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             wardcol = bpy.data.collections.new('Wardrobe')
             context.scene.collection.children.link(wardcol)
         
-        justaddedParent = justadded.parent
-        wardcol.objects.link(justaddedParent) # link everything and its children to the 'Wardrobe' collection for better management.
-        justaddedParent.use_fake_user = False
+        if justadded.parent != None:
 
-        for child in justaddedParent.children:
-            wardcol.objects.link(child)
-            child.use_fake_user = False
+            justaddedParent = justadded.parent
+            wardcol.objects.link(justaddedParent) # link everything and its children to the 'Wardrobe' collection for better management.
+            justaddedParent.use_fake_user = False
 
-        justaddedParent.location = context.scene.cursor.location
+            for child in justaddedParent.children:
+                wardcol.objects.link(child)
+                child.use_fake_user = False
+
+            justaddedParent.location = context.scene.cursor.location
+        
+        else:
+            wardcol.objects.link(justadded)
+            justadded.location = context.scene.cursor.location
 
         for mat in justadded.material_slots:
             for NODE in mat.material.node_tree.nodes:
@@ -287,8 +293,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                 del SKIN, OBJMAT
             except:
                 pass
-
-        if bpy.context.object == None: return {'FINISHED'}
+        if (bpy.context.object == None) or nothing or (justadded.parent == None): return {'FINISHED'}
 
         select = bpy.context.object
         # if a Bonemerge compatible rig or mesh parented to one is selected, automatically bind the cosmetic

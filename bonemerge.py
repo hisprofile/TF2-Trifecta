@@ -13,42 +13,7 @@ def GetRoot(a):
     for i in a:
         if i.parent == None:
             return i
-
-class BM_PT_BONEMERGE(bpy.types.Panel):
-    """A Custom Panel in the Viewport Toolbar"""
-    bl_label = "Bonemerge"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "Bonemerge"
-    bl_icon = "BONE_DATA"
-    
-    def draw(self, context):
-        layout = self.layout
-        row = layout.row()
         
-        
-        row.label(text='Attach TF2 cosmetics.', icon='MOD_CLOTH')
-        ob = context.object
-        row = layout.row()
-        self.layout.prop_search(context.scene.hisanimvars, "hisanimtarget", bpy.data, "objects", text="Link to", icon='ARMATURE_DATA')
-        
-        row = layout.row()
-        row.operator('hisanim.attachto', icon="LINKED")
-        row=layout.row()
-        row.operator('hisanim.detachfrom', icon="UNLINKED")
-        row = layout.row()
-        row.prop(context.scene.hisanimvars, 'hisanimscale')
-        row = layout.row()
-        row.label(text='Bind facial cosmetics')
-        row = layout.row()
-        row.operator('hisanim.bindface')
-        row = layout.row()
-        row.label(text='Attempt to fix cosmetic')
-        row = layout.row()
-        row.operator('hisanim.attemptfix')
-        
-
-
 class HISANIM_OT_ATTACH(bpy.types.Operator):
     bl_idname = "hisanim.attachto"
     bl_label = "Attach"
@@ -188,7 +153,6 @@ class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
         return {'FINISHED'}
     
 classes = [
-    #BM_PT_BONEMERGE,
     HISANIM_OT_ATTACH,
     HISANIM_OT_ATTEMPTFIX,
     HISANIM_OT_BINDFACE,

@@ -1,5 +1,5 @@
 import bpy
-from . import bonemerge, mercdeployer, newuilist
+from . import newuilist
 from bpy.types import (UIList)
 
 def hasKey(obj, slider) -> bool:
@@ -336,7 +336,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                         row = layout.row(align=True)
                     row.prop(context.scene.hisanimvars, "bluteam")
                     layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
-                    layout.row().prop(props, 'wrinklemaps', text='Wrinkle Maps')
                     layout.row().prop(props, 'hisanimrimpower', slider=True)
 
                     
