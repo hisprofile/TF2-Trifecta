@@ -354,7 +354,7 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
             if props.keyframe:
                 data.keyframe_insert(data_path=f'["{i}"]')
         
-        props.activeface.data.update()
+        bpy.context.object.data.update()
 
         return {'FINISHED'}
     

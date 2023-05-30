@@ -3,6 +3,7 @@ from bpy.props import *
 from bpy.types import (Operator, PropertyGroup)
 from pathlib import Path
 
+
 def jsonPath() -> str:
     addonPath = Path(__file__)
     addonDir = Path(addonPath).parent.parent
@@ -20,7 +21,7 @@ def jsonExists() -> bool:
 def getJson() -> dict:
     with open(jsonPath(), 'r') as file:
         return json.loads(file.read())
-    
+
 
 def initJson() -> None:
     jsonData = {
