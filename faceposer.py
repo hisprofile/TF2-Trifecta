@@ -1,6 +1,7 @@
 import bpy, random, time
 from bpy.app.handlers import persistent
 from . import poselib, mercdeployer
+from math import floor, ceil
 #random.seed = 0
 
 
@@ -14,7 +15,9 @@ lowerFace = ['JawV', 'JawD', 'JawH', 'LipsV', 'LipUpV',
                 'LipLoV', 'FoldLipUp', 'FoldLipLo', 'PuckerLipLo',
                 'PuckerLipUp', 'PuffLipUp', 'PuffLipLo',
                 'Smile', 'multi_Smile', 'Platysmus', 'LipCnrTwst',
-                'Dimple']
+                'Dimple', 'TongueV', 'TongueH', 'TongueCurl',
+                'TongueD', 'TongueWide', 'TongueNarrow',
+                'TongueFunnel']
 
 facesections = [upperFace, midFace, lowerFace]
 
@@ -384,6 +387,32 @@ class HISANIM_OT_KEYEVERY(bpy.types.Operator):
             data.keyframe_insert(data_path=f'["{i}"]')
         
         return {'FINISHED'}
+    
+class HISANIM_OT_adjust(bpy.types.Operator):
+    bl_idname = 'hisanim.adjust'
+    bl_label = 'Adjust'
+    bl_description = 'Adjust the LR weight by 0.1'
+    amount: bpy.props.FloatProperty()
+
+    def execute(self, context):
+        props = bpy.context.scene.hisanimvars
+        val = round(props.LR * 10, 1)
+        print(val)
+        #print(round(val, 1) % 0.1)
+        '''if val % 1 == 0:
+            props.LR = (val + self.amount*10)/10
+        else:
+            props.LR = val/10'''
+        #if self.amount > 0.0:
+           # if val % 1 == 0:
+        if val % 1 == 0:
+            props.LR = val/10 + self.amount
+            return {'FINISHED'}
+        if self.amount > 0.0:
+            props.LR = ceil(val)/10
+        else:
+            props.LR = floor(val)/10
+        return {'FINISHED'}
 
 classes = [
     faceslider,
@@ -391,7 +420,8 @@ classes = [
     HISANIM_OT_FIXFACEPOSER,
     HISANIM_OT_SLIDEKEYFRAME,
     HISANIM_OT_RANDOMIZEFACE,
-    HISANIM_OT_KEYEVERY
+    HISANIM_OT_KEYEVERY,
+    HISANIM_OT_adjust
 ]
 
 def register():
