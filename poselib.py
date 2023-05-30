@@ -4,26 +4,26 @@ from bpy.types import (Operator, PropertyGroup)
 from pathlib import Path
 
 
-def jsonPath() -> str:
+def jsonPath() -> str: # Get the .json library on the users machine
     addonPath = Path(__file__)
     addonDir = Path(addonPath).parent.parent
     jsonPath = os.path.join(addonDir, 'poselib.json')
     return jsonPath
 
 
-def jsonExists() -> bool:
+def jsonExists() -> bool: # If a .json pose library exists, return True. Else, return False.
     if os.path.exists(jsonPath()):
         return True
     else:
         return False
 
 
-def getJson() -> dict:
+def getJson() -> dict: # Return the contents of the .json pose library in the form of a dictionary.
     with open(jsonPath(), 'r') as file:
         return json.loads(file.read())
 
 
-def initJson() -> None:
+def initJson() -> None: # Create an empty .json pose library
     jsonData = {
         'scout' : {},
         'soldier' : {},
@@ -40,12 +40,12 @@ def initJson() -> None:
     return None
 
 
-def writeJson(data: dict) -> None:
+def writeJson(data: dict) -> None: # Take the dictionary data as a parameter, and write it in the .json file.
     with open(jsonPath(), 'w+') as file:
         file.write(json.dumps(data))
 
 
-def updateVCol() -> None:
+def updateVCol() -> None: # Refresh the pose library
     C = bpy.context
     obj = C.object
     scn = C.scene
@@ -66,10 +66,12 @@ def mix(a, b, factor) -> float:
     return a*(1-factor)+b*factor
 
 
-class visemes(PropertyGroup):
+class visemes(PropertyGroup): # Simple property group to display the names of saved poses
     name: StringProperty(default='')
 
 class dictVis(PropertyGroup):
+    # Property group for all the flex controllers mentioned
+    # in a saved posed.
     def noUse(self, value):
         C = bpy.context
         obj = C.object
@@ -86,7 +88,7 @@ class dictVis(PropertyGroup):
     use: BoolProperty(default=True, update=noUse, options=set())
 
 class poselibVars(PropertyGroup):
-
+    # Variables for the addon
     def applyVisemes(self = None, value = None) -> None:
         if self == None: self = bpy.context.scene.poselibVars
         C = bpy.context
@@ -103,6 +105,35 @@ class poselibVars(PropertyGroup):
             continue
         data.update()
 
+    '''
+    To Woha:
+    The Pose Library contains three stages: Selection, Addition, and Application.
+
+    When the Selection stage is active, the pose library will show all saved poses for
+    a class. Each pose listed has an arrow button which, when pressed, will set the
+    active stage to Application.
+
+    When the Application stage is active, the addon will get the dictionary contents contained
+    by the selected pose. The addon will display all the saved flex controllers in the
+    dictionary with a checkbox to decide whether to use them or not. A mix slider will
+    be shown to mix between the saved pose and the pose that existed before the Application
+    stage became active.
+
+    When the Application stage is active, the addon will get the flex controllers contained
+    by the selected pose, and iterate through them. Each iteration will be saved under
+    the dictVisemes Collection Property (see below) with the attributes given in the
+    dictVis class (see above), of which there are four. The flex controller's name to display,
+    its saved value in the selected pose, its original value before the Application stage
+    became active, and a toggle whether to use it in the final result. A mix slider will
+    also be shown, where the user can mix between the original pose and the saved pose.
+
+    When the Addition stage is active, the addon will prompt the user with a list of
+    flex controllers to save. Anything checked will be saved. Any slider that does not
+    equal 0 will be set to save automatically. Otherwise, the slider will be ignored.
+    Once the user has entered a name for the pose, the addon will allow them to save it.
+
+
+    '''
 
     visemesCol: CollectionProperty(type=visemes)
     dictVisemes: CollectionProperty(type=dictVis)

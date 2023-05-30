@@ -205,7 +205,7 @@ def slideupdate(self, value):
             props.activeface.data[self.L] = min(max(self.originalvalL + (self.value * Lmult), self.mini), self.maxi)
             if not self in scn.activesliders: scn.activesliders.append(self) # add sliders to a list of sliders being changed by the user
         
-        props.activeface.data.update() # update the face with the new face values
+        bpy.context.object.data.update() # update the face with the new face values
 
     else: # do this once
         for slide in props.sliders:
@@ -328,7 +328,6 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
     bl_label = 'Randomize Face'
     bl_description = 'Randomize the values of the facial sliders'
     bl_options = {'UNDO', 'REGISTER'}
-    reset: bpy.props.BoolProperty(default=False)
     seed: bpy.props.IntProperty(default=0)
     time: bpy.props.IntProperty(default=0)
 
@@ -348,8 +347,8 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
             max = prop.get('max')
             random.seed(self.time + self.seed + x)
             randval = random.random() 
-            randval = MAP(randval, 0, 1, min, max) * (1- self.reset) * props.randomstrength
-            if props.randomadditive and not self.reset:
+            randval = MAP(randval, 0, 1, min, max) * props.randomstrength
+            if props.randomadditive:
                 data[i] = data[i] + randval
             else:
                 data[i] = randval
@@ -365,12 +364,37 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
         self.time = int(time.time())
         self.seed = 0
         self.execute(context) 
-        return self.execute(context)
+        return bpy.context.window_manager.invoke_props_popup(self, event)
     
     def draw(self, context):
         layout = self.layout
         layout.row().prop(self, 'seed', text='Seed')
-    
+
+class HISANIM_OT_resetface(bpy.types.Operator):
+    bl_idname = 'hisanim.resetface'
+    bl_label = 'Reset Face'
+    bl_description = 'Reset all sliders to 0.0'
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        props = context.scene.hisanimvars
+        data = context.object.data
+        for x, i in enumerate(data.keys()):
+            if i == 'aaa_fs':
+                continue
+            try:
+                prop = data.id_properties_ui(i).as_dict() # if the key is not a numerical value, skip
+                data[i] = 0.0
+            except:
+                continue
+            
+            if props.keyframe:
+                data.keyframe_insert(data_path=f'["{i}"]')
+        
+        data.update()
+
+        return {'FINISHED'}
+
 class HISANIM_OT_KEYEVERY(bpy.types.Operator):
     bl_idname = 'hisanim.keyeverything'
     bl_label = 'Key Every Slider'
@@ -397,14 +421,6 @@ class HISANIM_OT_adjust(bpy.types.Operator):
     def execute(self, context):
         props = bpy.context.scene.hisanimvars
         val = round(props.LR * 10, 1)
-        print(val)
-        #print(round(val, 1) % 0.1)
-        '''if val % 1 == 0:
-            props.LR = (val + self.amount*10)/10
-        else:
-            props.LR = val/10'''
-        #if self.amount > 0.0:
-           # if val % 1 == 0:
         if val % 1 == 0:
             props.LR = val/10 + self.amount
             return {'FINISHED'}
@@ -420,6 +436,7 @@ classes = [
     HISANIM_OT_FIXFACEPOSER,
     HISANIM_OT_SLIDEKEYFRAME,
     HISANIM_OT_RANDOMIZEFACE,
+    HISANIM_OT_resetface,
     HISANIM_OT_KEYEVERY,
     HISANIM_OT_adjust
 ]

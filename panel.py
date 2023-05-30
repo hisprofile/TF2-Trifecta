@@ -373,15 +373,16 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             row.operator('hisanim.attemptfix')
 
         if props.tools == 'FACE POSER':
-            rNone = False
-            if len(context.selected_objects) == 0: rNone = True
-            if rNone: 
+            if len(context.selected_objects) == 0:
                 layout.label(text='Select a face!')
                 return None
-            if context.object == None: return None
-            if context.object.type == 'EMPTY': rNone = True
-            if context.object.data.get('aaa_fs') == None: rNone = True
-            if rNone:
+            if context.object == None:
+                layout.label(text='Select a face!')
+                return None
+            if context.object.type == 'EMPTY':
+                layout.label(text='Select a face!')
+                return None
+            if context.object.data.get('aaa_fs') == None:
                 layout.label(text='Select a face!')
                 return None
             
@@ -410,7 +411,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             else:
                 row = layout.row()
                 row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
-                row.label(text='Face Poser')
+                row.label(text='Face Poser', icon='RESTRICT_SELECT_OFF')
 
             if props.ddposelib or not prefs.compactable:
                 if prefs.compactable:
@@ -425,7 +426,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     col = row.column()
                     col.operator('poselib.prepareadd', text='', icon='ADD')
                     col.operator('poselib.remove', text='', icon='REMOVE')
-                    #col.label(text='', icon='BLANK1')  
                     col.operator('poselib.refresh', icon='FILE_REFRESH', text='', emboss=False)
                     op = col.operator('poselib.move', text='', icon='TRIA_UP')
                     op.pos = 1
@@ -452,7 +452,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             else:
                 row = layout.row()
                 row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
-                row.label(text='Pose Library')
+                row.label(text='Pose Library', icon='OUTLINER_OB_GROUP_INSTANCE')
                 
 
             if props.ddrandomize or not prefs.compactable:
@@ -462,22 +462,15 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     row.label(text='Face Randomizer')
                 row = layout.row()
                 row.prop(props, 'keyframe')
-                row = layout.row()
                 row.prop(props, 'randomadditive')
-                row = layout.row()
-                row.prop(props, 'randomstrength', slider=True)
-                row =layout.row()
-                op = row.operator('hisanim.randomizeface')
-                op.reset = False
-                row = layout.row()
-                set0 = row.operator('hisanim.randomizeface', text='Reset Face')
-                set0.reset = True
-                row = layout.row()
-                row.prop(context.object.data, '["aaa_fs"]')
+                layout.row().prop(props, 'randomstrength', slider=True)
+                layout.row().operator('hisanim.randomizeface')
+                layout.row().operator('hisanim.resetface')
+                layout.row().prop(context.object.data, '["aaa_fs"]', text='Flex Scale')
             else:
                 row = layout.row()
                 row.prop(props, 'ddrandomize', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
-                row.label(text='Face Randomizer')
+                row.label(text='Face Randomizer', icon='RNDCURVE')
 
             if props.ddlocks or not prefs.compactable:
                 if prefs.compactable:
@@ -491,7 +484,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             else:
                 row = layout.row()
                 row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
-                row.label(text='Lock Sliders')
+                row.label(text='Lock Sliders', icon='LOCKED')
 
 classes = [
     TRIFECTA_PT_PANEL,
