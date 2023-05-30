@@ -237,7 +237,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             row.prop(props, 'fp', icon='RESTRICT_SELECT_OFF', text='', toggle=True)
         else:
             layout.row().prop(props, 'tools')
-
         if props.tools == 'WARDROBE':
             row = layout.row()
             row.label(text='Spawn TF2 Cosmetics', icon='MOD_CLOTH')
@@ -332,8 +331,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     row = layout.row()
                     row.label(text='TF2-V3 contains an invalid path!')
                 else:
-                    row = layout.row()
-                    row.label(text='Move face in custom properties under data tab.')
                     row = layout.row(align=True)
                     for i in mercs:
                         row.label(text=i)
