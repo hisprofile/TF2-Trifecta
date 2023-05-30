@@ -247,7 +247,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             if props.hisanimweapons:
                 row = layout.row()
                 row.prop(props, 'autobind')
-            if props.query == '': layout.label(text="Warning! Don't leave the text field empty!")
             if prefs.missing == True:
                 row = layout.row()
                 row.label(text='Assets missing. Check preferences for info.')
@@ -391,10 +390,18 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     row = layout.row()
                     row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                     row.label(text='Face Poser')
-                row = layout.row()
-                row.template_list('HISANIM_UL_SLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
-                op = row.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
-                layout.row().prop(props, 'LR', slider=True)
+                row = layout.row(align=True)
+                col = row.column()
+                col.template_list('HISANIM_UL_SLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
+                col = row.column()
+                col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
+                col.prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
+                row = layout.row(align=True)
+                op = row.operator('hisanim.adjust', text='', icon='TRIA_LEFT')
+                op.amount = -0.1
+                row.prop(props, 'LR', slider=True)
+                op = row.operator('hisanim.adjust', text='', icon='TRIA_RIGHT')
+                op.amount = 0.1
                 row = layout.row(align=True)
                 row.prop(props, 'up', text='Upper', toggle=True)
                 row.prop(props, 'mid', text='Mid', toggle=True)
