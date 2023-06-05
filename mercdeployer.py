@@ -257,15 +257,19 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     bpy.data.objects.remove(obj)
                     continue
         armature = bpy.data.collections[justadded].objects[0]
+        
         while armature.parent != None:  # get the absolute root of the objects
             armature = armature.parent
+
         for i in armature.children_recursive:
                 if i.type != 'ARMATURE':
                     continue
                 i.make_local().data.make_local()
         armature.make_local().data.make_local()
+
         if (text := armature.get('rig_ui')) != None:
             text.as_module()
+
         armature.location = bpy.context.scene.cursor.location # set the character to 3d cursor location
         for obj in bpy.data.collections[justadded].objects: # go through the collection 
             for mat in obj.material_slots:
@@ -309,6 +313,12 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         armature = bpy.data.collections[justadded].objects[0]
         while armature.parent != None:  # get the absolute root of the objects
             armature = armature.parent
+
+        for driver in armature.data.animation_data.drivers:
+            driver = driver.driver
+            for var in driver.variables:
+                var.targets[0].id = armature
+        
         armature.location = bpy.context.scene.cursor.location
         # remove the newly added collection.
         bpy.data.collections.remove(bpy.data.collections[justadded])
@@ -353,29 +363,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         bpy.context.view_layer.active_layer_collection = bak
         bpy.ops.outliner.orphans_purge(do_recursive=True)
         return {'FINISHED'}
-
-class MD_PT_MERCDEPLOY(bpy.types.Panel):
-    '''Rolling in the nonsense, deploy the fantasy!'''
-    bl_label = "Merc Deployer"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "Merc Deployer"
-    bl_icon = "FORCE_DRAG"
-
-    def draw(self, context):
-        layout = self.layout
-        row = layout.row(align=True)
-        for i in mercs:
-            row.label(text=i)
-            col = layout.column()
-            for ii in cln:
-                MERC = row.operator('hisanim.loadmerc', text=ii)
-                MERC.merc = i
-                MERC.type = ii
-            row = layout.row(align=True)
-        row.prop(context.scene.hisanimvars, "bluteam")
-        row = layout.row()
-        row.prop(context.scene.hisanimvars, "cosmeticcompatibility")
 
 classes =   [HISANIM_OT_LOADMERC]
 

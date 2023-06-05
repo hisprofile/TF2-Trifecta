@@ -115,20 +115,23 @@ class HISANIM_OT_BINDFACE(bpy.types.Operator):
     def execute(self, context):
         #print('rad')
         CON = context.selected_objects
-        
-        for i in CON[1].data.shape_keys.key_blocks:
-            find = i.name.casefold()
-            i.slider_min = -10
-            i.slider_max = 10
-            print(i)
-            for ii in CON[0].data.shape_keys.key_blocks:
-                if ii.name.casefold() == find:
-                    val = i.driver_add("value").driver
-                    val.variables.new()
-                    i.driver_add("value").driver.expression = 'var'
-                    val.variables[0].targets[0].id_type = 'KEY'
-                    val.variables[0].targets[0].id = CON[0].data.shape_keys
-                    val.variables[0].targets[0].data_path = f'key_blocks["{ii.name}"].value'
+        try:
+            for i in CON[1].data.shape_keys.key_blocks:
+                find = i.name.casefold()
+                i.slider_min = -10
+                i.slider_max = 10
+                print(i)
+                for ii in CON[0].data.shape_keys.key_blocks:
+                    if ii.name.casefold() == find:
+                        val = i.driver_add("value").driver
+                        val.variables.new()
+                        i.driver_add("value").driver.expression = 'var'
+                        val.variables[0].targets[0].id_type = 'KEY'
+                        val.variables[0].targets[0].id = CON[0].data.shape_keys
+                        val.variables[0].targets[0].data_path = f'key_blocks["{ii.name}"].value'
+        except:
+            self.report({'ERROR'}, "Only compatible with Hectoris' rigs!")
+            return {'CANCELLED'}
         return {'FINISHED'}
 
 class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):

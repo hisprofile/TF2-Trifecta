@@ -397,6 +397,8 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 col = row.column()
                 col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
                 col.prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
+                col.label(text='', icon='BLANK1')
+                col.operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
                 row = layout.row(align=True)
                 op = row.operator('hisanim.adjust', text='', icon='TRIA_LEFT')
                 op.amount = -0.1
@@ -407,7 +409,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row.prop(props, 'up', text='Upper', toggle=True)
                 row.prop(props, 'mid', text='Mid', toggle=True)
                 row.prop(props, 'low', text='Lower', toggle=True)
-                layout.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME')
+                #layout.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME')
             else:
                 row = layout.row()
                 row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
