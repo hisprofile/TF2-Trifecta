@@ -2,7 +2,6 @@ import bpy, random, time
 from bpy.app.handlers import persistent
 from . import poselib, mercdeployer
 from math import floor, ceil
-#random.seed = 0
 
 
 upperFace = ['BrowInV', 'BrowOutV', 'Frown', 'InnerSquint',
