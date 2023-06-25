@@ -22,9 +22,14 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
     
     def execute(self, context):
         if context.scene.hisanimvars.hisanimtarget == None:
-            self.report({'INFO'}, 'No armature selected!')
-            return {'CANCELLED'}
-        obj = context.scene.hisanimvars.hisanimtarget
+            if (obj := bpy.context.object) == None:
+                self.report({'INFO'}, 'No armature selected!')
+                return {'CANCELLED'}
+            if obj.type != 'ARMATURE':
+                self.report({'INFO'}, 'No armature selected!')
+                return {'CANCELLED'}
+        else:
+            obj = context.scene.hisanimvars.hisanimtarget
         doOnce = True
         
         for i in bpy.context.selected_objects:

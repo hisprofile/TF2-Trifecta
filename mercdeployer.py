@@ -313,11 +313,13 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         armature = bpy.data.collections[justadded].objects[0]
         while armature.parent != None:  # get the absolute root of the objects
             armature = armature.parent
-
-        for driver in armature.data.animation_data.drivers:
-            driver = driver.driver
-            for var in driver.variables:
-                var.targets[0].id = armature
+        try:
+            for driver in armature.data.animation_data.drivers:
+                driver = driver.driver
+                for var in driver.variables:
+                    var.targets[0].id = armature
+        except:
+            pass
         
         armature.location = bpy.context.scene.cursor.location
         # remove the newly added collection.

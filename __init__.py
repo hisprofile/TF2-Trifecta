@@ -16,10 +16,10 @@ from bpy.types import *
 from mathutils import *
 from bpy.app.handlers import persistent
 import importlib, sys
-for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__))) if f.endswith(".py") ]:
-    if filename == os.path.basename(__file__): continue
-    module = sys.modules.get("{}.{}".format(__name__,filename[:-3]))
-    if module: importlib.reload(module)
+#for filename in [f for f in os.listdir(os.path.dirname(os.path.realpath(__file__))) if f.endswith(".py") ]:
+    #if filename == os.path.basename(__file__): continue
+    #module = sys.modules.get("{}.{}".format(__name__,filename[:-3]))
+    #if module: importlib.reload(module)
 # borrowed from BST
 from . import (bonemerge, mercdeployer, icons,
                 updater, newuilist, preferences,

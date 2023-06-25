@@ -66,7 +66,7 @@ class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
                 self.report({'INFO'}, f'Entry for {self.UPDATE} exists, but path is not valid!')
                 return {'CANCELLED'}
         else:
-            DLOADTO = GET.path[:GET.path.rfind('/')+1]
+            DLOADTO = Path(PATH).parents[0]
         if switch == False:
             print(f"Deleting old file from {GET.path}...")
             if os.path.exists(GET.path):
