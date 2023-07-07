@@ -176,8 +176,6 @@ class HISANIM_UL_USESLIDERS(bpy.types.UIList):
             item, icon,
             active_data, active_propname,
             index):
-        props = context.scene.hisanimvars
-        isKeyed = hasKey(bpy.context.object, item)
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             layout.row() # used as a little space to set the active item
             row = layout.row(align=True)
@@ -303,7 +301,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     if prefs.compactable: row.label(text='Search Results')
                     if not prefs.compactable: layout.label(text='Search Results')
                     hits = props.results
-                    split = layout.split(factor=0.2)
                     row = layout.row()
                     if len(hits) > 0:
                         if len(hits) == 1:
@@ -392,6 +389,9 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                     row.label(text='Face Poser')
                 row = layout.row(align=True)
+                row.operator('hisanim.optimize')
+                row.operator('hisanim.restore')
+                row = layout.row(align=True)
                 col = row.column()
                 col.template_list('HISANIM_UL_SLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
                 col = row.column()
@@ -409,7 +409,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row.prop(props, 'up', text='Upper', toggle=True)
                 row.prop(props, 'mid', text='Mid', toggle=True)
                 row.prop(props, 'low', text='Lower', toggle=True)
-                #layout.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME')
             else:
                 row = layout.row()
                 row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_RIGHT', emboss=False)

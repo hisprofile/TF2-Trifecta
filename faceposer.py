@@ -1,4 +1,4 @@
-import bpy, random, time
+import bpy, random, time, pickle
 from bpy.app.handlers import persistent
 from . import poselib, mercdeployer
 from math import floor, ceil
@@ -66,6 +66,7 @@ def updatefaces(scn = None):
                 continue
             if 'left' in z[i][1]:
                 continue
+            if type(data[z[i][1]]) == bytes: continue
             mini = newdata.get('min')
             maxi = newdata.get('max')
             new = props.sliders.add()
@@ -379,7 +380,7 @@ class HISANIM_OT_resetface(bpy.types.Operator):
         props = context.scene.hisanimvars
         data = context.object.data
         for x, i in enumerate(data.keys()):
-            if i == 'aaa_fs':
+            if i == 'aaa_fs' or i == 'skdata':
                 continue
             try:
                 prop = data.id_properties_ui(i).as_dict() # if the key is not a numerical value, skip
@@ -428,6 +429,80 @@ class HISANIM_OT_adjust(bpy.types.Operator):
         else:
             props.LR = floor(val)/10
         return {'FINISHED'}
+    
+class HISANIM_OT_optimize(bpy.types.Operator):
+    bl_idname = 'hisanim.optimize'
+    bl_label = 'Optimize Merc'
+    bl_description = 'Optimize scene performance by deleting shape key drivers. Disable facial movements'
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        for obj in bpy.context.selected_objects:
+            D = obj.data
+            if D.get('skdata') != None: continue
+            shapekey = {}
+            skdata = obj.data.shape_keys
+            if skdata == None: continue
+            for num, key in enumerate(obj.data.shape_keys.key_blocks):
+                if key.name == 'basis shape key': continue
+                template = {}
+                for driv in skdata.animation_data.drivers:
+                    path = skdata.path_resolve(driv.data_path.replace('.value', ''))
+                    if path == key:
+                        driver = driv
+                        break
+                else:
+                    continue
+                drivers = {}
+                drivers['expression'] = driver.driver.expression
+                vars = []
+                for var in driver.driver.variables:
+                    var = var
+                    vdat = {}
+                    vdat['name'] = var.name
+                    vdat['data_path'] = var.targets[0].data_path
+                    vars.append(vdat)
+                drivers['variables'] = vars
+                template['drivers'] = drivers
+                
+                shapekey[key.name] = drivers
+                
+            obj.data['skdata'] = pickle.dumps(shapekey)
+
+            for driv in skdata.animation_data.drivers:
+                skdata.animation_data.drivers.remove(driv)
+        return {'FINISHED'}
+    
+class HISANIM_OT_restore(bpy.types.Operator):
+    bl_idname = 'hisanim.restore'
+    bl_label = 'Restore Merc'
+    bl_description = 'Restores facial features of mercenary. Harms performance'
+    bl_options = {'UNDO'}
+
+    def execute(self, context):
+        for obj in bpy.context.selected_objects:
+            D = obj.data
+            if D.get('skdata') == None: continue
+            if D.shape_keys == None: continue
+            data = pickle.loads(obj.data['skdata'])
+            for key in D.shape_keys.key_blocks:
+                if 'basis' in key.name.lower(): continue
+                name = key.name
+                try:
+                    dat = data[name]
+                except:
+                    print(obj.name, D.name, key.name)
+                driv = key.driver_add('value')
+                driv.driver.expression = dat['expression']
+                for v in dat['variables']:
+                    var = driv.driver.variables.new()
+                    var.type = 'SINGLE_PROP'
+                    var.name = v['name']
+                    var.targets[0].id_type = 'MESH'
+                    var.targets[0].id = obj.data
+                    var.targets[0].data_path = v['data_path']
+            del obj.data['skdata']
+        return {'FINISHED'}
 
 classes = [
     faceslider,
@@ -437,7 +512,9 @@ classes = [
     HISANIM_OT_RANDOMIZEFACE,
     HISANIM_OT_resetface,
     HISANIM_OT_KEYEVERY,
-    HISANIM_OT_adjust
+    HISANIM_OT_adjust,
+    HISANIM_OT_optimize,
+    HISANIM_OT_restore
 ]
 
 def register():
