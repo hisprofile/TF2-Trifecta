@@ -132,10 +132,11 @@ class HISANIM_UL_RESULTS(bpy.types.UIList):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             name = item.name
             split = layout.split(factor=0.2)
-            if props.stage == 'NONE':
-                split.label(text=item.name.split('_-_')[1].title())
-            else:
+            if props.stage == 'SELECT':
                 split.prop(item, 'use', text='')
+            else:
+                split.label(text=item.name.split('_-_')[1].title())
+            
             op = split.operator('hisanim.loadcosmetic', text=item.name.split('_-_')[0])
             op.LOAD = item.name
 
@@ -223,7 +224,7 @@ class LOADOUT_UL_loadouts(UIList):
             index):
         props = context.scene.hisanimvars
         row = layout.row()
-        row.label(text=item.name)
+        row.label(text=': '.join(item.name.split('_-_')))
         if props.stage == 'NONE':
             op = row.operator('loadout.select', text='', icon='FORWARD')
             op.loadout = item.name
@@ -315,16 +316,29 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 if prefs.compactable: row.prop(props, 'ddloadouts', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                 if prefs.compactable: row.label(text='Loadouts')
                 if not prefs.compactable: layout.label(text='Loadouts')
-                if props.stage == 'NONE':
-                    layout.row().operator('wdrb.select')
+                
+                
+                row = layout.row()
+                col = row.column()
+                col.template_list('LOADOUT_UL_loadouts', 'Loadouts', props, 'loadout_data', props, 'loadout_index')
+                col = row.column()
+                col.operator('wdrb.select', text='', icon='ADD')
+                col.operator('loadout.remove', text='', icon='REMOVE')
+                col.operator('loadout.refresh', icon='FILE_REFRESH', text='', emboss=False)
+                op = col.operator('loadout.move', text='', icon='TRIA_UP')
+                op.pos = 1
+                op1 = col.operator('loadout.move', text='', icon='TRIA_DOWN')
+                op1.pos = -1
                 if props.stage == 'SELECT':
-                    layout.row().prop(props, 'loadout_name')
-                    layout.row().operator('wdrb.cancel')
+                    if (len(bpy.types.Scene.loadout_temp) == 0): layout.row().label(text='No Cosmetics Selected!')
+                    layout.row().prop(props, 'loadout_name', text='Name')
+                    row = layout.row()
+                    row.operator('wdrb.cancel')
+                    row.operator('wdrb.confirm')
                 if props.stage == 'DISPLAY':
                     layout.row().operator('wdrb.cancel')
                     layout.row().operator('loadout.load')
-
-                layout.row().template_list('LOADOUT_UL_loadouts', 'Loadouts', props, 'loadout_data', props, 'loadout_index')
+                if props.stage == 'NONE': layout.row().operator('loadout.rename')
             else:
                 row = layout.row()
                 row.prop(props, 'ddloadouts', icon='DISCLOSURE_TRI_RIGHT', emboss=False)

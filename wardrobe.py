@@ -179,7 +179,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     query: bpy.props.StringProperty(default="")
     loadout_name: bpy.props.StringProperty(default='Loadout Name')
     cosmeticcompatibility: BoolProperty(
-        name="Low Quality (Cosmetic Compatible)",
+        name="In-Game Models",
         description="Use cosmetic compatible bodygroups that don't intersect with cosmetics. Disabling will use SFM bodygroups",
         default = True, options=set())
     wrdbbluteam: BoolProperty(
@@ -187,7 +187,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         description="Swap classes",
         default = False, options=set())
     hisanimweapons: BoolProperty(name='Search For Weapons', options=set())
-    hisanimrimpower: FloatProperty(name='Rim Power',
+    hisanimrimpower: FloatProperty(name='Rimlight Strength',
                                 description='Multiply the overall rim boost by this number',
                                 default=0.400, min=0.0, max=1.0, options=set())
     hisanimscale: bpy.props.BoolProperty(default=False, name='Scale With', description='Scales cosmetics with targets bones. Disabled by default', options=set())
@@ -215,7 +215,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     ddsearch: bpy.props.BoolProperty(default=True, name='', options=set())
     ddpaints: bpy.props.BoolProperty(default=True, name='', options=set())
     ddmatsettings: bpy.props.BoolProperty(default=True, name='', options=set())
-    ddloadouts: bpy.props.BoolProperty(default=True, name='', options=set())
+    ddloadouts: bpy.props.BoolProperty(default=False, name='', options=set())
     ddfacepanel: bpy.props.BoolProperty(default=True, name='', options=set())
     ddrandomize: bpy.props.BoolProperty(default=True, name='', options=set())
     ddlocks: bpy.props.BoolProperty(default=True, name = '', options=set())
@@ -256,8 +256,13 @@ class WDRB_OT_Select(bpy.types.Operator):
     bl_label = 'Select'
     bl_description = 'Select'
 
+    @classmethod
+    def poll(cls, context):
+        return bpy.context.scene.hisanimvars.stage == 'NONE'
+
     def execute(self, context):
         props = bpy.context.scene.hisanimvars
+        props.loadout_name = 'Loadout Name'
         bpy.types.Scene.loadout_temp = []
         props.stage = 'SELECT'
         return {'FINISHED'}
@@ -279,6 +284,22 @@ class WDRB_OT_Confirm(bpy.types.Operator):
     bl_label = 'Confirm'
     bl_description = 'Confirm'
 
+    @classmethod
+    def poll(cls, context):
+        return (bpy.context.scene.hisanimvars.loadout_name != '') * (len(bpy.types.Scene.loadout_temp) > 0) 
+    
+    def invoke(self, context, event):
+        C = bpy.context
+        scn = C.scene
+        props = scn.hisanimvars
+
+        jsonData = loadout.getJson()
+
+        if jsonData.get(props.loadout_name) != None:
+            return context.window_manager.invoke_props_dialog(self)
+        else:
+            return self.execute(context)
+
     def execute(self, context):
         props = bpy.context.scene.hisanimvars
         if not loadout.jsonExists():
@@ -288,7 +309,12 @@ class WDRB_OT_Confirm(bpy.types.Operator):
         del bpy.types.Scene.loadout_temp
         props.stage = 'NONE'
         loadout.writeJson(dictData)
+        loadout.update()
         return {'FINISHED'}
+    
+    def draw(self, context):
+        self.layout.row().label(text='Entry exists. Overwrite?')
+
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')

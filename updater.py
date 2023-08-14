@@ -33,9 +33,13 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         layout.label(text='Update/Replace TF2-V3 Rigs')  
         row = layout.row()
         row.operator('hisanim.mercupdate', text='Standard Rigs')
+        layout.label(text='The default rigs by hisanimations. Supports the Face Poser tool.')
         row = layout.row()
         row.operator('hisanim.hectorisupdate')
         layout.label(text='Face Panel + Phonemes Rigs by Hectoris919')
+        row = layout.row()
+        row.operator('hisanim.eccentricupdate')
+        layout.label(text='Face Panel by Eccentric')
         layout.label(text='Open the console to view progress!')
         row = layout.row()
         row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
@@ -164,12 +168,6 @@ class HISANIM_OT_MERCUPDATE(bpy.types.Operator):
         for i in glob.glob("*.blend", root_dir=GET):
             os.remove(os.path.join(GET, i))
             print(f'Deleted {i}..')
-        '''for i in files:
-            try:
-                os.remove(f'{DLOADTO + i}.blend')
-                print(f'Deleted {i}.blend')
-            except:
-                print(f'Could not delete {i}.blend!')'''
         DLOADTO = GET
         print(f"Downloading hisanimations' TF2-V3 port...")
         dload.save('https://gitlab.com/hisprofile/the-tf2-collection/raw/main/TF2-V3.zip')
@@ -207,12 +205,6 @@ class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
         for i in glob.glob("*.blend", root_dir=GET):
             os.remove(os.path.join(GET, i))
             print(f'Deleted {i}..')
-        '''for i in files:
-            try:
-                os.remove(f'{DLOADTO + i}.blend')
-                print(f'Deleted {i}.blend')
-            except:
-                print(f'Could not delete {i}.blend!')'''
         DLOADTO = GET
         print(f"Downloading Hectoris919's TF2-V3 port...")
         dload.save('https://gitlab.com/hisprofile/the-tf2-collection/raw/main/TF2-HECTORIS.zip')
@@ -227,6 +219,38 @@ class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
         os.remove(os.path.join(DLOADTO, 'TF2-HECTORIS.zip'))
         print('Removed!')
         print("Downloaded Hectoris919's port!")
+        return {'FINISHED'}
+    
+class HISANIM_OT_ECCENTRICUPDATE(bpy.types.Operator):
+    bl_idname = 'hisanim.eccentricupdate'
+    bl_label = 'Face Panel'
+    bl_description = "Download Eccentric's TF2 rigs, used with a face panel"
+
+    def execute(self, execute):
+        prefs = bpy.context.preferences.addons[__package__].preferences
+        #DLOADTO = bpy.context.preferences.filepaths.asset_libraries['TF2-V3'].path + "/"
+        if (GET := prefs.hisanim_paths.get('TF2-V3')) == None:
+            self.report({'INFO'}, 'No entry for TF2-V3!')
+            return {'CANCELLED'}
+        GET = GET.path
+        print('Deleting old .blend files...')
+        for i in glob.glob("*.blend", root_dir=GET):
+            os.remove(os.path.join(GET, i))
+            print(f'Deleted {i}..')
+        DLOADTO = GET
+        print(f"Downloading Eccentric's TF2-V3 version...")
+        dload.save('https://gitlab.com/hisprofile/the-tf2-collection/raw/main/TF2-V3_FACE_RIG.zip')
+        print('''Eccentric's version downloaded!''')
+        print('Moving to asset library path...')
+        shutil.move(str(Path(__file__).parent) + f"/TF2-V3_FACE_RIG.zip", DLOADTO)
+        print('Moved!')
+        print('Extracting .zip file...')
+        zipfile.ZipFile(os.path.join(DLOADTO, 'TF2-V3_FACE_RIG.zip'), 'r').extractall(DLOADTO)
+        print('Extracted!')
+        print('Removing .zip flie...')
+        os.remove(os.path.join(DLOADTO, 'TF2-V3_FACE_RIG.zip'))
+        print('Removed!')
+        print("Downloaded Eccentric's version!")
         return {'FINISHED'}
     
 class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
@@ -314,7 +338,7 @@ class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
         self.report({'INFO'}, 'Addon downloaded! Press "Reload Addon" to apply changes.')
         return {'FINISHED'}
 
-bpyClasses = [HISANIM_PT_UPDATER, HISANIM_OT_CLSUPDATE, HISANIM_OT_ALLCLSUPDATE, HISANIM_OT_MERCUPDATE, HISANIM_OT_HECTORISUPDATE, HISANIM_OT_ADDONUPDATER]
+bpyClasses = [HISANIM_PT_UPDATER, HISANIM_OT_CLSUPDATE, HISANIM_OT_ALLCLSUPDATE, HISANIM_OT_MERCUPDATE, HISANIM_OT_HECTORISUPDATE, HISANIM_OT_ADDONUPDATER, HISANIM_OT_ECCENTRICUPDATE]
 
 def register():
     for operator in bpyClasses:

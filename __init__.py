@@ -2,7 +2,7 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A group of three addons: Wardrobe, Merc Deployer, and Bonemerge.",
     "author" : "hisanimations",
-    "version" : (2, 1, 4),
+    "version" : (2, 3, 0),
     "blender" : (3, 5, 0),
     "location" : "View3d > TF2-Trifecta",
     "support" : "COMMUNITY",
@@ -38,7 +38,6 @@ def register():
     bonemerge.register()
     panel.register()
     poselib.register()
-    #loadout.register()
 
 
 def unregister():
