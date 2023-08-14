@@ -1,6 +1,6 @@
 import bpy, random, time, pickle
 from bpy.app.handlers import persistent
-from . import poselib, mercdeployer
+from . import poselib, mercdeployer, loadout
 from math import floor, ceil
 
 
@@ -36,7 +36,7 @@ def updatefaces(scn = None):
     cycle through its keys and create sliders from them. Then, use those
     sliders to manipulate the keys.
     '''
-
+    loadout.update()
     props = bpy.context.scene.hisanimvars
     try:
         data = bpy.context.object.data
@@ -92,6 +92,7 @@ def updatefaces(scn = None):
                         new.Type = sectstr
                         break
         poselib.updateVCol()
+    
     props.lastactiveface = props.activeface # use this to see if a new face has been selected. if the same face has been selected twice, do nothing.
     
 

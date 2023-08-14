@@ -132,7 +132,10 @@ class HISANIM_UL_RESULTS(bpy.types.UIList):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             name = item.name
             split = layout.split(factor=0.2)
-            split.label(text=item.name.split('_-_')[1].title())
+            if props.stage == 'NONE':
+                split.label(text=item.name.split('_-_')[1].title())
+            else:
+                split.prop(item, 'use', text='')
             op = split.operator('hisanim.loadcosmetic', text=item.name.split('_-_')[0])
             op.LOAD = item.name
 
@@ -211,6 +214,19 @@ class POSELIB_UL_visemes(UIList):
         row = layout.row()
         row.prop(item, 'use', text='')
         row.label(text="_".join(item.name.split("_")[1:]))
+
+class LOADOUT_UL_loadouts(UIList):
+    def draw_item(self, context,
+            layout, data,
+            item, icon,
+            active_data, active_propname,
+            index):
+        props = context.scene.hisanimvars
+        row = layout.row()
+        row.label(text=item.name)
+        if props.stage == 'NONE':
+            op = row.operator('loadout.select', text='', icon='FORWARD')
+            op.loadout = item.name
 
 class TRIFECTA_PT_PANEL(bpy.types.Panel):
     """A Custom Panel in the Viewport Toolbar"""
@@ -293,6 +309,27 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     else:
                         row.prop(props, 'ddpaints', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                         row.label(text='Paints', icon='BRUSH_DATA')
+
+            if props.ddloadouts or not prefs.compactable:
+                if prefs.compactable: row = layout.row()
+                if prefs.compactable: row.prop(props, 'ddloadouts', icon='DISCLOSURE_TRI_DOWN', emboss=False)
+                if prefs.compactable: row.label(text='Loadouts')
+                if not prefs.compactable: layout.label(text='Loadouts')
+                if props.stage == 'NONE':
+                    layout.row().operator('wdrb.select')
+                if props.stage == 'SELECT':
+                    layout.row().prop(props, 'loadout_name')
+                    layout.row().operator('wdrb.cancel')
+                if props.stage == 'DISPLAY':
+                    layout.row().operator('wdrb.cancel')
+                    layout.row().operator('loadout.load')
+
+                layout.row().template_list('LOADOUT_UL_loadouts', 'Loadouts', props, 'loadout_data', props, 'loadout_index')
+            else:
+                row = layout.row()
+                row.prop(props, 'ddloadouts', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
+                row.label(text='Loadouts', icon='ASSET_MANAGER')
+
 
             if props.searched:
                 if props.ddsearch or not prefs.compactable:
@@ -494,7 +531,8 @@ classes = [
     HISANIM_UL_LOCKSLIDER,
     POSELIB_UL_panel,
     HISANIM_UL_USESLIDERS,
-    POSELIB_UL_visemes
+    POSELIB_UL_visemes,
+    LOADOUT_UL_loadouts
 ]
 
 def register():

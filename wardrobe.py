@@ -4,7 +4,7 @@ from bpy.props import *
 from bpy.types import *
 from bpy.types import Context
 from mathutils import *
-from . import bonemerge, mercdeployer, faceposer
+from . import bonemerge, mercdeployer, faceposer, loadout
 
 def RemoveNodeGroups(a): # iterate through every node and node group by using the "tree" method and removing said nodes
     for i in a.nodes:
@@ -136,7 +136,23 @@ class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
         return {'FINISHED'}
         
 class searchHits(bpy.types.PropertyGroup):
+    scn = bpy.types.Scene
+    def gett(self):
+        scn = bpy.types.Scene
+        try:
+            return self.name in scn.loadout_temp
+        except:
+            return False
+        
+    def sett(self, value):
+        scn = bpy.types.Scene
+        if value == True:
+            if self.name not in scn.loadout_temp: scn.loadout_temp.append(self.name)
+        if value == False:
+            if self.name in scn.loadout_temp: scn.loadout_temp.remove(self.name)
+
     name: bpy.props.StringProperty()
+    use: bpy.props.BoolProperty(name='Use', default=False, get=gett, set=sett)
 
 class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs. Less to write for registering and unregistering
     def sW(self, val):
@@ -161,6 +177,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         description="Swap classes",
         default = False, options=set())
     query: bpy.props.StringProperty(default="")
+    loadout_name: bpy.props.StringProperty(default='Loadout Name')
     cosmeticcompatibility: BoolProperty(
         name="Low Quality (Cosmetic Compatible)",
         description="Use cosmetic compatible bodygroups that don't intersect with cosmetics. Disabling will use SFM bodygroups",
@@ -198,6 +215,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     ddsearch: bpy.props.BoolProperty(default=True, name='', options=set())
     ddpaints: bpy.props.BoolProperty(default=True, name='', options=set())
     ddmatsettings: bpy.props.BoolProperty(default=True, name='', options=set())
+    ddloadouts: bpy.props.BoolProperty(default=True, name='', options=set())
     ddfacepanel: bpy.props.BoolProperty(default=True, name='', options=set())
     ddrandomize: bpy.props.BoolProperty(default=True, name='', options=set())
     ddlocks: bpy.props.BoolProperty(default=True, name = '', options=set())
@@ -209,6 +227,8 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     activeslider: bpy.props.StringProperty()
     activeface: bpy.props.PointerProperty(type=bpy.types.Object)
     lastactiveface: bpy.props.PointerProperty(type=bpy.types.Object)
+    loadout_data: bpy.props.CollectionProperty(type=loadout.genericGroup)
+    loadout_index:bpy.props.IntProperty(default=0)
     sliders: bpy.props.CollectionProperty(type=faceposer.faceslider)
     sliderindex: bpy.props.IntProperty(options=set())
     dragging: bpy.props.BoolProperty(default=False, options=set())
@@ -220,7 +240,55 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     low: bpy.props.BoolProperty(default=False, options=set(), name='Lower', description='Show the Lower section of the face')
     usesliders: bpy.props.BoolProperty(default = True)
     useshapekeys: bpy.props.BoolProperty(default=False)
-    merc: StringProperty(default='')
+    stage: EnumProperty(
+        items=(
+        ('NONE', 'None', '', '', 0),
+        ('SELECT', 'Selection', '', '', 1),
+        ('CONFIRM', 'Confirmation', '', '', 2),
+        ('DISPLAY', 'Display', '', '', 3)
+        ),
+        name = 'Stages',
+        default='NONE'
+    )
+
+class WDRB_OT_Select(bpy.types.Operator):
+    bl_idname = 'wdrb.select'
+    bl_label = 'Select'
+    bl_description = 'Select'
+
+    def execute(self, context):
+        props = bpy.context.scene.hisanimvars
+        bpy.types.Scene.loadout_temp = []
+        props.stage = 'SELECT'
+        return {'FINISHED'}
+    
+class WDRB_OT_Cancel(bpy.types.Operator):
+    bl_idname = 'wdrb.cancel'
+    bl_label = 'Cancel'
+    bl_description = 'Cancel'
+
+    def execute(self, context):
+        props = bpy.context.scene.hisanimvars
+        props.stage = 'NONE'
+        del bpy.types.Scene.loadout_temp
+        loadout.update()
+        return {'FINISHED'}
+    
+class WDRB_OT_Confirm(bpy.types.Operator):
+    bl_idname = 'wdrb.confirm'
+    bl_label = 'Confirm'
+    bl_description = 'Confirm'
+
+    def execute(self, context):
+        props = bpy.context.scene.hisanimvars
+        if not loadout.jsonExists():
+            loadout.initJson()
+        dictData = loadout.getJson()
+        dictData[props.loadout_name] = bpy.types.Scene.loadout_temp
+        del bpy.types.Scene.loadout_temp
+        props.stage = 'NONE'
+        loadout.writeJson(dictData)
+        return {'FINISHED'}
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
     LOAD: bpy.props.StringProperty(default='')
@@ -238,17 +306,31 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
 
         prefs = context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
-        if (p := paths.get(CLASS)) == None:
+        if (p := paths.get(CLASS)) == None: # no entry
             self.report({'ERROR'}, f'Directory for "{CLASS}" not found! Make sure an entry for it exists in the addon preferences!')
             return {'CANCELLED'}
+        
+        if p.this_is != 'BLEND': # bad file extension type
+            self.report({'ERROR'}, f'Path for "{CLASS}" entry does not end in a .blend file!')
+            return {'CANCELLED'}
         p = p.path
-        if not os.path.exists(p):
+        if not os.path.exists(p): # doesn't exist
             self.report({'ERROR'}, f'Entry for "{CLASS}" exists, but the path is invalid!')
+            return {'CANCELLED'}
         cos = COSMETIC
-        with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
-            data_to.objects = [cos]
+        try:
+            with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
+                data_to.objects = [cos]
+        except:
+            self.report({'ERROR'}, f'.blend file for "{CLASS}" entry is corrupt/unable to be opened! Redownload!')
+            return {'CANCELLED'}
         list = [i.name for i in D.objects if not "_ARM" in i.name and cos in i.name]
-        justadded = D.objects[sorted(list)[-1]]
+
+        try:
+            justadded = D.objects[sorted(list)[-1]]
+        except:
+            self.report({'ERROR'}, f'.blend file for "{CLASS}" entry is corrupt/unable to be opened! Redownload!')
+            return {'CANCELLED'}
         skins = justadded.get('skin_groups')
         count = 0
         # updates the skin_groups dictionary on the object with its materials
@@ -493,7 +575,10 @@ classes = [
             HISANIM_OT_ClearSearch,
             HISANIM_OT_REVERTFIX,
             HISANIM_OT_MATFIX,
-            HISANIM_OT_relocatePaths
+            HISANIM_OT_relocatePaths,
+            WDRB_OT_Select,
+            WDRB_OT_Cancel,
+            WDRB_OT_Confirm
             ]
 def register():
     for cls in classes:

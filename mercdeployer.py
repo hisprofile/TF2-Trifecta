@@ -179,7 +179,9 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             return {'CANCELLED'}
         if prefs.hisanim_paths['TF2-V3'].this_is != 'FOLDER':
             self.report({'ERROR'}, 'TF2 Rigs entry is invalid!')
-        PATH = prefs.hisanim_paths['TF2-V3'].path
+        TF2V3 = prefs.hisanim_paths['TF2-V3']
+
+        PATH = TF2V3.path
         bak = GetActiveCol()
         SetActiveCol()
         if appendtext(self.merc) == "cancelled":
@@ -187,8 +189,11 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 {'ERROR'}, "Entry for rigs exists, but .blend file could not be found!")
             return {'CANCELLED'}
         if context.scene.hisanimvars.savespace:  # if linking is enabled
-            link(os.path.join(PATH, f'{self.merc}.blend'),
-                 self.merc + self.type, 'Collection')
+            try:
+                link(os.path.join(PATH, f'{self.merc}.blend'),
+                    self.merc + self.type, 'Collection')
+            except:
+                self.report({'ERROR'}, f'.blend file for "{self.merc}" in TF2-V3 is corrupt! Redownload!')
             name = self.merc + self.type
             bpy.data.objects.remove(bpy.data.objects[name])
             bpy.context.scene.collection.children.link(
@@ -233,7 +238,10 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 i.make_local().data.make_local()
             armature.make_local().data.make_local()
         else:
-            append(self.merc, self.type)
+            try:
+                append(self.merc, self.type)
+            except:
+                self.report({'ERROR'}, f'.blend file for "{self.merc}" in TF2-V3 is corrupt! Redownload!')
         # make a variable targeting the added collection of the character
         justadded = str(self.merc + self.type)
         # this mostly pertains to blu switching. any material added has been switched to BLU and will therefore be skipped.

@@ -24,9 +24,10 @@ import importlib, sys
 from . import (bonemerge, mercdeployer, icons,
                 updater, newuilist, preferences,
                 wardrobe, panel, faceposer,
-                poselib)
+                poselib, loadout)
 
 def register():
+    loadout.register()
     faceposer.register()
     wardrobe.register()
     mercdeployer.register()
@@ -37,6 +38,7 @@ def register():
     bonemerge.register()
     panel.register()
     poselib.register()
+    #loadout.register()
 
 
 def unregister():
@@ -50,6 +52,7 @@ def unregister():
     bonemerge.unregister()
     panel.unregister()
     poselib.unregister()
+    loadout.unregister()
 
 
 if __name__ == '__main__':
