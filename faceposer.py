@@ -446,14 +446,8 @@ class HISANIM_OT_optimize(bpy.types.Operator):
             if skdata == None: continue
             for num, key in enumerate(obj.data.shape_keys.key_blocks):
                 if key.name == 'basis shape key': continue
+                if (driver := skdata.animation_data.drivers.find(f'key_blocks["{key.name}"].value')) == None: continue
                 template = {}
-                for driv in skdata.animation_data.drivers:
-                    path = skdata.path_resolve(driv.data_path.replace('.value', ''))
-                    if path == key:
-                        driver = driv
-                        break
-                else:
-                    continue
                 drivers = {}
                 drivers['expression'] = driver.driver.expression
                 vars = []
@@ -467,7 +461,6 @@ class HISANIM_OT_optimize(bpy.types.Operator):
                 template['drivers'] = drivers
                 
                 shapekey[key.name] = drivers
-                
             obj.data['skdata'] = pickle.dumps(shapekey)
 
             for driv in skdata.animation_data.drivers:
@@ -485,15 +478,12 @@ class HISANIM_OT_restore(bpy.types.Operator):
             D = obj.data
             if D.get('skdata') == None: continue
             if D.shape_keys == None: continue
+            kb = D.shape_keys.key_blocks
             data = pickle.loads(obj.data['skdata'])
-            for key in D.shape_keys.key_blocks:
-                if 'basis' in key.name.lower(): continue
-                name = key.name
-                try:
-                    dat = data[name]
-                except:
-                    print(obj.name, D.name, key.name)
-                driv = key.driver_add('value')
+            for key in data.keys():
+                if (skey := kb.get(key)) == None: continue
+                dat = data[key]
+                driv = skey.driver_add('value')
                 driv.driver.expression = dat['expression']
                 for v in dat['variables']:
                     var = driv.driver.variables.new()

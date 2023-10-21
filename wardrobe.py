@@ -171,6 +171,23 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         bpy.context.scene.hisanimvars.tools = 'FACE POSER'
     def gF(self):
         return bpy.context.scene.hisanimvars.tools == 'FACE POSER'
+    def sFx(self, val):
+        bpy.context.scene.hisanimvars.mode = 'FLEXES'
+    def gFx(self):
+        return bpy.context.scene.hisanimvars.mode == 'FLEXES'
+    def sSk(self, val):
+        bpy.context.scene.hisanimvars.mode = 'SKEYS'
+    def gSk(self):
+        return bpy.context.scene.hisanimvars.mode == 'SKEYS'
+    
+    '''def sFx(self, val):
+        bpy.context.scene.hisanimvars.use_flexes = True
+    def gFx(self):
+        return not bpy.context.scene.hisanimvars.use_skeys
+    def sSk(self, val):
+        bpy.context.scene.hisanimvars.use_skeys = True
+    def gSk(self):
+        return not bpy.context.scene.hisanimvars.use_flexes'''
     
     bluteam: bpy.props.BoolProperty(
         name="Blu Team",
@@ -238,8 +255,16 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     up: bpy.props.BoolProperty(default=False, options=set(), name='Upper', description='Show the Upper section of the face')
     mid: bpy.props.BoolProperty(default=False, options=set(), name='Mid', description='Show the Mid section of the face')
     low: bpy.props.BoolProperty(default=False, options=set(), name='Lower', description='Show the Lower section of the face')
-    usesliders: bpy.props.BoolProperty(default = True)
-    useshapekeys: bpy.props.BoolProperty(default=False)
+    use_flexes: bpy.props.BoolProperty(default = True, options=set(), name='Flex Controllers', set=sFx, get=gFx)
+    use_skeys: bpy.props.BoolProperty(default = False, options=set(), name='Shapekeys', set=sSk, get=gSk)
+    mode: EnumProperty(
+        items=(
+            ('FLEXES', 'Flex Controllers', '', '', 0),
+            ('SKEYS', 'Shape Keys', '', '', 1),
+        ),
+        name = 'Mode',
+        default = 'FLEXES'
+    )
     stage: EnumProperty(
         items=(
         ('NONE', 'None', '', '', 0),
@@ -250,6 +275,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         name = 'Stages',
         default='NONE'
     )
+    merc: bpy.props.StringProperty(default='')
 
 class WDRB_OT_Select(bpy.types.Operator):
     bl_idname = 'wdrb.select'

@@ -64,13 +64,16 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
             if item.split:
                 row = layout.row(align=True)
                 Name = item.name.split('_')[-1]
+
                 if not item.realvalue:
-                    split = row.split(factor=0.7, align=True)
-                    split.prop(item, 'value', slider=True, text=Name)
-                    split.prop(props, 'LR', slider=True, text='L-R')
+                    row.prop(item, 'value', slider=True, text=Name, expand=True)
+                    #split = row.split(factor=0.7, align=True)
+                    #split.prop(item, 'value', slider=True, text=Name)
+                    #split.prop(props, 'LR', slider=True, text='L-R')
                 else:
                     row.prop(props.activeface.data, f'["{item.R}"]', text='R')
                     row.prop(props.activeface.data, f'["{item.L}"]', text='L')
+
                 op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
                 op.delete = isKeyed
                 op.slider = item.name
@@ -91,6 +94,48 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
             layout.label(text='')
+
+class MESH_UL_skeys_nodriver(UIList):
+
+    def filter_items(self, context, data, propname):
+        props = context.scene.hisanimvars
+        items = getattr(data, propname)
+        filtered = [self.bitflag_filter_item] * len(items)
+        for i, item in enumerate(items):
+            if self.filter_name.lower() not in item.name.lower():
+                filtered[i] &= ~self.bitflag_filter_item
+            
+            #if context.object.data.shape_keys == None:
+            find = f'key_blocks["{item.name}"].value'
+            #print(find)
+            if context.object.data.shape_keys.animation_data.drivers.find(find) != None:
+                #print('found!')
+                filtered[i] &= ~self.bitflag_filter_item
+
+        return filtered, []
+    
+    def draw_item(self, _context, layout, _data, item, icon, active_data, _active_propname, index):
+        # assert(isinstance(item, bpy.types.ShapeKey))
+        obj = active_data
+        # key = data
+        key_block = item
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            split = layout.split(factor=0.6, align=False)
+            split.prop(key_block, "name", text="", emboss=False, icon_value=icon)
+            row = split.row(align=True)
+            #row.emboss = 'NONE_OR_STATUS'
+            if key_block.mute or (obj.mode == 'EDIT' and not (obj.use_shape_key_edit_mode and obj.type == 'MESH')):
+                split.active = False
+            if not item.id_data.use_relative:
+                row.prop(key_block, "frame", text="")
+            elif index > 0:
+                row.prop(key_block, "value", text="", emboss=True, slider=True)
+            else:
+                row.label(text="")
+            row.prop(key_block, "mute", text="", emboss=False)
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.label(text="", icon_value=icon)
 
 class HISANIM_UL_LOCKSLIDER(bpy.types.UIList):
     def draw_item(self, context,
@@ -206,6 +251,20 @@ class POSELIB_UL_panel(UIList):
         op.viseme = item.name
 
 class POSELIB_UL_visemes(UIList):
+
+    def filter_items(self, context, data, propname):
+        props = context.scene.hisanimvars
+        items = getattr(data, propname)
+        filtered = [self.bitflag_filter_item] * len(items)
+        for i, item in enumerate(items):
+            if self.filter_name.lower() not in item.name.lower():
+                filtered[i] &= ~self.bitflag_filter_item
+            if item.name.startswith('!'):
+                #print('found!')
+                filtered[i] &= ~self.bitflag_filter_item
+
+        return filtered, []
+
     def draw_item(self, context,
             layout, data,
             item, icon,
@@ -264,24 +323,21 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row.prop(props, 'autobind')
             if prefs.missing == True:
                 row = layout.row()
+                row.alert = True
                 row.label(text='Assets missing. Check preferences for info.')
-            row=layout.row()
-            row.operator('hisanim.search', icon='VIEWZOOM')
-            row=layout.row()
-            row.operator('hisanim.clearsearch', icon='X')
+            box = layout.box()
+            box.row().operator('hisanim.search', icon='VIEWZOOM')
+            box.row().operator('hisanim.clearsearch', icon='X')
             if props.ddmatsettings or not prefs.compactable:
                 if prefs.compactable: row = layout.row()
                 if prefs.compactable: row.prop(props, 'ddmatsettings', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                 if prefs.compactable: row.label(text='Material settings')
                 if not prefs.compactable: layout.label(text='Material settings')
-                row=layout.row()
-                row.operator('hisanim.lightwarps')
-                row=layout.row()
-                row.operator('hisanim.removelightwarps')
-                row = layout.row()
-                row.prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
-                row = layout.row()
-                row.prop(context.scene.hisanimvars, 'wrdbbluteam')
+                box = layout.box()
+                box.row().operator('hisanim.lightwarps')
+                box.row().operator('hisanim.removelightwarps')
+                box.row().prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
+                box.row().prop(context.scene.hisanimvars, 'wrdbbluteam')
             else:
                 row = layout.row()
                 row.prop(props, 'ddmatsettings', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
@@ -317,8 +373,8 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 if prefs.compactable: row.label(text='Loadouts')
                 if not prefs.compactable: layout.label(text='Loadouts')
                 
-                
-                row = layout.row()
+                box = layout.box()
+                row = box.row()
                 col = row.column()
                 col.template_list('LOADOUT_UL_loadouts', 'Loadouts', props, 'loadout_data', props, 'loadout_index')
                 col = row.column()
@@ -331,14 +387,14 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 op1.pos = -1
                 if props.stage == 'SELECT':
                     if (len(bpy.types.Scene.loadout_temp) == 0): layout.row().label(text='No Cosmetics Selected!')
-                    layout.row().prop(props, 'loadout_name', text='Name')
-                    row = layout.row()
+                    box.row().prop(props, 'loadout_name', text='Name')
+                    row = box.row()
                     row.operator('wdrb.cancel')
                     row.operator('wdrb.confirm')
                 if props.stage == 'DISPLAY':
-                    layout.row().operator('wdrb.cancel')
-                    layout.row().operator('loadout.load')
-                if props.stage == 'NONE': layout.row().operator('loadout.rename')
+                    box.row().operator('wdrb.cancel')
+                    box.row().operator('loadout.load')
+                if props.stage == 'NONE': box.row().operator('loadout.rename')
             else:
                 row = layout.row()
                 row.prop(props, 'ddloadouts', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
@@ -380,10 +436,10 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 else:
                     row = layout.row(align=True)
                     for i in mercs:
-                        row.label(text=i)
+                        row.label(text=i.title())
                         col = layout.column()
                         for ii in cln:
-                            MERC = row.operator('hisanim.loadmerc', text=ii)
+                            MERC = row.operator('hisanim.loadmerc', text='New' if ii == 'IK' else 'Legacy')
                             MERC.merc = i
                             MERC.type = ii
                         row = layout.row(align=True)
@@ -427,13 +483,20 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             if context.object == None:
                 layout.label(text='Select a face!')
                 return None
-            if context.object.type == 'EMPTY':
+            if context.object.type != 'MESH':
                 layout.label(text='Select a face!')
                 return None
             if context.object.data.get('aaa_fs') == None:
                 layout.label(text='Select a face!')
                 return None
-            
+            if context.object.data.animation_data != None:
+                if context.object.data.animation_data.drivers.find('["aaa_fs"]') != None:
+                    row = layout.row()
+                    row.alert = True
+                    row.label(text="ThatLazyArtist's and Eccentric's rigs are not supported.")
+                    layout.row().label(text='There is a face panel on the rig. Pose the face there!')
+                    return
+
             if props.ddfacepanel or not prefs.compactable:
                 if prefs.compactable:
                     row = layout.row()
@@ -442,14 +505,25 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row = layout.row(align=True)
                 row.operator('hisanim.optimize')
                 row.operator('hisanim.restore')
+                layout = layout.box()
+                row = layout.row(align=True)
+                row.prop(props, 'use_flexes', toggle=True)
+                row.prop(props, 'use_skeys', toggle=True)
                 row = layout.row(align=True)
                 col = row.column()
-                col.template_list('HISANIM_UL_SLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
+                if props.mode == 'FLEXES':
+                    col.template_list('HISANIM_UL_SLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
+                else:
+                    ob = context.object
+                    key = ob.data.shape_keys
+                    col.template_list("MESH_UL_skeys_nodriver", "", key, "key_blocks", ob, "active_shape_key_index", rows=5)
                 col = row.column()
                 col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
                 col.prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
                 col.label(text='', icon='BLANK1')
                 col.operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
+                col.label(text='', icon='BLANK1')
+                col.operator('poselib.hint', text='', icon='QUESTION')
                 row = layout.row(align=True)
                 op = row.operator('hisanim.adjust', text='', icon='TRIA_LEFT')
                 op.amount = -0.1
@@ -464,13 +538,16 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row = layout.row()
                 row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Face Poser', icon='RESTRICT_SELECT_OFF')
+            
+            layout = self.layout
 
             if props.ddposelib or not prefs.compactable:
                 if prefs.compactable:
                     row = layout.row()
                     row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                     row.label(text='Pose Library')
-
+                
+                layout = self.layout.box()
                 row = layout.row()
                 if poselib.stage == 'SELECT':
                     col = row.column()
@@ -499,6 +576,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     layout.row().template_list('POSELIB_UL_visemes', 'Items', poselib, 'dictVisemes', poselib, 'activeItem')
                     layout.row().prop(poselib, 'value', slider=True)
                     layout.row().prop(poselib, 'keyframe')
+                    layout.row().prop(poselib, 'reset')
                     layout.row().operator('poselib.apply')
                     layout.row().operator('poselib.cancelapply')
             else:
@@ -506,12 +584,14 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Pose Library', icon='OUTLINER_OB_GROUP_INSTANCE')
                 
+            layout = self.layout
 
             if props.ddrandomize or not prefs.compactable:
                 if prefs.compactable:
                     row = layout.row()
                     row.prop(props, 'ddrandomize', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                     row.label(text='Face Randomizer')
+                layout = self.layout.box()
                 row = layout.row()
                 row.prop(props, 'keyframe')
                 row.prop(props, 'randomadditive')
@@ -524,11 +604,14 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row.prop(props, 'ddrandomize', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Face Randomizer', icon='RNDCURVE')
 
+            layout = self.layout
+
             if props.ddlocks or not prefs.compactable:
                 if prefs.compactable:
                     row = layout.row()
                     row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                     row.label(text='Lock Sliders')
+                
                 data = context.object.data
                 if data.get('locklist') == None:
                     layout.row().label(text='Locking will prevent randomizing.')
@@ -546,7 +629,8 @@ classes = [
     POSELIB_UL_panel,
     HISANIM_UL_USESLIDERS,
     POSELIB_UL_visemes,
-    LOADOUT_UL_loadouts
+    LOADOUT_UL_loadouts,
+    MESH_UL_skeys_nodriver
 ]
 
 def register():

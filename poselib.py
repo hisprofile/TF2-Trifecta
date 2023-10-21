@@ -8566,11 +8566,25 @@ class poselibVars(PropertyGroup):
         data = obj.data
         scn = C.scene
         props = scn.poselibVars
+        '''if self.reset:
+            for x, i in enumerate(data.keys()):
+                if i == 'aaa_fs' or i == 'skdata':
+                    continue
+                try:
+                    prop = data.id_properties_ui(i).as_dict() # if the key is not a numerical value, skip
+                    data[i] = 0.0
+                except:
+                    continue'''
 
         for vis in props.dictVisemes:
-            if not vis.use:
-                data[vis.name] = vis.original
+            #print(vis)
+            if vis.name.startswith('!'):
+                data[vis.name[1:]] = mix(vis.original, 0.0 if self.reset else vis.original, self.value)
                 continue
+            if not vis.use:
+                data[vis.name] = vis.original# if self.reset else vis.value
+                continue
+            #(0.0 if vis.name != 'aaa_fs' else 1.0)
             data[vis.name] = mix(vis.original, vis.value, self.value)
             continue
         data.update()
@@ -8582,12 +8596,6 @@ class poselibVars(PropertyGroup):
     When the Selection stage is active, the pose library will show all saved poses for
     a class. Each pose listed has an arrow button which, when pressed, will set the
     active stage to Application.
-
-    When the Application stage is active, the addon will get the dictionary contents contained
-    by the selected pose. The addon will display all the saved flex controllers in the
-    dictionary with a checkbox to decide whether to use them or not. A mix slider will
-    be shown to mix between the saved pose and the pose that existed before the Application
-    stage became active.
 
     When the Application stage is active, the addon will get the flex controllers contained
     by the selected pose, and iterate through them. Each iteration will be saved under
@@ -8620,6 +8628,7 @@ class poselibVars(PropertyGroup):
     adding: BoolProperty(default=False, options=set())
     value: FloatProperty(default=1.0, name='Mix', min=0.0, max=1.0, update=applyVisemes, options=set())
     keyframe: BoolProperty(default = True, name='Keyframe')
+    reset: BoolProperty(default = False, name='Reset All', update=applyVisemes)
     sort: BoolProperty(default=True, name='Sort', options=set())
 
 class POSELIB_OT_refreshJson(Operator):
@@ -8674,6 +8683,9 @@ class POSELIB_OT_cancelApply(Operator):
         props.stage = 'SELECT'
 
         for vis in props.dictVisemes:
+            if vis.name.startswith('!'):
+                data[vis.name[1:]] = vis.original
+                continue
             data[vis.name] = vis.original
 
         props.dictVisemes.clear()
@@ -8897,6 +8909,20 @@ class POSELIB_OT_prepareApply(Operator):
             new.name = item[0]
             new.value = item[1]
             new.original = data[item[0]]
+        for n, key in enumerate(data.keys()):
+            print(n, key)
+            try:
+                data.id_properties_ui(key).as_dict()
+            except:
+                continue
+            if props.dictVisemes.get('!'+key) != None: continue
+            if props.dictVisemes.get(key) == None:
+                new = props.dictVisemes.add()
+            else:
+                continue
+            new.name = "!"+key
+            new.value = 0
+            new.original = data.get(key)
         poselibVars.applyVisemes(props, 'poop')
         return {'FINISHED'}
 
@@ -8915,10 +8941,59 @@ class POSELIB_OT_apply(Operator):
 
         if props.keyframe:
             for item in props.dictVisemes:
+                if props.reset and item.name.startswith('!'):
+                    data.keyframe_insert(data_path=f'["{item.name[1:]}"]')
+                if item.name.startswith('!'): continue
                 data.keyframe_insert(data_path=f'["{item.name}"]')
 
         props.dictVisemes.clear()
         return {'FINISHED'}
+    
+def textBox(self, sentence, icon='NONE'):
+    layout = self.layout
+    sentence = sentence.split(' ')
+    mix = sentence[0]
+    sentence.pop(0)
+    broken = False
+    while True:
+        add = ' ' + sentence[0]
+        if len(mix + add) < 56:
+            mix += add
+            sentence.pop(0)
+            if sentence == []:
+                layout.row().label(text=mix, icon='NONE' if broken else icon)
+                return None
+
+        else:
+            layout.row().label(text=mix, icon='NONE' if broken else icon)
+            broken = True
+            mix = sentence[0]
+            sentence.pop(0)
+            if sentence == []:
+                layout.row().label(text=mix)
+                return None
+
+class POSELIB_OT_hint(Operator):
+    bl_idname = 'poselib.hint'
+    bl_label = 'Hints'
+    bl_description = 'A window will display any possible questions you have'
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context):
+        return {'FINISHED'}
+
+    def draw(self, context):
+        layout = self.layout
+        textBox(self, "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all.", 'ERROR')
+        #layout.row().label(icon='REC')
+        textBox(self, "When this button is blue, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.", 'REC')
+        #layout.row().label(icon='DECORATE_KEYFRAME')
+        textBox(self, "Pressing this button will add a keyframe to all sliders. Useful for starting an animation sequence.", 'DECORATE_KEYFRAME')
+        textBox(self, "Enabling this button by stereo sliders will reveal the true value for both sliders.", 'RESTRICT_VIEW_OFF')
+        textBox(self, "Flex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.", 'SHAPEKEY_DATA')
+        #layout.label(text='lol')
 
 classes = (
             dictVis,
@@ -8933,7 +9008,8 @@ classes = (
             POSELIB_OT_remove,
             POSELIB_OT_cancelApply,
             POSELIB_OT_prepareApply,
-            POSELIB_OT_apply
+            POSELIB_OT_apply,
+            POSELIB_OT_hint
             )
 
 def register():

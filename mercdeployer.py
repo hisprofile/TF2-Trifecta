@@ -33,19 +33,21 @@ def appendtext(a):  # add the .py script to add further control to faces
 
     directory = blendfile + section
     try:
-        bpy.data.texts[f'{a}.py']
-        bpy.data.texts[f'{a}.py'].use_fake_user = True
+        text = bpy.data.texts[f'{a}.py']
+        text.use_fake_user = True
     except:
         try:
             bpy.ops.wm.append(filename=object, directory=directory)
         except:
             return "cancelled"
         try:
-            bpy.data.texts[f'{a}.py'].as_module()
+            text = bpy.data.texts[f'{a}.py']
+            text.as_module()
         except:
             return "cancelled"
-        bpy.data.texts[f'{a}.py'].use_module = True
-        bpy.data.texts[f'{a}.py'].use_fake_user = True
+        text.use_module = True
+        text.use_fake_user = True
+        bpy.data.texts.remove(text)
     return {'FINISHED'}
 
 
@@ -173,31 +175,53 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
     def execute(self, context):
         prefs = bpy.context.preferences.addons[__package__].preferences
         props = bpy.context.scene.hisanimvars
-        if prefs.hisanim_paths.get('TF2-V3') == None:
-            self.report(
-                {'ERROR'}, 'No Mercs Found! Make sure you have TF2-V3 setup as an entry!')
-            return {'CANCELLED'}
-        if prefs.hisanim_paths['TF2-V3'].this_is != 'FOLDER':
-            self.report({'ERROR'}, 'TF2 Rigs entry is invalid!')
-        TF2V3 = prefs.hisanim_paths['TF2-V3']
 
+        if prefs.hisanim_paths.get('TF2-V3') == None:
+            self.report({'ERROR'}, 'No Mercs Found! Make sure you have TF2-V3 setup as an entry!')
+            return {'CANCELLED'}
+
+        if prefs.hisanim_paths['TF2-V3'].this_is != 'FOLDER':
+            self.report({'ERROR'}, 'TF2 Rigs entry is not a folder!')
+
+        TF2V3 = prefs.hisanim_paths['TF2-V3']
         PATH = TF2V3.path
+
+        if not os.path.exists(PATH):
+            self.report({'ERROR'}, f'Entry for rigs exists, but the path does not exist!')
+            return {'CANCELLED'}
+
         bak = GetActiveCol()
+
         SetActiveCol()
+
+        if not os.path.exists(os.path.join(PATH, f'{self.merc}.blend')):
+            self.report({'ERROR'}, f'Entry for rigs exists, but "{self.merc}.blend" could not be found inside!')
+            return {'CANCELLED'}
+        
         if appendtext(self.merc) == "cancelled":
             self.report(
                 {'ERROR'}, "Entry for rigs exists, but .blend file could not be found!")
             return {'CANCELLED'}
+        
         if context.scene.hisanimvars.savespace:  # if linking is enabled
             try:
                 link(os.path.join(PATH, f'{self.merc}.blend'),
                     self.merc + self.type, 'Collection')
             except:
-                self.report({'ERROR'}, f'.blend file for "{self.merc}" in TF2-V3 is corrupt! Redownload!')
+                self.report({'ERROR'}, f'.blend file for "{self.merc}" in rigs is corrupt! Redownload!')
+
+            if (script := bpy.data.texts.get(f'{self.merc}.py')) != None:
+                script.as_module()
+                #self.report({'INFO'}, f"Script imported, {script.name, script.library}")
+                #print("Script imported")
+            else:
+                self.report({'WARNING'}, "Unless you spawned Pyro, something went wrong. The face script failed to import, which is weird...")
+
             name = self.merc + self.type
             bpy.data.objects.remove(bpy.data.objects[name])
             bpy.context.scene.collection.children.link(
                 bpy.data.collections[name].make_local())
+            
             '''
             This is to make everything but images and node groups localized. Everything must be localized in order,
             or duplicates will form. The order is
@@ -213,6 +237,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if i.type != 'MESH':
                     continue
                 NEW = i.make_local()
+
                 for mod in NEW.modifiers:
                     if mod.type == 'NODES':
                         mod.node_group.make_local()
@@ -229,6 +254,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if i.type != 'EMPTY':
                     continue
                 i.make_local()
+
             armature = bpy.data.collections[name].objects[0]
             while armature.parent != None:  # get the absolute root of the objects
                 armature = armature.parent
@@ -242,6 +268,9 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 append(self.merc, self.type)
             except:
                 self.report({'ERROR'}, f'.blend file for "{self.merc}" in TF2-V3 is corrupt! Redownload!')
+
+        
+
         # make a variable targeting the added collection of the character
         justadded = str(self.merc + self.type)
         # this mostly pertains to blu switching. any material added has been switched to BLU and will therefore be skipped.
