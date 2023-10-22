@@ -49,6 +49,28 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         row = layout.row()
         row.prop(context.preferences.addons[__package__].preferences, 'compactable', text='Compactable View')
         layout.row().prop(context.preferences.addons[__package__].preferences, 'quickswitch')
+        row = layout.row()
+        row.alignment = 'RIGHT'
+        op = row.operator('trifecta.textbox', text='', icon='QUESTION')
+        op.text = '''fasdf asdf\nf ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣮⣝⡯⠀⠀⢀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⢼⣧⣿⣿⣿⡿⠻⠿⢿⣯⣿⣮⣀⡁⢑⡀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣾⣿⡟⠁⠀⠙⠧⠞⠈⢓⣿⣿⣿⣿⢿⣾⣷⡀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⣫⠟⠀⠀⠀⠀⠀⠀⠀⠀⡙⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠢⢈⢻⣿⣿⣿⣿⡇⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠠⣿⠁⠚⣛⣒⠀⠀⠀⡀⠐⢒⡒⠳⠤⢺⣟⣿⣿⡇⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠋⠀⠋⠚⠛⠃⢈⣩⣓⢮⠿⠯⠷⠀⠀⢽⣿⠏⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⡜⠄⠀⠀⠀⠀⠀⠀⢸⠩⠀⠀⠀⠀⠀⠀⠀⢻⡤⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠔⡸⡎⠀⠀⠀⠀⠀⠀⠀⠀⠠⠁⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠂⠀⠀⠀⠀⠈⠀⡳⣿⠆⠄⠀⠀⠁⠀⠠⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠀⠘⠤⡔⢎⣵⣸⢯⠜⠀⠀⠀⠀⡀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣇⠀⣠⣆⣿⣿⣾⣹⣏⢳⣄⡀⠀⠀⠀⠃⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠠⣸⠤⠋⠙⠓⠶⠖⣾⠾⠟⠋⢣⣲⣦⡾⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⢀⣤⣶⣶⣾⣽⣿⢷⠀⢈⠃⢙⠃⠀⠀⠀⢐⡾⣾⡿⠃⠀⠀⠠⣄⠀⠀⠀⠀
+⠀⢀⣤⣾⣿⣿⣿⣿⣿⣿⣯⣆⢣⣑⣄⠴⡇⣽⣦⣢⣾⣾⠋⡀⠐⠀⠁⢀⣿⣷⣄⠀⠀
+⣰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣻⣗⣉⣛⣿⣶⣟⣿⣿⣛⣁⣐⣀⣀⣀⣠⣶⣿⣡⣨⣟⣑⣢'''
+        op.icons='NONE,NONE'
+        op.size='56,56'
+
 class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
     bl_idname = 'hisanim.clsupdate'
     bl_label = 'Update Class'

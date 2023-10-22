@@ -1,4 +1,6 @@
 import bpy
+#from . import poselib
+from .poselib import textBox
 
 loc = "BONEMERGE-ATTACH-LOC"
 rot = "BONEMERGE-ATTACH-ROT"
@@ -19,6 +21,11 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
     bl_label = "Attach"
     bl_description = "Attach to a class"
     bl_options = {'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        if len(context.selected_objects) == 0: return False
+        return True
     
     def execute(self, context):
         if context.scene.hisanimvars.hisanimtarget == None:
@@ -84,6 +91,11 @@ class HISANIM_OT_DETACH(bpy.types.Operator):
     bl_label = "Detach"
     bl_description = "Detach from a class"
     bl_options = {'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        if len(context.selected_objects) == 0: return False
+        return True
     
     def execute(self, context):
         doOnce = True
@@ -111,32 +123,97 @@ class HISANIM_OT_DETACH(bpy.types.Operator):
                     continue
         
         return {'FINISHED'}
+    
 class HISANIM_OT_BINDFACE(bpy.types.Operator):
     bl_idname = 'hisanim.bindface'
-    bl_label = 'Bind Face Cosmetics'
+    bl_label = 'Bind Face Cosmetic'
     bl_description = 'Bind facial cosmetics to a face'
     bl_options = {'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        if len(context.selected_objects) == 2:
+            for obj in context.selected_objects:
+                if obj.type != 'MESH':
+                    return False
+            return True
     
     def execute(self, context):
-        #print('rad')
-        CON = context.selected_objects
-        try:
-            for i in CON[1].data.shape_keys.key_blocks:
-                find = i.name.casefold()
-                i.slider_min = -10
-                i.slider_max = 10
-                print(i)
-                for ii in CON[0].data.shape_keys.key_blocks:
-                    if ii.name.casefold() == find:
-                        val = i.driver_add("value").driver
-                        val.variables.new()
-                        i.driver_add("value").driver.expression = 'var'
-                        val.variables[0].targets[0].id_type = 'KEY'
-                        val.variables[0].targets[0].id = CON[0].data.shape_keys
-                        val.variables[0].targets[0].data_path = f'key_blocks["{ii.name}"].value'
-        except:
-            self.report({'ERROR'}, "Only compatible with Hectoris' rigs!")
+        objs = context.selected_objects
+        objs.remove(context.object)
+        cos = objs[0]
+
+        face = context.object
+
+        if face.get('aaa_fs') != None:
+            self.report({'WARNING'}, 'A mercenary was selected as a cosmetic! Make sure the mercenary is selected last!')
             return {'CANCELLED'}
+        
+        if cos.get('skeys') == None:
+            cos['skeys'] = []
+        
+        skeys = list(cos['skeys'])
+
+        skey_s = cos.data.shape_keys
+
+        if skey_s == None:
+            self.report({'ERROR'}, 'Source object has no shape keys!')
+            return {'CANCELLED'}
+
+        kb_s = skey_s.key_blocks
+        skey_t = face.data.shape_keys
+
+        if skey_t == None:
+            self.report({'ERROR'}, 'Target object has no shape keys!')
+            return {'CANCELLED'}
+
+        kb_t = skey_t.key_blocks
+        for skey in kb_s:
+            if kb_t.get(skey.name) != None:
+                if skey.name not in skeys:
+                    skeys.append(skey.name)
+                driv = kb_s[skey.name].driver_add('value').driver
+                driv.variables.new()
+                driv.expression = 'var'
+                driv.variables[0].targets[0].id_type = 'KEY'
+                driv.variables[0].targets[0].id = skey_t
+                driv.variables[0].targets[0].data_path = f'key_blocks["{skey.name}"].value'
+        
+        if skeys == []:
+            self.report({'ERROR'}, 'Neither objects have matching shape keys!')
+            return {'CANCELLED'}
+
+        cos['skeys'] = skeys
+
+        return {'FINISHED'}
+    
+class BM_OT_UNBINDFACE(bpy.types.Operator):
+    bl_idname = 'bm.unbindface'
+    bl_label = 'Unbind Face Cosmetic'
+    bl_description = 'Unbinds the cosmetic from the mercenary'
+    bl_options = {'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        if len(context.selected_objects) == 0: return False
+        return context.object.type == 'MESH'
+
+    def execute(self, context):
+        ob = context.object
+        data = ob.data
+        skeys = data.shape_keys
+
+        if ob.get('skeys') == None:
+            return {'CANCELLED'}
+        if data.shape_keys == None:
+            return {'CANCELLED'}
+
+        for item in ob['skeys']:
+            if (driv := skeys.animation_data.drivers.find(f'key_blocks["{item}"].value')) != None:
+                skeys.animation_data.drivers.remove(driv)
+
+        del ob['skeys']
+        
         return {'FINISHED'}
 
 class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
@@ -144,6 +221,11 @@ class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
     bl_label = 'Attempt to Fix Cosmetic'
     bl_description = 'If a cosmetic appears to be worn incorrectly, this button may fix it'
     bl_options = {'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        if len(context.selected_objects) == 0: return False
+        return context.object.type == 'MESH'
     
     def execute(self, context):
         SELECT = context.object
@@ -160,11 +242,27 @@ class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
                 pass
         return {'FINISHED'}
     
+class BM_OT_hint(bpy.types.Operator):
+    bl_idname = 'bm.hint'
+    bl_label = 'Hints'
+    bl_description = 'A window will display any possible questions you have'
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+    
+    def draw(self, context):
+        textBox(self, "When binding a cosmetic to a face, it can only be posed through shape keys. Flex controllers are unsupported.", 'MESH_MONKEY', 53)
+
+    def execute(self, context):
+        return {'FINISHED'}
+    
 classes = [
     HISANIM_OT_ATTACH,
     HISANIM_OT_ATTEMPTFIX,
     HISANIM_OT_BINDFACE,
-    HISANIM_OT_DETACH
+    HISANIM_OT_DETACH,
+    BM_OT_UNBINDFACE,
+    BM_OT_hint
 ]
 
 def register():

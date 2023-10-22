@@ -169,7 +169,8 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
     merc: bpy.props.StringProperty(default='')
     type: bpy.props.StringProperty(default='')
     bl_idname = 'hisanim.loadmerc'
-    bl_label = 'Load Mercenary'
+    bl_label = 'Deploy Mercenary'
+    bl_description = 'Deploy a mercenary with a specified rig into your scene'
     bl_options = {'UNDO'}
 
     def execute(self, context):
@@ -402,8 +403,36 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         bpy.context.view_layer.active_layer_collection = bak
         bpy.ops.outliner.orphans_purge(do_recursive=True)
         return {'FINISHED'}
+    
+class MD_OT_hint(bpy.types.Operator):
+    bl_idname = 'md.hint'
+    bl_label = 'Hints'
+    bl_description = 'A window will display any possible questions you have'
 
-classes =   [HISANIM_OT_LOADMERC]
+    def invoke(self, context, event):
+        import random
+        if random.random() >= 0.99:
+            from urllib import request
+            from pathlib import Path
+            img = request.urlretrieve('https://i.imgur.com/WHs40vm.png', 'mercdeployer.png')
+            path = os.path.join(Path(__file__).parent, 'mercdeployer.png')
+            bpy.ops.object.load_reference_image(filepath=path)
+            bpy.data.images['mercdeployer.png'].pack()
+            os.remove(path)
+        return context.window_manager.invoke_props_dialog(self)
+    
+    def draw(self, context):
+        from .poselib import textBox
+        textBox(self, '"New" rigs are made with Rigify, allowing for more extensive control over the armature with features like IK/FK swapping. "Legacy" rigs comprise of ONLY forward kinematics, and should only be used to apply taunts onto.', 'ARMATURE_DATA', 56)
+        textBox(self, 'When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure the most compatibility with cosmetics. When disabled, the higher-poly (A.K.A. SFM) bodygroups will be used instead.', 'OUTLINER_OB_ARMATURE', 50)
+        textBox(self, '''"Rimlight Strength" determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default.''', 'SHADING_RENDERED')
+
+    def execute(self, context):
+        
+        print('f')
+        return {'FINISHED'}
+
+classes =   [HISANIM_OT_LOADMERC, MD_OT_hint]
 
 def register():
     for i in classes:

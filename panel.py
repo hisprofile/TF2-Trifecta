@@ -1,6 +1,7 @@
 import bpy
 from . import newuilist
 from bpy.types import (UIList)
+from bpy.props import *
 
 def hasKey(obj, slider) -> bool:
         data = obj.data
@@ -66,14 +67,13 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
                 Name = item.name.split('_')[-1]
 
                 if not item.realvalue:
+                    row.alert = isKeyed
                     row.prop(item, 'value', slider=True, text=Name, expand=True)
-                    #split = row.split(factor=0.7, align=True)
-                    #split.prop(item, 'value', slider=True, text=Name)
-                    #split.prop(props, 'LR', slider=True, text='L-R')
+                    row.alert = False
                 else:
                     row.prop(props.activeface.data, f'["{item.R}"]', text='R')
                     row.prop(props.activeface.data, f'["{item.L}"]', text='L')
-
+                
                 op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
                 op.delete = isKeyed
                 op.slider = item.name
@@ -83,7 +83,9 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
                 row = layout.row(align=True)
                 Name = item.name.split('_')[-1]
                 if not item.realvalue:
+                    row.alert = isKeyed
                     row.prop(item, 'value', slider=True, text=Name)
+                    row.alert = False
                 else:
                     row.prop(props.activeface.data, f'["{item.name}"]', text=item.name[4:])
                 op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
@@ -311,33 +313,42 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             row.prop(props, 'fp', icon='RESTRICT_SELECT_OFF', text='', toggle=True)
         else:
             layout.row().prop(props, 'tools')
+        
+        if prefs.missing == True:
+            row = layout.row()
+            row.alert = True
+            row.label(text='Assets missing. Check preferences for info.', icon='ERROR')
+
         if props.tools == 'WARDROBE':
-            row = layout.row()
-            row.label(text='Spawn TF2 Cosmetics', icon='MOD_CLOTH')
-            row = layout.row()
-            row.prop(props, 'query', text="Search", icon="VIEWZOOM")
-            row = layout.row()
-            row.prop(context.scene.hisanimvars, 'hisanimweapons')
-            if props.hisanimweapons:
-                row = layout.row()
-                row.prop(props, 'autobind')
-            if prefs.missing == True:
-                row = layout.row()
-                row.alert = True
-                row.label(text='Assets missing. Check preferences for info.')
+            layout.row().label(text='Spawn TF2 Cosmetics', icon='MOD_CLOTH')
+            
+            
             box = layout.box()
+            box.label(text='Search', icon='VIEWZOOM')
+            box.row().prop(props, 'query', text="", icon="VIEWZOOM")
+            box.row().prop(context.scene.hisanimvars, 'hisanimweapons')
+            if props.hisanimweapons:
+                box.row().prop(props, 'autobind')
             box.row().operator('hisanim.search', icon='VIEWZOOM')
             box.row().operator('hisanim.clearsearch', icon='X')
+
             if props.ddmatsettings or not prefs.compactable:
                 if prefs.compactable: row = layout.row()
                 if prefs.compactable: row.prop(props, 'ddmatsettings', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                 if prefs.compactable: row.label(text='Material settings')
                 if not prefs.compactable: layout.label(text='Material settings')
                 box = layout.box()
+                box.label(text='Material Settings')
                 box.row().operator('hisanim.lightwarps')
                 box.row().operator('hisanim.removelightwarps')
                 box.row().prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
-                box.row().prop(context.scene.hisanimvars, 'wrdbbluteam')
+                row = box.row()
+                row.prop(context.scene.hisanimvars, 'wrdbbluteam')
+                op = row.operator('trifecta.textbox', icon='QUESTION', text='')
+                op.text = "When using EEVEE, Enabling TF2 style on all spawned items will make them appear closer in appearance to the mercenaries, fixing any contrast issues. When using Cycles, this should be set to default.\nRimlight Strength determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default."
+                op.icons = 'SHADING_RENDERED,SHADING_RENDERED'
+                op.size = '76,76'
+                op.width = 425
             else:
                 row = layout.row()
                 row.prop(props, 'ddmatsettings', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
@@ -350,16 +361,21 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                         if prefs.compactable: row.prop(props, 'ddpaints', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                         if prefs.compactable: row.label(text='Paints')
                         ob = context.object
-                        row = layout.row()
-                        row.label(text='Attempt to fix material')
-                        row = layout.row()
-                        row.template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
-                        row = layout.row(align=True)
+                        box = layout.row().box()
+                        box.row().label(text='Attempt to fix material')
+                        box.row().template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
+                        row = box.row(align=True)
                         row.operator('hisanim.materialfix')
                         row.operator('hisanim.revertfix')
-                        row = layout.row()
-                        row.template_icon_view(context.window_manager, 'hisanim_paints', show_labels=True, scale=4, scale_popup=4)
-                        row=layout.row(align=True)
+                        row.separator()
+                        op = row.operator('trifecta.textbox', icon='QUESTION', text='')
+                        op.text = 'If a cosmetic seems to be painted incorrectly, selecting one of the materials and executing "Fix Material" may help.'
+                        op.icons = 'SHADING_RENDERED'
+                        op.size = '56'
+                        op.width = 260
+                        box.row().label(text='Add Paint')
+                        box.row().template_icon_view(context.window_manager, 'hisanim_paints', show_labels=True, scale=4, scale_popup=4)
+                        row=box.row(align=True)
                         oper = row.operator('hisanim.paint', text = 'Add Paint')
                         oper.PAINT = newuilist.paints[context.window_manager.hisanim_paints]
                         row.operator('hisanim.paintclear')
@@ -374,6 +390,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 if not prefs.compactable: layout.label(text='Loadouts')
                 
                 box = layout.box()
+                box.label(text='Loadouts')
                 row = box.row()
                 col = row.column()
                 col.template_list('LOADOUT_UL_loadouts', 'Loadouts', props, 'loadout_data', props, 'loadout_index')
@@ -386,7 +403,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 op1 = col.operator('loadout.move', text='', icon='TRIA_DOWN')
                 op1.pos = -1
                 if props.stage == 'SELECT':
-                    if (len(bpy.types.Scene.loadout_temp) == 0): layout.row().label(text='No Cosmetics Selected!')
+                    if (len(bpy.types.Scene.loadout_temp) == 0): box.row().label(text='No Cosmetics Selected!')
                     box.row().prop(props, 'loadout_name', text='Name')
                     row = box.row()
                     row.operator('wdrb.cancel')
@@ -394,7 +411,14 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 if props.stage == 'DISPLAY':
                     box.row().operator('wdrb.cancel')
                     box.row().operator('loadout.load')
-                if props.stage == 'NONE': box.row().operator('loadout.rename')
+                if props.stage == 'NONE':
+                    row = box.row()
+                    row.operator('loadout.rename')
+                    op = row.operator('trifecta.textbox', icon='QUESTION', text='')
+                    op.text = 'The Loadout tool allows you to save combinations of equippable items to be spawned by batch at any time, saving you the time of having to search and spawn for each one.'
+                    op.icons = 'ASSET_MANAGER'
+                    op.size = '56'
+                    op.width = 290
             else:
                 row = layout.row()
                 row.prop(props, 'ddloadouts', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
@@ -408,16 +432,15 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     if prefs.compactable: row.label(text='Search Results')
                     if not prefs.compactable: layout.label(text='Search Results')
                     hits = props.results
-                    row = layout.row()
+                    box = layout.row().box()
                     if len(hits) > 0:
                         if len(hits) == 1:
-                            row.label(text=f'{len(hits)} Result')
+                            box.label(text=f'{len(hits)} Result')
                         else:
-                            row.label(text=f'{len(hits)} Results')
-                        layout.row().template_list('HISANIM_UL_RESULTS', 'Results', props, 'results', props, 'resultindex')
+                            box.label(text=f'{len(hits)} Results')
+                        box.row().template_list('HISANIM_UL_RESULTS', 'Results', props, 'results', props, 'resultindex')
                     else: 
-                        layout = self.layout
-                        layout.label(text='Nothing found!')
+                        box.label(text='Nothing found!')
                 else:
                     row = layout.row()
                     row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
@@ -434,16 +457,19 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     row = layout.row()
                     row.label(text='TF2-V3 contains an invalid path!')
                 else:
-                    row = layout.row(align=True)
                     for i in mercs:
+                        row = layout.box().row(align=True)
                         row.label(text=i.title())
-                        col = layout.column()
                         for ii in cln:
+                            if ii == 'FK':
+                                row.alert=True
                             MERC = row.operator('hisanim.loadmerc', text='New' if ii == 'IK' else 'Legacy')
                             MERC.merc = i
                             MERC.type = ii
-                        row = layout.row(align=True)
-                    row.prop(context.scene.hisanimvars, "bluteam")
+                    row = layout.row()
+                    row.alignment = 'RIGHT'
+                    row.operator('md.hint', text='', icon='QUESTION')
+                    layout.row().prop(context.scene.hisanimvars, "bluteam")
                     layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
                     layout.row().prop(props, 'hisanimrimpower', slider=True)
 
@@ -461,18 +487,23 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             row = layout.row()
             self.layout.prop_search(context.scene.hisanimvars, "hisanimtarget", bpy.data, "objects", text="Link to", icon='ARMATURE_DATA')
             
-            row = layout.row()
-            row.operator('hisanim.attachto', icon="LINKED")
-            row=layout.row()
-            row.operator('hisanim.detachfrom', icon="UNLINKED")
-            row = layout.row()
-            row.prop(context.scene.hisanimvars, 'hisanimscale')
-            row = layout.row()
-            row.label(text='Bind facial cosmetics')
-            row = layout.row()
-            row.operator('hisanim.bindface')
-            row = layout.row()
-            row.label(text='Attempt to fix cosmetic')
+            box = layout.row().box()
+            box.row().label(text='Binding cosmetics')
+            box.row().operator('hisanim.attachto', icon="LINKED")
+            box.row().operator('hisanim.detachfrom', icon="UNLINKED")
+            box.row().prop(context.scene.hisanimvars, 'hisanimscale')
+            box = layout.row().box()
+            box.row().label(text='Bind facial cosmetics')
+            
+            box.row().operator('hisanim.bindface')
+            row = box.row()
+            row.operator('bm.unbindface'),
+            #self.alignment='RIGHT'
+            #row = box.row()
+            row.operator('bm.hint', text='', icon='QUESTION')
+            #row.alignment = 'RIGHT'
+            #self.alignment='EXPAND'
+            #row.label(text='Attempt to fix cosmetic')
             row = layout.row()
             row.operator('hisanim.attemptfix')
 
@@ -519,11 +550,12 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     col.template_list("MESH_UL_skeys_nodriver", "", key, "key_blocks", ob, "active_shape_key_index", rows=5)
                 col = row.column()
                 col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
-                col.prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
-                col.label(text='', icon='BLANK1')
-                col.operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
-                col.label(text='', icon='BLANK1')
-                col.operator('poselib.hint', text='', icon='QUESTION')
+                col.row().prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
+                col.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
+                op = col.row().operator('trifecta.textbox', icon='QUESTION', text='')
+                op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is BLUE, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for both sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face."
+                op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA'
+                op.size = '76,76,76,76,76'
                 row = layout.row(align=True)
                 op = row.operator('hisanim.adjust', text='', icon='TRIA_LEFT')
                 op.amount = -0.1
@@ -560,7 +592,14 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     op.pos = 1
                     op1 = col.operator('poselib.move', text='', icon='TRIA_DOWN')
                     op1.pos = -1
-                    layout.row().operator('poselib.rename')
+                    row = layout.row()
+                    row.operator('poselib.rename')
+                    row.operator('poselib.hint_poselib', text='', icon='QUESTION')
+                    #op = row.operator('trifecta.textbox')
+                    #op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all.\nWhen this button is blue, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for both sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face."
+                    #op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA'
+                    #op.size = '56,56,56,56,56'
+
                 if poselib.stage == 'ADD':
                     row.template_list('HISANIM_UL_USESLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
                     row = layout.row(align=True)
@@ -579,8 +618,11 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     layout.row().prop(poselib, 'reset')
                     layout.row().operator('poselib.apply')
                     layout.row().operator('poselib.cancelapply')
+                #row = layout.row()
+                #row.alignment = 'RIGHT'
+                #row.operator('poselib.hint_poselib', text='', icon='QUESTION')
             else:
-                row = layout.row()
+                row = self.layout.row()
                 row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Pose Library', icon='OUTLINER_OB_GROUP_INSTANCE')
                 
@@ -595,6 +637,11 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row = layout.row()
                 row.prop(props, 'keyframe')
                 row.prop(props, 'randomadditive')
+                op = row.operator('trifecta.textbox', icon='QUESTION', text='')
+                op.text = 'Make funny faces!'
+                op.icons = 'MONKEY'
+                op.size = '56'
+                op.width = 125
                 layout.row().prop(props, 'randomstrength', slider=True)
                 layout.row().operator('hisanim.randomizeface')
                 layout.row().operator('hisanim.resetface')
@@ -621,6 +668,53 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Lock Sliders', icon='LOCKED')
 
+def textBox(self, sentence, icon='NONE', line=56):
+    layout = self.layout
+    sentence = sentence.split(' ')
+    mix = sentence[0]
+    sentence.pop(0)
+    broken = False
+    while True:
+        add = ' ' + sentence[0]
+        if len(mix + add) < line:
+            mix += add
+            sentence.pop(0)
+            if sentence == []:
+                layout.row().label(text=mix, icon='NONE' if broken else icon)
+                return None
+
+        else:
+            layout.row().label(text=mix, icon='NONE' if broken else icon)
+            broken = True
+            mix = sentence[0]
+            sentence.pop(0)
+            if sentence == []:
+                layout.row().label(text=mix)
+                return None
+            
+class TRIFECTA_OT_genericText(bpy.types.Operator):
+    bl_idname = 'trifecta.textbox'
+    bl_label = 'Hints'
+    bl_description = 'A window will display any possible questions you have'
+
+    text: StringProperty(default='')
+    icons: StringProperty()
+    size: StringProperty()
+    width: IntProperty(default=400)
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=self.width)
+    
+    def draw(self, context):
+        sentences = self.text.split('\n')
+        icons = self.icons.split(',')
+        sizes = self.size.split(',')
+        for sentence, icon, size in zip(sentences, icons, sizes):
+            textBox(self, sentence, icon, int(size))
+
+    def execute(self, context):
+        return {'FINISHED'}
+
 classes = [
     TRIFECTA_PT_PANEL,
     HISANIM_UL_SLIDERS,
@@ -630,7 +724,8 @@ classes = [
     HISANIM_UL_USESLIDERS,
     POSELIB_UL_visemes,
     LOADOUT_UL_loadouts,
-    MESH_UL_skeys_nodriver
+    MESH_UL_skeys_nodriver,
+    TRIFECTA_OT_genericText
 ]
 
 def register():
@@ -639,10 +734,3 @@ def register():
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
-
-import bpy
-from bpy.props import StringProperty, IntProperty, CollectionProperty, BoolProperty
-from bpy.types import PropertyGroup, UIList, Operator, Panel
-
-
-    

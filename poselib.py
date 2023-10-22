@@ -8628,7 +8628,7 @@ class poselibVars(PropertyGroup):
     adding: BoolProperty(default=False, options=set())
     value: FloatProperty(default=1.0, name='Mix', min=0.0, max=1.0, update=applyVisemes, options=set())
     keyframe: BoolProperty(default = True, name='Keyframe')
-    reset: BoolProperty(default = False, name='Reset All', update=applyVisemes)
+    reset: BoolProperty(default = False, name='Reset All', update=applyVisemes, description='Applies the preset after resetting the face')
     sort: BoolProperty(default=True, name='Sort', options=set())
 
 class POSELIB_OT_refreshJson(Operator):
@@ -8949,7 +8949,7 @@ class POSELIB_OT_apply(Operator):
         props.dictVisemes.clear()
         return {'FINISHED'}
     
-def textBox(self, sentence, icon='NONE'):
+def textBox(self, sentence, icon='NONE', line=56):
     layout = self.layout
     sentence = sentence.split(' ')
     mix = sentence[0]
@@ -8957,7 +8957,7 @@ def textBox(self, sentence, icon='NONE'):
     broken = False
     while True:
         add = ' ' + sentence[0]
-        if len(mix + add) < 56:
+        if len(mix + add) < line:
             mix += add
             sentence.pop(0)
             if sentence == []:
@@ -8980,6 +8980,7 @@ class POSELIB_OT_hint(Operator):
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
+        #return context.window_manager.popup_menu(self.draw, title=)
 
     def execute(self, context):
         return {'FINISHED'}
@@ -8995,22 +8996,38 @@ class POSELIB_OT_hint(Operator):
         textBox(self, "Flex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.", 'SHAPEKEY_DATA')
         #layout.label(text='lol')
 
+class POSELIB_OT_hintPL(Operator):
+    bl_idname = 'poselib.hint_poselib'
+    bl_label = 'Hints'
+    bl_description = 'A window will display any possible questions you have'
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+
+    def execute(self, context):
+        return {'FINISHED'}
+
+    def draw(self, context):
+        textBox(self, 'The Pose Library is a place to store presets for face shapes. It will only save flex controller data.', 'OUTLINER_OB_GROUP_INSTANCE')
+        textBox(self,  'Enabling "Reset All" will reset the face before applying the preset.')
+
 classes = (
-            dictVis,
-            visemes,
-            poselibVars,
-            POSELIB_OT_refreshJson,
-            POSELIB_OT_cancel,
-            POSELIB_OT_prepareAdd,
-            POSELIB_OT_add,
-            POSELIB_OT_rename,
-            POSELIB_OT_move,
-            POSELIB_OT_remove,
-            POSELIB_OT_cancelApply,
-            POSELIB_OT_prepareApply,
-            POSELIB_OT_apply,
-            POSELIB_OT_hint
-            )
+    dictVis,
+    visemes,
+    poselibVars,
+    POSELIB_OT_refreshJson,
+    POSELIB_OT_cancel,
+    POSELIB_OT_prepareAdd,
+    POSELIB_OT_add,
+    POSELIB_OT_rename,
+    POSELIB_OT_move,
+    POSELIB_OT_remove,
+    POSELIB_OT_cancelApply,
+    POSELIB_OT_prepareApply,
+    POSELIB_OT_apply,
+    POSELIB_OT_hint,
+    POSELIB_OT_hintPL
+    )
 
 def register():
     for i in classes:

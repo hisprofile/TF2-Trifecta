@@ -103,10 +103,10 @@ class hisanimFilePaths(AddonPreferences):
     quickswitch: bpy.props.BoolProperty(default=True, options=set(), name='Quick Switch', description='Replace the tool dropdown with a set of buttons')
     
     def draw(self, context):
-        if not self.is_executed:
+        '''if not self.is_executed:
             runpullpath() # get existing asset path entries
             bpy.types.SpacePreferences.draw_handler_add(deleteOldPaths, (), 'WINDOW', 'POST_PIXEL') # delete the old asset paths, as they are no longer
-            self.is_executed = True
+            self.is_executed = True'''
         prefs = bpy.context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
         remaining = [i for i in names if paths.get(i) == None]
