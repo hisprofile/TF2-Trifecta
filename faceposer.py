@@ -183,8 +183,8 @@ class HISANIM_OT_SLIDERESET(bpy.types.Operator):
             bpy.context.scene.activesliders.clear()
             props.updating = False
             props.callonce = False
-
         return {'PASS_THROUGH'}
+    
     def invoke(self, context, event):
         self.stop = False
         context.window_manager.modal_handler_add(self)
@@ -358,7 +358,6 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
                 data.keyframe_insert(data_path=f'["{i}"]')
         
         bpy.context.object.data.update()
-
         return {'FINISHED'}
     
     def invoke(self, context, event):
@@ -393,7 +392,6 @@ class HISANIM_OT_resetface(bpy.types.Operator):
                 data.keyframe_insert(data_path=f'["{i}"]')
         
         data.update()
-
         return {'FINISHED'}
 
 class HISANIM_OT_KEYEVERY(bpy.types.Operator):
@@ -437,6 +435,9 @@ class HISANIM_OT_optimize(bpy.types.Operator):
     bl_description = 'Optimize scene performance by deleting shape key drivers. Disable facial movements'
     bl_options = {'UNDO'}
 
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=390)
+
     def execute(self, context):
         for obj in bpy.context.selected_objects:
             D = obj.data
@@ -467,11 +468,17 @@ class HISANIM_OT_optimize(bpy.types.Operator):
                 skdata.animation_data.drivers.remove(driv)
         return {'FINISHED'}
     
+    def draw(self, context):
+        self.layout.label(text='Flex controllers will not work at the cost of improved performance. Confirm?')
+    
 class HISANIM_OT_restore(bpy.types.Operator):
     bl_idname = 'hisanim.restore'
     bl_label = 'Restore Merc'
     bl_description = 'Restores facial features of mercenary. Harms performance'
     bl_options = {'UNDO'}
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=390)
 
     def execute(self, context):
         for obj in bpy.context.selected_objects:
@@ -494,6 +501,9 @@ class HISANIM_OT_restore(bpy.types.Operator):
                     var.targets[0].data_path = v['data_path']
             del obj.data['skdata']
         return {'FINISHED'}
+    
+    def draw(self, context):
+        self.layout.label(text='Face movement will be restored at the cost of slower performance. Confirm?')
 
 classes = [
     faceslider,

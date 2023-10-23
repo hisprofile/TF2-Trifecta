@@ -18,7 +18,7 @@ class AssetPaths(PropertyGroup):
         name = os.path.basename(value)
         if value == '':
             self.this_is = 'EMPTY'
-        elif name.endswith('.blend'):
+        elif name.endswith('.blend') and os.path.exists(value):
             self.this_is = 'BLEND'
             name = name[:name.rfind('.') if "." in name else None]
             if 'cosmetics' in name: name = name.replace('cosmetics', '')
@@ -126,19 +126,15 @@ class hisanimFilePaths(AddonPreferences):
         row = row.column(align=True)
         row.operator('hisanim.addpath', icon='ADD', text='')
         row.operator('hisanim.removepath', icon='REMOVE', text='')
-        #row.separator()
-        #row = row.column()
-        #row.operator('hisanim.detectpath', icon='VIEWZOOM', text='')
-        #op = row.operator('trifecta.textbox', icon='QUESTION', text='')
-        #op.text = 'The Search button will try to automatically fill entries based on ONE added entry. Ensure  '
-        #row.enabled = True if len(paths) > 0 else False
+        row.separator()
+        row.operator('hisanim.detectpath', text='', icon='VIEWZOOM')
         row = layout.row()
         if len(prefs.hisanim_paths) != 0:
             row.prop(paths[prefs.hisanim_pathsindex], 'path', text='Path')
         row = layout.row()
         row.operator('trifecta.pathhelp')
-        row.operator('hisanim.detectpath', text='Automatically Add Assets', icon='VIEWZOOM')
-        row.operator('trifecta.batchadd')
+        row.operator('hisanim.detectpath', text='Add Paths from Asset', icon='VIEWZOOM')
+        row.operator('trifecta.batchadd', text='Add Paths from Folder', icon='VIEWZOOM')
 
 class HISANIM_OT_BATCHADD(Operator):
     bl_idname = 'trifecta.batchadd'
@@ -153,34 +149,35 @@ class HISANIM_OT_BATCHADD(Operator):
 
         mercs = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
         misc = ['allclass', 'allclass2', 'allclass3', 'weapons']
-        rigs = ['rigs']
 
         path = self.filepath
-        #layout.label(text='Based on the active asset, your paths should be set up like this:')
         for merc in mercs:
+            if paths.get(merc) != None: continue
             f_path = os.path.join(path, f'{merc}/{merc}cosmetics.blend')
             if os.path.exists(f_path):
                 new = paths.add()
                 new.path = f_path
                 new.name = merc
-            #layout.row().label(text=f'"{merc}" : {t_path}')
         
         for m in misc:
+            if paths.get(m) != None: continue
             f_path = os.path.normpath(os.path.join(path, f'{m}/{m}.blend'))
             if os.path.exists(f_path):
                 new = paths.add()
                 new.path = f_path
                 new.name = m
         
+        if paths.get('rigs') != None: return {'FINISHED'}
+
         if os.path.exists(os.path.join(path, 'TF2-V3')):
             new = paths.add()
             new.path = os.path.join(path, 'TF2-V3')
             new.name = 'rigs'
         
         if os.path.exists(os.path.join(path, 'rigs')):
-            new = paths.add
-            #layout.row().label(text=f'"{m}" : {t_path}')
-        #layout.row().label(text=f'"rigs" : {os.path.normpath(os.path.join(path, "rigs"))}')
+            new = paths.add()
+            new.path = os.path.join(path, 'rigs')
+            new.name = 'rigs'
         return {'FINISHED'}
     
     def invoke(self, context, event):
@@ -267,7 +264,7 @@ class PREF_OT_pathhelp(Operator):
     bl_description = "If you're having issues setting up your entries, this operator should help you"
 
     def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self, width=600)
+        return context.window_manager.invoke_props_dialog(self, width=800)
     
     def draw(self, context):
         mercs = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']

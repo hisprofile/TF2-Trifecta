@@ -107,25 +107,19 @@ class MESH_UL_skeys_nodriver(UIList):
             if self.filter_name.lower() not in item.name.lower():
                 filtered[i] &= ~self.bitflag_filter_item
             
-            #if context.object.data.shape_keys == None:
             find = f'key_blocks["{item.name}"].value'
-            #print(find)
             if context.object.data.shape_keys.animation_data.drivers.find(find) != None:
-                #print('found!')
                 filtered[i] &= ~self.bitflag_filter_item
 
         return filtered, []
     
     def draw_item(self, _context, layout, _data, item, icon, active_data, _active_propname, index):
-        # assert(isinstance(item, bpy.types.ShapeKey))
         obj = active_data
-        # key = data
         key_block = item
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             split = layout.split(factor=0.6, align=False)
             split.prop(key_block, "name", text="", emboss=False, icon_value=icon)
             row = split.row(align=True)
-            #row.emboss = 'NONE_OR_STATUS'
             if key_block.mute or (obj.mode == 'EDIT' and not (obj.use_shape_key_edit_mode and obj.type == 'MESH')):
                 split.active = False
             if not item.id_data.use_relative:
@@ -262,7 +256,6 @@ class POSELIB_UL_visemes(UIList):
             if self.filter_name.lower() not in item.name.lower():
                 filtered[i] &= ~self.bitflag_filter_item
             if item.name.startswith('!'):
-                #print('found!')
                 filtered[i] &= ~self.bitflag_filter_item
 
         return filtered, []
@@ -331,48 +324,46 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 box.row().prop(props, 'autobind')
             box.row().operator('hisanim.search', icon='VIEWZOOM')
             box.row().operator('hisanim.clearsearch', icon='X')
-
+            box = layout.box()
+            row = box.row()
             if props.ddmatsettings or not prefs.compactable:
-                if prefs.compactable: row = layout.row()
                 if prefs.compactable: row.prop(props, 'ddmatsettings', icon='DISCLOSURE_TRI_DOWN', emboss=False)
                 if prefs.compactable: row.label(text='Material settings')
-                if not prefs.compactable: layout.label(text='Material settings')
-                box = layout.box()
-                box.label(text='Material Settings')
-                box.row().operator('hisanim.lightwarps')
-                box.row().operator('hisanim.removelightwarps')
-                box.row().prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
-                row = box.row()
-                row.prop(context.scene.hisanimvars, 'wrdbbluteam')
+                if not prefs.compactable: row.label(text='Material settings')
                 op = row.operator('trifecta.textbox', icon='QUESTION', text='')
                 op.text = "When using EEVEE, Enabling TF2 style on all spawned items will make them appear closer in appearance to the mercenaries, fixing any contrast issues. When using Cycles, this should be set to default.\nRimlight Strength determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default."
                 op.icons = 'SHADING_RENDERED,SHADING_RENDERED'
                 op.size = '76,76'
                 op.width = 425
+                if props.toggle_mat: box.row().operator('hisanim.removelightwarps')
+                else: box.row().operator('hisanim.lightwarps')
+                box.row().prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
+                row = box.row()
+                row.prop(context.scene.hisanimvars, 'wrdbbluteam')
+                
             else:
-                row = layout.row()
                 row.prop(props, 'ddmatsettings', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Material settings', icon='MATERIAL')
 
             if len(context.selected_objects) > 0:
                 if context.object.get('skin_groups') != None:
-                    row = layout.row()
+                    box = layout.box()
+                    row = box.row()
                     if props.ddpaints or not prefs.compactable:
                         if prefs.compactable: row.prop(props, 'ddpaints', icon='DISCLOSURE_TRI_DOWN', emboss=False)
-                        if prefs.compactable: row.label(text='Paints')
-                        ob = context.object
-                        box = layout.row().box()
-                        box.row().label(text='Attempt to fix material')
-                        box.row().template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
-                        row = box.row(align=True)
-                        row.operator('hisanim.materialfix')
-                        row.operator('hisanim.revertfix')
-                        row.separator()
+                        row.label(text='Paints')
                         op = row.operator('trifecta.textbox', icon='QUESTION', text='')
                         op.text = 'If a cosmetic seems to be painted incorrectly, selecting one of the materials and executing "Fix Material" may help.'
                         op.icons = 'SHADING_RENDERED'
                         op.size = '56'
                         op.width = 260
+                        ob = context.object
+                        row = box.row()
+                        row.label(text='Attempt to fix material')
+                        box.row().template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
+                        row = box.row(align=True)
+                        row.operator('hisanim.materialfix')
+                        row.operator('hisanim.revertfix')
                         box.row().label(text='Add Paint')
                         box.row().template_icon_view(context.window_manager, 'hisanim_paints', show_labels=True, scale=4, scale_popup=4)
                         row=box.row(align=True)
@@ -382,15 +373,16 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     else:
                         row.prop(props, 'ddpaints', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                         row.label(text='Paints', icon='BRUSH_DATA')
-
+            box = layout.box()
+            row = box.row()
             if props.ddloadouts or not prefs.compactable:
-                if prefs.compactable: row = layout.row()
                 if prefs.compactable: row.prop(props, 'ddloadouts', icon='DISCLOSURE_TRI_DOWN', emboss=False)
-                if prefs.compactable: row.label(text='Loadouts')
-                if not prefs.compactable: layout.label(text='Loadouts')
-                
-                box = layout.box()
-                box.label(text='Loadouts')
+                row.label(text='Loadouts')
+                op = row.operator('trifecta.textbox', icon='QUESTION', text='')
+                op.text = 'The Loadout tool allows you to save combinations of equippable items to be spawned by batch at any time, saving you the time of having to search and spawn for each one.'
+                op.icons = 'ASSET_MANAGER'
+                op.size = '56'
+                op.width = 290
                 row = box.row()
                 col = row.column()
                 col.template_list('LOADOUT_UL_loadouts', 'Loadouts', props, 'loadout_data', props, 'loadout_index')
@@ -408,43 +400,36 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     row = box.row()
                     row.operator('wdrb.cancel')
                     row.operator('wdrb.confirm')
+
                 if props.stage == 'DISPLAY':
                     box.row().operator('wdrb.cancel')
                     box.row().operator('loadout.load')
+
                 if props.stage == 'NONE':
                     row = box.row()
                     row.operator('loadout.rename')
-                    op = row.operator('trifecta.textbox', icon='QUESTION', text='')
-                    op.text = 'The Loadout tool allows you to save combinations of equippable items to be spawned by batch at any time, saving you the time of having to search and spawn for each one.'
-                    op.icons = 'ASSET_MANAGER'
-                    op.size = '56'
-                    op.width = 290
+                    
             else:
-                row = layout.row()
                 row.prop(props, 'ddloadouts', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Loadouts', icon='ASSET_MANAGER')
 
-
-            if props.searched:
-                if props.ddsearch or not prefs.compactable:
-                    if prefs.compactable: row = layout.row()
-                    if prefs.compactable: row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_DOWN', emboss=False)
-                    if prefs.compactable: row.label(text='Search Results')
-                    if not prefs.compactable: layout.label(text='Search Results')
-                    hits = props.results
-                    box = layout.row().box()
-                    if len(hits) > 0:
-                        if len(hits) == 1:
-                            box.label(text=f'{len(hits)} Result')
-                        else:
-                            box.label(text=f'{len(hits)} Results')
-                        box.row().template_list('HISANIM_UL_RESULTS', 'Results', props, 'results', props, 'resultindex')
-                    else: 
-                        box.label(text='Nothing found!')
+            box = layout.box()
+            row = box.row()
+            hits = props.results
+            if props.ddsearch or not prefs.compactable:
+                if prefs.compactable: row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_DOWN', emboss=False)
+                row.label(text=f'{"Search Result" if (len(hits) == 1) and props.searched else "Search Results"}{(" : " + str(len(hits))) if props.searched else ""}')
+                if len(hits) > 0 and props.searched:
+                    box.row().template_list('HISANIM_UL_RESULTS', 'Results', props, 'results', props, 'resultindex')
                 else:
-                    row = layout.row()
-                    row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
-                    row.label(text='Search Results', icon='VIEWZOOM')
+                    if props.searched:
+                        box.label(text='Nothing found!')
+                    else:
+                        box.label(text='Search for something!')
+            else:
+                row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
+                row.label(text=f'{"Search Result" if (len(hits) == 1) and props.searched else "Search Results"}{(" : " + str(len(hits))) if props.searched else ""}', icon='VIEWZOOM')
+            return
         
         if props.tools == 'MERC DEPLOYER':
             row = layout.row()
@@ -463,20 +448,25 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                         for ii in cln:
                             if ii == 'FK':
                                 row.alert=True
+
                             MERC = row.operator('hisanim.loadmerc', text='New' if ii == 'IK' else 'Legacy')
                             MERC.merc = i
                             MERC.type = ii
                     row = layout.row()
-                    row.alignment = 'RIGHT'
-                    row.operator('md.hint', text='', icon='QUESTION')
-                    layout.row().prop(context.scene.hisanimvars, "bluteam")
+                    row.prop(context.scene.hisanimvars, "bluteam")
+                    op = row.operator('trifecta.textbox', text='', icon='QUESTION')
+                    op.text = '''"New" rigs are made with Rigify, allowing for more extensive control over the armature with features like IK/FK swapping. "Legacy" rigs comprise of ONLY forward kinematics, and should only be used to apply taunts onto.\nWhen "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure the most compatibility with cosmetics. When disabled, the higher-poly (A.K.A. SFM) bodygroups will be used instead.\nRimlight Strength determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default.'''
+                    op.icons='ARMATURE_DATA,OUTLINER_OB_ARMATURE,SHADING_RENDERED'
+                    op.size = '76,76,76'
                     layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
                     layout.row().prop(props, 'hisanimrimpower', slider=True)
+            
                     
             else:
                 layout.row().label(text='"rigs" has not been added!')
                 layout.row().label(text='If it is added, check name.')
-            
+            return
+
         if props.tools == 'BONEMERGE':
             row = layout.row()
             row.label(text='Attach TF2 cosmetics.', icon='DECORATE_LINKED')
@@ -521,20 +511,25 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     row.label(text="ThatLazyArtist's and Eccentric's rigs are not supported.")
                     layout.row().label(text='There is a face panel on the rig. Pose the face there!')
                     return
-
+                
+            box = layout.box()
+            row = box.row()
             if props.ddfacepanel or not prefs.compactable:
                 if prefs.compactable:
-                    row = layout.row()
                     row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_DOWN', emboss=False)
-                    row.label(text='Face Poser')
-                row = layout.row(align=True)
-                row.operator('hisanim.optimize')
-                row.operator('hisanim.restore')
-                layout = layout.box()
-                row = layout.row(align=True)
+                row.label(text='Face Poser')
+                op = row.operator('trifecta.textbox', icon='QUESTION', text='')
+                op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is BLUE, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.\nOptimizing mercenaries can give a significant performance boost by disabling the flex controllers, which will somewhat lock the face. Don't forget to restore the face on final render."
+                op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA,MODIFIER_ON'
+                op.size = '76,76,76,76,76,76'
+                op.width = 400
+                row = box.row(align=True)
+                row.operator('hisanim.optimize', icon='MODIFIER_ON')
+                row.operator('hisanim.restore', icon='MODIFIER_OFF')
+                row = box.row(align=True)
                 row.prop(props, 'use_flexes', toggle=True)
                 row.prop(props, 'use_skeys', toggle=True)
-                row = layout.row(align=True)
+                row = box.row(align=True)
                 col = row.column()
                 if props.mode == 'FLEXES':
                     col.template_list('HISANIM_UL_SLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
@@ -546,36 +541,34 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
                 col.row().prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
                 col.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
-                op = col.row().operator('trifecta.textbox', icon='QUESTION', text='')
-                op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is BLUE, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face."
-                op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA'
-                op.size = '76,76,76,76,76'
-                op.width = 400
-                row = layout.row(align=True)
+                
+                row = box.row(align=True)
                 op = row.operator('hisanim.adjust', text='', icon='TRIA_LEFT')
                 op.amount = -0.1
                 row.prop(props, 'LR', slider=True)
                 op = row.operator('hisanim.adjust', text='', icon='TRIA_RIGHT')
                 op.amount = 0.1
-                row = layout.row(align=True)
+                row = box.row(align=True)
                 row.prop(props, 'up', text='Upper', toggle=True)
                 row.prop(props, 'mid', text='Mid', toggle=True)
                 row.prop(props, 'low', text='Lower', toggle=True)
             else:
-                row = layout.row()
                 row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Face Poser', icon='RESTRICT_SELECT_OFF')
             
-            layout = self.layout
+            box = layout.box()
+            row = box.row()
 
             if props.ddposelib or not prefs.compactable:
                 if prefs.compactable:
-                    row = layout.row()
                     row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_DOWN', emboss=False)
-                    row.label(text='Pose Library')
-                
-                layout = self.layout.box()
-                row = layout.row()
+                row.label(text=f'''Pose Library: {poselib.stage.title()}{(' "'  + poselib.visemeName + '"') if poselib.stage == 'APPLY' else ''}''')
+                op = row.operator('trifecta.textbox', text='', icon='QUESTION')
+                op.text = 'The Pose Library is a place to store presets for face shapes. It will only save flex controller data.\nEnabling "Reset All" will reset the face before applying the preset.'
+                op.icons = 'OUTLINER_OB_GROUP_INSTANCE,LOOP_BACK'
+                op.size = '56,56'
+                op.width = 290
+                row = box.row()
                 if poselib.stage == 'SELECT':
                     col = row.column()
                     col.template_list('POSELIB_UL_panel', 'Pose Library', poselib, 'visemesCol', poselib, 'activeViseme')
@@ -587,79 +580,71 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     op.pos = 1
                     op1 = col.operator('poselib.move', text='', icon='TRIA_DOWN')
                     op1.pos = -1
-                    row = layout.row()
+                    row = box.row()
                     row.operator('poselib.rename')
-                    op = row.operator('trifecta.textbox', text='', icon='QUESTION')
-                    op.text = 'The Pose Library is a place to store presets for face shapes. It will only save flex controller data.\nEnabling "Reset All" will reset the face before applying the preset.'
-                    op.icons = 'OUTLINER_OB_GROUP_INSTANCE,LOOP_BACK'
-                    op.size = '56,56'
-                    op.width = 290
+                    
 
                 if poselib.stage == 'ADD':
                     row.template_list('HISANIM_UL_USESLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
-                    row = layout.row(align=True)
+                    row = box.row(align=True)
                     row.prop(poselib, 'sort', toggle=True)
                     row.prop(props, 'up', text='Upper', toggle=True)
                     row.prop(props, 'mid', text='Mid', toggle=True)
                     row.prop(props, 'low', text='Lower', toggle=True)
-                    layout.row().prop(poselib, 'name')
-                    layout.row().operator('poselib.add')
-                    layout.row().operator('poselib.cancel')
+                    box.row().prop(poselib, 'name')
+                    box.row().operator('poselib.add')
+                    box.row().operator('poselib.cancel')
                 if poselib.stage == 'APPLY':
-                    row.label(text=poselib.visemeName)
-                    layout.row().template_list('POSELIB_UL_visemes', 'Items', poselib, 'dictVisemes', poselib, 'activeItem')
-                    layout.row().prop(poselib, 'value', slider=True)
-                    layout.row().prop(poselib, 'keyframe')
-                    layout.row().prop(poselib, 'reset')
-                    layout.row().operator('poselib.apply')
-                    layout.row().operator('poselib.cancelapply')
-                #row = layout.row()
-                #row.alignment = 'RIGHT'
-                #row.operator('poselib.hint_poselib', text='', icon='QUESTION')
+                    row.template_list('POSELIB_UL_visemes', 'Items', poselib, 'dictVisemes', poselib, 'activeItem')
+                    box.row().prop(poselib, 'value', slider=True)
+                    box.row().prop(poselib, 'keyframe')
+                    box.row().prop(poselib, 'reset')
+                    box.row().operator('poselib.apply')
+                    box.row().operator('poselib.cancelapply')
             else:
-                row = self.layout.row()
                 row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Pose Library', icon='OUTLINER_OB_GROUP_INSTANCE')
                 
-            layout = self.layout
+            box = layout.box()
+            row = box.row()
 
             if props.ddrandomize or not prefs.compactable:
                 if prefs.compactable:
-                    row = layout.row()
                     row.prop(props, 'ddrandomize', icon='DISCLOSURE_TRI_DOWN', emboss=False)
-                    row.label(text='Face Randomizer')
-                layout = self.layout.box()
-                row = layout.row()
-                row.prop(props, 'keyframe')
-                row.prop(props, 'randomadditive')
+                row.label(text='Face Randomizer')
                 op = row.operator('trifecta.textbox', icon='QUESTION', text='')
                 op.text = 'Make funny faces!'
                 op.icons = 'MONKEY'
                 op.size = '56'
                 op.width = 125
-                layout.row().prop(props, 'randomstrength', slider=True)
-                layout.row().operator('hisanim.randomizeface')
-                layout.row().operator('hisanim.resetface')
-                layout.row().prop(context.object.data, '["aaa_fs"]', text='Flex Scale')
+                row = box.row()
+                row.prop(props, 'keyframe')
+                row.prop(props, 'randomadditive')
+                
+                box.row().prop(props, 'randomstrength', slider=True)
+                box.row().operator('hisanim.randomizeface')
+                box.row().operator('hisanim.resetface')
+                box.row().prop(context.object.data, '["aaa_fs"]', text='Flex Scale')
             else:
-                row = layout.row()
                 row.prop(props, 'ddrandomize', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Face Randomizer', icon='RNDCURVE')
 
-            layout = self.layout
+            box = layout.box()
+            row = box.row()
 
             if props.ddlocks or not prefs.compactable:
                 if prefs.compactable:
-                    row = layout.row()
                     row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_DOWN', emboss=False)
-                    row.label(text='Lock Sliders')
+                row.label(text='Lock Sliders')
+                op = row.operator('trifecta.textbox', text='', icon='QUESTION')
+                op.text = 'Locking a flex controller will keep it from getting randomized.'
+                op.icons = 'LOCKED'
+                op.size = '128'
+                op.width = 340
                 
                 data = context.object.data
-                if data.get('locklist') == None:
-                    layout.row().label(text='Locking will prevent randomizing.')
-                layout.row().template_list('HISANIM_UL_LOCKSLIDER', 'Lock Sliders', props, 'sliders', props, 'sliderindex')
+                box.row().template_list('HISANIM_UL_LOCKSLIDER', 'Lock Sliders', props, 'sliders', props, 'sliderindex')
             else:
-                row = layout.row()
                 row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Lock Sliders', icon='LOCKED')
 

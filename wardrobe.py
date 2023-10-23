@@ -1,7 +1,7 @@
 import bpy, json, os
 from pathlib import Path
 from bpy.props import *
-from bpy.types import *
+#from bpy.types import *
 from bpy.types import Context
 from mathutils import *
 from . import bonemerge, mercdeployer, faceposer, loadout
@@ -96,6 +96,7 @@ class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with 
     bl_options = {'UNDO'}
     
     def execute(self, context):
+        props = bpy.context.scene.hisanimvars
         if (NT := bpy.data.node_groups.get('VertexLitGeneric-WDRB')) == None: 
             self.report({'INFO'}, 'Cosmetic and class needed to proceed!')
             return {'CANCELLED'}
@@ -120,6 +121,7 @@ class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with 
         NT.nodes['Lightwarp'].location[1] = -440
         NT.links.new(NT.nodes['Group'].outputs['lightwarp vector'], NT.nodes['Lightwarp'].inputs['Vector'])
         NT.links.new(NT.nodes['Lightwarp'].outputs['Color'], NT.nodes['Group'].inputs['Lightwarp'])
+        props.toggle_mat = True
         return {'FINISHED'}
 
 class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
@@ -129,10 +131,12 @@ class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
     bl_options = {'UNDO'}
     
     def execute(self, execute):
+        props = bpy.context.scene.hisanimvars
         if (NT := bpy.data.node_groups.get('VertexLitGeneric-WDRB')) == None:
             self.report({'INFO'}, 'Cosmetic needed to proceed!')
             return {'CANCELLED'}
         NT.nodes['Group'].node_tree = bpy.data.node_groups['tf2combined-cycles']
+        props.toggle_mat = False
         return {'FINISHED'}
         
 class searchHits(bpy.types.PropertyGroup):
@@ -151,8 +155,8 @@ class searchHits(bpy.types.PropertyGroup):
         if value == False:
             if self.name in scn.loadout_temp: scn.loadout_temp.remove(self.name)
 
-    name: bpy.props.StringProperty()
-    use: bpy.props.BoolProperty(name='Use', default=False, get=gett, set=sett)
+    name: StringProperty()
+    use: BoolProperty(name='Use', default=False, get=gett, set=sett)
 
 class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs. Less to write for registering and unregistering
     def sW(self, val):
@@ -180,21 +184,12 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     def gSk(self):
         return bpy.context.scene.hisanimvars.mode == 'SKEYS'
     
-    '''def sFx(self, val):
-        bpy.context.scene.hisanimvars.use_flexes = True
-    def gFx(self):
-        return not bpy.context.scene.hisanimvars.use_skeys
-    def sSk(self, val):
-        bpy.context.scene.hisanimvars.use_skeys = True
-    def gSk(self):
-        return not bpy.context.scene.hisanimvars.use_flexes'''
-    
-    bluteam: bpy.props.BoolProperty(
+    bluteam: BoolProperty(
         name="Blu Team",
         description="Swap classes",
         default = False, options=set())
-    query: bpy.props.StringProperty(default="")
-    loadout_name: bpy.props.StringProperty(default='Loadout Name')
+    query: StringProperty(default="")
+    loadout_name: StringProperty(default='Loadout Name')
     cosmeticcompatibility: BoolProperty(
         name="In-Game Models",
         description="Use cosmetic compatible bodygroups that don't intersect with cosmetics. Disabling will use SFM bodygroups",
@@ -207,14 +202,14 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     hisanimrimpower: FloatProperty(name='Rimlight Strength',
                                 description='Multiply the overall rim boost by this number',
                                 default=0.400, min=0.0, max=1.0, options=set())
-    hisanimscale: bpy.props.BoolProperty(default=False, name='Scale With', description='Scales cosmetics with targets bones. Disabled by default', options=set())
-    hisanimtarget: bpy.props.PointerProperty(type=bpy.types.Object, poll=bonemerge.IsArmature)
-    savespace: bpy.props.BoolProperty(default=True, name='Save Space', description='When enabled, The TF2-Trifecta will link textures from source files', options=set())
-    autobind: bpy.props.BoolProperty(default=False, name='Auto BoneMerge', description='When enabled, weapons will automatically bind to mercs', options=set())
-    results: bpy.props.CollectionProperty(type=searchHits)
-    resultindex: bpy.props.IntProperty(options=set())
-    searched: bpy.props.BoolProperty(options=set())
-    tools: bpy.props.EnumProperty(
+    hisanimscale: BoolProperty(default=False, name='Scale With', description='Scales cosmetics with targets bones. Disabled by default', options=set())
+    hisanimtarget: PointerProperty(type=bpy.types.Object, poll=bonemerge.IsArmature)
+    savespace: BoolProperty(default=True, name='Save Space', description='When enabled, The TF2-Trifecta will link textures from source files', options=set())
+    autobind: BoolProperty(default=False, name='Auto BoneMerge', description='When enabled, weapons will automatically bind to mercs', options=set())
+    results: CollectionProperty(type=searchHits)
+    resultindex: IntProperty(options=set())
+    searched: BoolProperty(options=set())
+    tools: EnumProperty(
         items=(
         ('WARDROBE', 'Wardrobe', "Show Wardrobe's tools", 'MOD_CLOTH', 0),
         ('MERC DEPLOYER', 'Merc Deployer', "Show Merc Deployer's tools", 'FORCE_DRAG', 1),
@@ -223,40 +218,40 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         ),
         name='Tool', options=set()
     )
-    wr: bpy.props.BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
-    md: bpy.props.BoolProperty(default=True, name='', options=set(), set=sM, get=gM)
-    bm: bpy.props.BoolProperty(default=True, name='', options=set(), set=sB, get=gB)
-    fp: bpy.props.BoolProperty(default=True, name='', options=set(), set=sF, get=gF)
-    wardrobe: bpy.props.BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
-    wardrobe: bpy.props.BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
-    ddsearch: bpy.props.BoolProperty(default=True, name='', options=set())
-    ddpaints: bpy.props.BoolProperty(default=True, name='', options=set())
-    ddmatsettings: bpy.props.BoolProperty(default=True, name='', options=set())
-    ddloadouts: bpy.props.BoolProperty(default=False, name='', options=set())
-    ddfacepanel: bpy.props.BoolProperty(default=True, name='', options=set())
-    ddrandomize: bpy.props.BoolProperty(default=True, name='', options=set())
-    ddlocks: bpy.props.BoolProperty(default=True, name = '', options=set())
-    ddposelib: bpy.props.BoolProperty(default=True, name='', options=set())
-    randomadditive: bpy.props.BoolProperty(name = 'Additive', description='Add onto the current face values', options=set())
-    randomstrength: bpy.props.FloatProperty(name='Random Strength', min=0.0, max=1.0, description='Any random value calculated will be multiplied with this number', default=1.0, options=set())
-    keyframe: bpy.props.BoolProperty(default=False, name='Keyframe Sliders', description='Keyframe the randomized changes', options=set())
-    lockfilter: bpy.props.StringProperty()
-    activeslider: bpy.props.StringProperty()
-    activeface: bpy.props.PointerProperty(type=bpy.types.Object)
-    lastactiveface: bpy.props.PointerProperty(type=bpy.types.Object)
-    loadout_data: bpy.props.CollectionProperty(type=loadout.genericGroup)
-    loadout_index:bpy.props.IntProperty(default=0)
-    sliders: bpy.props.CollectionProperty(type=faceposer.faceslider)
-    sliderindex: bpy.props.IntProperty(options=set())
-    dragging: bpy.props.BoolProperty(default=False, options=set())
-    updating: bpy.props.BoolProperty(default = False, options=set())
-    callonce: bpy.props.BoolProperty(default = False, options=set())
-    LR: bpy.props.FloatProperty(default=0.5, options=set(), min=0.0, max=1.0, name='L <-> R', description='Which way flexing will lean more towards', step=50)
-    up: bpy.props.BoolProperty(default=False, options=set(), name='Upper', description='Show the Upper section of the face')
-    mid: bpy.props.BoolProperty(default=False, options=set(), name='Mid', description='Show the Mid section of the face')
-    low: bpy.props.BoolProperty(default=False, options=set(), name='Lower', description='Show the Lower section of the face')
-    use_flexes: bpy.props.BoolProperty(default = True, options=set(), name='Flex Controllers', set=sFx, get=gFx)
-    use_skeys: bpy.props.BoolProperty(default = False, options=set(), name='Shapekeys', set=sSk, get=gSk)
+    wr: BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
+    md: BoolProperty(default=True, name='', options=set(), set=sM, get=gM)
+    bm: BoolProperty(default=True, name='', options=set(), set=sB, get=gB)
+    fp: BoolProperty(default=True, name='', options=set(), set=sF, get=gF)
+    wardrobe: BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
+    wardrobe: BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
+    ddsearch: BoolProperty(default=True, name='', options=set())
+    ddpaints: BoolProperty(default=True, name='', options=set())
+    ddmatsettings: BoolProperty(default=True, name='', options=set())
+    ddloadouts: BoolProperty(default=False, name='', options=set())
+    ddfacepanel: BoolProperty(default=True, name='', options=set())
+    ddrandomize: BoolProperty(default=True, name='', options=set())
+    ddlocks: BoolProperty(default=True, name = '', options=set())
+    ddposelib: BoolProperty(default=True, name='', options=set())
+    randomadditive: BoolProperty(name = 'Additive', description='Add onto the current face values', options=set())
+    randomstrength: FloatProperty(name='Random Strength', min=0.0, max=1.0, description='Any random value calculated will be multiplied with this number', default=1.0, options=set())
+    keyframe: BoolProperty(default=False, name='Keyframe Sliders', description='Keyframe the randomized changes', options=set())
+    lockfilter: StringProperty()
+    activeslider: StringProperty()
+    activeface: PointerProperty(type=bpy.types.Object)
+    lastactiveface: PointerProperty(type=bpy.types.Object)
+    loadout_data: CollectionProperty(type=loadout.genericGroup)
+    loadout_index:IntProperty(default=0)
+    sliders: CollectionProperty(type=faceposer.faceslider)
+    sliderindex: IntProperty(options=set())
+    dragging: BoolProperty(default=False, options=set())
+    updating: BoolProperty(default = False, options=set())
+    callonce: BoolProperty(default = False, options=set())
+    LR: FloatProperty(default=0.5, options=set(), min=0.0, max=1.0, name='L <-> R', description='Which way flexing will lean more towards', step=50)
+    up: BoolProperty(default=False, options=set(), name='Upper', description='Show the Upper section of the face')
+    mid: BoolProperty(default=False, options=set(), name='Mid', description='Show the Mid section of the face')
+    low: BoolProperty(default=False, options=set(), name='Lower', description='Show the Lower section of the face')
+    use_flexes: BoolProperty(default = True, options=set(), name='Flex Controllers', set=sFx, get=gFx)
+    use_skeys: BoolProperty(default = False, options=set(), name='Shapekeys', set=sSk, get=gSk)
     mode: EnumProperty(
         items=(
             ('FLEXES', 'Flex Controllers', '', '', 0),
@@ -275,7 +270,8 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         name = 'Stages',
         default='NONE'
     )
-    merc: bpy.props.StringProperty(default='')
+    merc: StringProperty(default='')
+    toggle_mat: BoolProperty(default=False)
 
 class WDRB_OT_Select(bpy.types.Operator):
     bl_idname = 'wdrb.select'
@@ -343,7 +339,7 @@ class WDRB_OT_Confirm(bpy.types.Operator):
 
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
-    LOAD: bpy.props.StringProperty(default='')
+    LOAD: StringProperty(default='')
     bl_idname = 'hisanim.loadcosmetic'
     bl_label = 'Cosmetic'
     bl_description = f'Load this cosmetic into your scene'
@@ -357,7 +353,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         nothing = True if len(bpy.context.selected_objects) == 0 else False
 
         prefs = context.preferences.addons[__package__].preferences
-        paths = prefs.assets
+        paths = prefs.hisanim_paths
         if (p := paths.get(CLASS)) == None: # no entry
             self.report({'ERROR'}, f'Directory for "{CLASS}" not found! Make sure an entry for it exists in the addon preferences!')
             return {'CANCELLED'}
@@ -551,7 +547,7 @@ class HISANIM_OT_PAINTS(bpy.types.Operator):
     bl_description = 'Use this paint on cosmetic'
     bl_options = {'UNDO'}
 
-    PAINT: bpy.props.StringProperty(default='')
+    PAINT: StringProperty(default='')
 
     def execute(self, context):
         paintvalue = self.PAINT.split(' ')
@@ -635,7 +631,7 @@ classes = [
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
-    bpy.types.Scene.hisanimvars = bpy.props.PointerProperty(type=hisanimvars)
+    bpy.types.Scene.hisanimvars = PointerProperty(type=hisanimvars)
     
 def unregister():
     for cls in reversed(classes):
