@@ -30,7 +30,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
             row = layout.row()
         layout.label(text='Note! Allclass will take much longer!')
         row = layout.row()
-        layout.label(text='Update/Replace Rigs')  
+        layout.label(text='Update/Replace TF2-V3 Rigs')  
         row = layout.row()
         row.operator('hisanim.mercupdate', text='Standard Rigs')
         layout.label(text='The default rigs by hisanimations. Supports the Face Poser tool.')
@@ -182,8 +182,8 @@ class HISANIM_OT_MERCUPDATE(bpy.types.Operator):
     def execute(self, execute):
         prefs = bpy.context.preferences.addons[__package__].preferences
         #DLOADTO = bpy.context.preferences.filepaths.asset_libraries['TF2-V3'].path + "/"
-        if (GET := prefs.hisanim_paths.get('rigs')) == None:
-            self.report({'INFO'}, 'No entry for rigs!')
+        if (GET := prefs.hisanim_paths.get('TF2-V3')) == None:
+            self.report({'INFO'}, 'No entry for TF2-V3!')
             return {'CANCELLED'}
         GET = GET.path
         print('Deleting old .blend files...')
@@ -191,7 +191,7 @@ class HISANIM_OT_MERCUPDATE(bpy.types.Operator):
             os.remove(os.path.join(GET, i))
             print(f'Deleted {i}..')
         DLOADTO = GET
-        print(f"Downloading hisanimations' rigs...")
+        print(f"Downloading hisanimations' TF2-V3 port...")
         dload.save('https://gitlab.com/hisprofile/the-tf2-collection/raw/main/TF2-V3.zip')
         print('''hisanimations' port downloaded!''')
         print('Moving to asset library path...')
@@ -219,8 +219,8 @@ class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
             self.report({'ERROR'}, 'Not ready yet!')
             return {'CANCELLED'}
         #DLOADTO = bpy.context.preferences.filepaths.asset_libraries['TF2-V3'].path + "/"
-        if (GET := prefs.hisanim_paths.get('rigs')) == None:
-            self.report({'INFO'}, 'No entry for rigs!')
+        if (GET := prefs.hisanim_paths.get('TF2-V3')) == None:
+            self.report({'INFO'}, 'No entry for TF2-V3!')
             return {'CANCELLED'}
         GET = GET.path
         print('Deleting old .blend files...')
@@ -228,7 +228,7 @@ class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
             os.remove(os.path.join(GET, i))
             print(f'Deleted {i}..')
         DLOADTO = GET
-        print(f"Downloading Hectoris919's rigs...")
+        print(f"Downloading Hectoris919's TF2-V3 port...")
         dload.save('https://gitlab.com/hisprofile/the-tf2-collection/raw/main/TF2-HECTORIS.zip')
         print('''hisanimations' port downloaded!''')
         print('Moving to asset library path...')
@@ -251,8 +251,8 @@ class HISANIM_OT_ECCENTRICUPDATE(bpy.types.Operator):
     def execute(self, execute):
         prefs = bpy.context.preferences.addons[__package__].preferences
         #DLOADTO = bpy.context.preferences.filepaths.asset_libraries['TF2-V3'].path + "/"
-        if (GET := prefs.hisanim_paths.get('rigs')) == None:
-            self.report({'INFO'}, 'No entry for rigs!')
+        if (GET := prefs.hisanim_paths.get('TF2-V3')) == None:
+            self.report({'INFO'}, 'No entry for TF2-V3!')
             return {'CANCELLED'}
         GET = GET.path
         print('Deleting old .blend files...')
@@ -260,7 +260,7 @@ class HISANIM_OT_ECCENTRICUPDATE(bpy.types.Operator):
             os.remove(os.path.join(GET, i))
             print(f'Deleted {i}..')
         DLOADTO = GET
-        print(f"Downloading Eccentric's rigs...")
+        print(f"Downloading Eccentric's TF2-V3 version...")
         dload.save('https://gitlab.com/hisprofile/the-tf2-collection/raw/main/TF2-V3_FACE_RIG.zip')
         print('''Eccentric's version downloaded!''')
         print('Moving to asset library path...')

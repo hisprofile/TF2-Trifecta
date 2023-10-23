@@ -7,7 +7,7 @@ from bpy.props import (StringProperty, CollectionProperty,
                         BoolProperty)
 from bpy.types import (UIList, PropertyGroup,
                         AddonPreferences, Operator)
-names = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy', 'allclass2', 'allclass3', 'allclass', 'weapons', 'rigs']
+names = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy', 'allclass2', 'allclass3', 'allclass', 'weapons', 'TF2-V3']
 
 class AssetPaths(PropertyGroup):
     def get_path(self):
@@ -103,12 +103,15 @@ class hisanimFilePaths(AddonPreferences):
     quickswitch: bpy.props.BoolProperty(default=True, options=set(), name='Quick Switch', description='Replace the tool dropdown with a set of buttons')
     
     def draw(self, context):
+        '''if not self.is_executed:
+            runpullpath() # get existing asset path entries
+            bpy.types.SpacePreferences.draw_handler_add(deleteOldPaths, (), 'WINDOW', 'POST_PIXEL') # delete the old asset paths, as they are no longer
+            self.is_executed = True'''
         prefs = bpy.context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
         remaining = [i for i in names if paths.get(i) == None]
         layout = self.layout
-        layout.row().label(text='Every entry needs to end in .blend, except for "rigs". "rigs" needs to be a folder.')
-        layout.row().label(text='''Don't use the name "TF2-V3" anymore, use "rigs" instead.''')
+        layout.row().label(text='Every entry needs to end in .blend, except for TF2-V3. TF2-V3 needs to be a folder.')
         layout.row().label(text='Names are held in the window below.')
         if len(remaining) > 0:
             row = layout.row()
@@ -126,66 +129,14 @@ class hisanimFilePaths(AddonPreferences):
         row = row.column(align=True)
         row.operator('hisanim.addpath', icon='ADD', text='')
         row.operator('hisanim.removepath', icon='REMOVE', text='')
-        #row.separator()
-        #row = row.column()
-        #row.operator('hisanim.detectpath', icon='VIEWZOOM', text='')
-        #op = row.operator('trifecta.textbox', icon='QUESTION', text='')
-        #op.text = 'The Search button will try to automatically fill entries based on ONE added entry. Ensure  '
-        #row.enabled = True if len(paths) > 0 else False
+        row.separator()
+        row = row.column()
+        row.operator('hisanim.detectpath', icon='VIEWZOOM', text='')
+        row.enabled = True if len(paths) > 0 else False
         row = layout.row()
         if len(prefs.hisanim_paths) != 0:
             row.prop(paths[prefs.hisanim_pathsindex], 'path', text='Path')
-        row = layout.row()
-        row.operator('trifecta.pathhelp')
-        row.operator('hisanim.detectpath', text='Automatically Add Assets', icon='VIEWZOOM')
-        row.operator('trifecta.batchadd')
-
-class HISANIM_OT_BATCHADD(Operator):
-    bl_idname = 'trifecta.batchadd'
-    bl_label = 'Batch Add'
-    bl_description = ''
-
-    filepath: StringProperty(name='filepath', subtype='FILE_PATH')
-
-    def execute(self, context):
-        prefs = bpy.context.preferences.addons[__package__].preferences
-        paths = prefs.hisanim_paths
-
-        mercs = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
-        misc = ['allclass', 'allclass2', 'allclass3', 'weapons']
-        rigs = ['rigs']
-
-        path = self.filepath
-        #layout.label(text='Based on the active asset, your paths should be set up like this:')
-        for merc in mercs:
-            f_path = os.path.join(path, f'{merc}/{merc}cosmetics.blend')
-            if os.path.exists(f_path):
-                new = paths.add()
-                new.path = f_path
-                new.name = merc
-            #layout.row().label(text=f'"{merc}" : {t_path}')
-        
-        for m in misc:
-            f_path = os.path.normpath(os.path.join(path, f'{m}/{m}.blend'))
-            if os.path.exists(f_path):
-                new = paths.add()
-                new.path = f_path
-                new.name = m
-        
-        if os.path.exists(os.path.join(path, 'TF2-V3')):
-            new = paths.add()
-            new.path = os.path.join(path, 'TF2-V3')
-            new.name = 'rigs'
-        
-        if os.path.exists(os.path.join(path, 'rigs')):
-            new = paths.add
-            #layout.row().label(text=f'"{m}" : {t_path}')
-        #layout.row().label(text=f'"rigs" : {os.path.normpath(os.path.join(path, "rigs"))}')
-        return {'FINISHED'}
-    
-    def invoke(self, context, event):
-        context.window_manager.fileselect_add(self)
-        return {'RUNNING_MODAL'}
+        layout.row().operator('trifecta.pathhelp')
 
 class HISANIM_OT_DETECTPATH(Operator):
     bl_idname = 'hisanim.detectpath'
@@ -195,11 +146,6 @@ class HISANIM_OT_DETECTPATH(Operator):
     def execute(self, context):
         prefs = context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
-
-        if len(paths) == 0:
-            self.report({'ERROR'}, "Add at least one asset! This asset's path will be used to search for other assets!")
-            return {'CANCELLED'}
-
         pathsindex = prefs.hisanim_pathsindex
         selectedpath = paths[pathsindex].path
 
@@ -272,7 +218,7 @@ class PREF_OT_pathhelp(Operator):
     def draw(self, context):
         mercs = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
         misc = ['allclass', 'allclass2', 'allclass3', 'weapons']
-        rigs = ['rigs']
+        rigs = ['TF2-V3']
 
         layout = self.layout
         prefs = context.preferences.addons[__package__].preferences
@@ -297,7 +243,7 @@ class PREF_OT_pathhelp(Operator):
         for m in misc:
             t_path = os.path.normpath(os.path.join(path, f'{m}/{m}.blend'))
             layout.row().label(text=f'"{m}" : {t_path}')
-        layout.row().label(text=f'"rigs" : {os.path.normpath(os.path.join(path, "rigs"))}')
+        layout.row().label(text=f'"TF2-V3" : {os.path.normpath(os.path.join(path, "TF2-V3"))}')
 
     def execute(self, context):
         return {'FINISHED'}
@@ -310,8 +256,7 @@ classes = [HISANIM_UL_ASSETS,
         HISANIM_OT_REMOVEPATH,
         HISANIM_OT_DETECTPATH,
         HISANIM_OT_PULLPATH,
-        PREF_OT_pathhelp,
-        HISANIM_OT_BATCHADD]
+        PREF_OT_pathhelp]
 
 def runpullpath():
     prefs = bpy.context.preferences.addons[__package__].preferences
@@ -361,10 +306,6 @@ def deleteOldPaths():
 def register():
     for i in classes:
         bpy.utils.register_class(i)
-    prefs = bpy.context.preferences.addons[__package__].preferences
-    if (p := prefs.hisanim_paths.get('TF2-V3')) != None:
-        p.name = 'rigs'
-        print(p.name, 'success')
     
 def unregister():
     for i in classes:

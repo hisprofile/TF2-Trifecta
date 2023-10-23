@@ -608,7 +608,7 @@ class HISANIM_OT_relocatePaths(bpy.types.Operator):
                 if paths.get(filesDict[file]) == None: continue
                 lib.filepath = paths[filesDict[file]].path
                 lib.reload()
-        if (path := paths.get('rigs')) == None: return {'FINISHED'}
+        if (path := paths.get('TF2-V3')) == None: return {'FINISHED'}
         for merc in TF2_V3:
             if (lib := bpy.data.libraries.get(merc)) != None:
                 lib.filepath = os.path.join(path.path, merc)

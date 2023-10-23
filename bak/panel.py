@@ -452,10 +452,10 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             cln = ["IK", "FK"]
             mercs = ['scout', 'soldier', 'pyro', 'demo',
                     'heavy', 'engineer', 'medic', 'sniper', 'spy']
-            if prefs.hisanim_paths.get('rigs') != None:
-                if prefs.hisanim_paths.get('rigs').this_is != 'FOLDER':
+            if prefs.hisanim_paths.get('TF2-V3') != None:
+                if prefs.hisanim_paths.get('TF2-V3').this_is != 'FOLDER':
                     row = layout.row()
-                    row.label(text='"rigs" have an invalid path!')
+                    row.label(text='TF2-V3 contains an invalid path!')
                 else:
                     for i in mercs:
                         row = layout.box().row(align=True)
@@ -472,10 +472,13 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     layout.row().prop(context.scene.hisanimvars, "bluteam")
                     layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
                     layout.row().prop(props, 'hisanimrimpower', slider=True)
+
                     
             else:
-                layout.row().label(text='"rigs" has not been added!')
-                layout.row().label(text='If it is added, check name.')
+                row = layout.row()
+                row.label(text='TF2-V3 has not been added!')
+                row = layout.row()
+                row.label(text='If it is added, check name.')
             
         if props.tools == 'BONEMERGE':
             row = layout.row()
