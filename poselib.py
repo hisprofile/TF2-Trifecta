@@ -8566,25 +8566,14 @@ class poselibVars(PropertyGroup):
         data = obj.data
         scn = C.scene
         props = scn.poselibVars
-        '''if self.reset:
-            for x, i in enumerate(data.keys()):
-                if i == 'aaa_fs' or i == 'skdata':
-                    continue
-                try:
-                    prop = data.id_properties_ui(i).as_dict() # if the key is not a numerical value, skip
-                    data[i] = 0.0
-                except:
-                    continue'''
 
         for vis in props.dictVisemes:
-            #print(vis)
             if vis.name.startswith('!'):
                 data[vis.name[1:]] = mix(vis.original, 0.0 if self.reset else vis.original, self.value)
                 continue
             if not vis.use:
                 data[vis.name] = vis.original# if self.reset else vis.value
                 continue
-            #(0.0 if vis.name != 'aaa_fs' else 1.0)
             data[vis.name] = mix(vis.original, vis.value, self.value)
             continue
         data.update()
@@ -8654,8 +8643,6 @@ class POSELIB_OT_cancel(Operator):
         props = scn.poselibVars
         props.stage = 'SELECT'
         props.adding = False
-        
-
         for slider in Fprops.sliders:
             slider.use = False
             if slider.split:
@@ -8743,7 +8730,6 @@ class POSELIB_OT_add(Operator):
         scn = C.scene
         Fprops = scn.hisanimvars
         props = scn.poselibVars
-
         jsonData = getJson()
         lib = jsonData[Fprops.merc]
 
@@ -8910,7 +8896,6 @@ class POSELIB_OT_prepareApply(Operator):
             new.value = item[1]
             new.original = data[item[0]]
         for n, key in enumerate(data.keys()):
-            print(n, key)
             try:
                 data.id_properties_ui(key).as_dict()
             except:
@@ -8980,21 +8965,16 @@ class POSELIB_OT_hint(Operator):
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
-        #return context.window_manager.popup_menu(self.draw, title=)
 
     def execute(self, context):
         return {'FINISHED'}
 
     def draw(self, context):
-        layout = self.layout
         textBox(self, "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all.", 'ERROR')
-        #layout.row().label(icon='REC')
         textBox(self, "When this button is blue, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.", 'REC')
-        #layout.row().label(icon='DECORATE_KEYFRAME')
         textBox(self, "Pressing this button will add a keyframe to all sliders. Useful for starting an animation sequence.", 'DECORATE_KEYFRAME')
         textBox(self, "Enabling this button by stereo sliders will reveal the true value for both sliders.", 'RESTRICT_VIEW_OFF')
         textBox(self, "Flex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.", 'SHAPEKEY_DATA')
-        #layout.label(text='lol')
 
 class POSELIB_OT_hintPL(Operator):
     bl_idname = 'poselib.hint_poselib'
