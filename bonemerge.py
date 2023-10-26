@@ -140,12 +140,16 @@ class HISANIM_OT_BINDFACE(bpy.types.Operator):
     
     def execute(self, context):
         objs = context.selected_objects
-        objs.remove(context.object)
+        print(objs)
+        f = []
+        f.remove()
+        objs = objs.remove(context.active_object)
+        print(objs)
         cos = objs[0]
 
         face = context.object
 
-        if face.get('aaa_fs') != None:
+        if face.get('aaa_fs') == None:
             self.report({'WARNING'}, 'A mercenary was selected as a cosmetic! Make sure the mercenary is selected last!')
             return {'CANCELLED'}
         
