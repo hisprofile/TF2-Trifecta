@@ -293,8 +293,9 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
 
     def draw(self, context):
         prefs = context.preferences.addons[__package__].preferences
-        props = bpy.context.scene.hisanimvars
-        poselib = bpy.context.scene.poselibVars
+        props = context.scene.hisanimvars
+        poselib = context.scene.poselibVars
+        obj = context.object
         layout = self.layout
         
         if prefs.quickswitch:
@@ -568,8 +569,19 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 op.icons = 'OUTLINER_OB_GROUP_INSTANCE,LOOP_BACK'
                 op.size = '56,56'
                 op.width = 290
+                
+                if obj.data.get('merc') and props.needs_override:
+                    box.row().label(text=f'Using: {obj.data.get("merc").title()}')
+                    box.operator('faceposer.override')
+
                 row = box.row()
-                if poselib.stage == 'SELECT':
+
+                if obj.data.get('merc') == None and props.needs_override:
+                    textBox(box, "The face you have selected doesn't natively support the pose library, but you can choose a mercenary preset and see if it works!")
+                    box.operator('faceposer.override')
+                
+                    
+                elif poselib.stage == 'SELECT':
                     col = row.column()
                     col.template_list('POSELIB_UL_panel', 'Pose Library', poselib, 'visemesCol', poselib, 'activeViseme')
                     col = row.column()
@@ -582,9 +594,8 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     op1.pos = -1
                     row = box.row()
                     row.operator('poselib.rename')
-                    
 
-                if poselib.stage == 'ADD':
+                elif poselib.stage == 'ADD':
                     row.template_list('HISANIM_UL_USESLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
                     row = box.row(align=True)
                     row.prop(poselib, 'sort', toggle=True)
@@ -594,7 +605,8 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     box.row().prop(poselib, 'name')
                     box.row().operator('poselib.add')
                     box.row().operator('poselib.cancel')
-                if poselib.stage == 'APPLY':
+
+                elif poselib.stage == 'APPLY':
                     row.template_list('POSELIB_UL_visemes', 'Items', poselib, 'dictVisemes', poselib, 'activeItem')
                     box.row().prop(poselib, 'value', slider=True)
                     box.row().prop(poselib, 'keyframe')
@@ -649,7 +661,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row.label(text='Lock Sliders', icon='LOCKED')
 
 def textBox(self, sentence, icon='NONE', line=56):
-    layout = self.layout
+    layout = self
     sentence = sentence.split(' ')
     mix = sentence[0]
     sentence.pop(0)
@@ -690,7 +702,7 @@ class TRIFECTA_OT_genericText(bpy.types.Operator):
         icons = self.icons.split(',')
         sizes = self.size.split(',')
         for sentence, icon, size in zip(sentences, icons, sizes):
-            textBox(self, sentence, icon, int(size))
+            textBox(self.layout, sentence, icon, int(size))
 
     def execute(self, context):
         return {'FINISHED'}

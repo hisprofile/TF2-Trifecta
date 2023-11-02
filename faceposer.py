@@ -3,6 +3,8 @@ from bpy.app.handlers import persistent
 from . import poselib, mercdeployer, loadout
 from math import floor, ceil
 
+from bpy.types import Operator
+from bpy.props import *
 
 upperFace = ['BrowInV', 'BrowOutV', 'Frown', 'InnerSquint',
                 'OuterSquint', 'ScalpD', 'CloseLid',
@@ -38,6 +40,7 @@ def updatefaces(scn = None):
     '''
     loadout.update()
     props = bpy.context.scene.hisanimvars
+    props.needs_override = True
     try:
         data = bpy.context.object.data
         data.get('')
@@ -47,11 +50,20 @@ def updatefaces(scn = None):
     if data.get('aaa_fs') == None:
         #bpy.ops.poselib.cancelapply()
         return None
+    
+    if data.get('flexcontrollers') == None:
+        data['flexcontrollers'] = {key[4:]: key for key in data.keys() if type(data[key]) == float}
 
     for i in mercdeployer.mercs:
             if i in data.name:
                 props.merc = i
+                props.needs_override = False
                 break
+    else:
+        if data.get('merc'):
+            props.merc = data['merc']
+        else:
+            props.merc = ''
 
     props.activeface = bpy.context.object
     if props.activeface != props.lastactiveface:
@@ -60,10 +72,12 @@ def updatefaces(scn = None):
         k = sorted(data.keys())
         z = list(zip(range(len(k)), k))
         for i in range(len(data.keys())):
-            try:
+            '''try:
                 newdata = data.id_properties_ui(z[i][1]).as_dict()
             except:
-                continue
+                continue'''
+            if type(data[z[i][1]]) != float: continue
+            newdata = data.id_properties_ui(z[i][1]).as_dict()
             if 'left' in z[i][1]:
                 continue
             if type(data[z[i][1]]) == bytes: continue
@@ -96,7 +110,7 @@ def updatefaces(scn = None):
     props.lastactiveface = props.activeface # use this to see if a new face has been selected. if the same face has been selected twice, do nothing.
     
 
-class HISANIM_OT_SLIDEKEYFRAME(bpy.types.Operator):
+class HISANIM_OT_SLIDEKEYFRAME(Operator):
     bl_idname = 'hisanim.keyslider'
     bl_label = 'Keyframe Slider'
     bl_description = 'Keyframe this slider'
@@ -122,7 +136,7 @@ class HISANIM_OT_SLIDEKEYFRAME(bpy.types.Operator):
         return {'FINISHED'}
         
 
-class HISANIM_OT_SLIDERESET(bpy.types.Operator):
+class HISANIM_OT_SLIDERESET(Operator):
     bl_idname = 'hisanim.resetslider'
     bl_label = ''
     slider = bpy.props.StringProperty()
@@ -308,7 +322,7 @@ class faceslider(bpy.types.PropertyGroup):
     lockedL: bpy.props.BoolProperty(default = False, name='', set=set_lockL, get=get_lockL, options=set())
     use: bpy.props.BoolProperty(default=False, update=Use, options=set())
 
-class HISANIM_OT_FIXFACEPOSER(bpy.types.Operator):
+class HISANIM_OT_FIXFACEPOSER(Operator):
     bl_idname = 'hisanim.fixfaceposer'
     bl_label = 'Fix Face Poser'
     bl_description = 'If something seems off, click this'
@@ -324,7 +338,7 @@ class HISANIM_OT_FIXFACEPOSER(bpy.types.Operator):
         bpy.ops.hisanim.resetslider('INVOKE_DEFAULT', stop=True)
         return {'FINISHED'}
 
-class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
+class HISANIM_OT_RANDOMIZEFACE(Operator):
     bl_idname = 'hisanim.randomizeface'
     bl_label = 'Randomize Face'
     bl_description = 'Randomize the values of the facial sliders'
@@ -340,10 +354,8 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
                 continue
             if (locklist := data.get('locklist')) != None:
                 if locklist.get(i) == True: continue
-            try:
-                prop = data.id_properties_ui(i).as_dict() # if the key is not a numerical value, skip
-            except:
-                continue
+            if type(data[i]) != float: continue
+            prop = data.id_properties_ui(i).as_dict()
             min = prop.get('min')
             max = prop.get('max')
             random.seed(self.time + self.seed + x)
@@ -370,7 +382,7 @@ class HISANIM_OT_RANDOMIZEFACE(bpy.types.Operator):
         layout = self.layout
         layout.row().prop(self, 'seed', text='Seed')
 
-class HISANIM_OT_resetface(bpy.types.Operator):
+class HISANIM_OT_resetface(Operator):
     bl_idname = 'hisanim.resetface'
     bl_label = 'Reset Face'
     bl_description = 'Reset all sliders to 0.0'
@@ -382,19 +394,15 @@ class HISANIM_OT_resetface(bpy.types.Operator):
         for x, i in enumerate(data.keys()):
             if i == 'aaa_fs' or i == 'skdata':
                 continue
-            try:
-                prop = data.id_properties_ui(i).as_dict() # if the key is not a numerical value, skip
-                data[i] = 0.0
-            except:
-                continue
-            
+            if type(data[i]) != float: continue
+            data[i] = 0.0
             if props.keyframe:
                 data.keyframe_insert(data_path=f'["{i}"]')
         
         data.update()
         return {'FINISHED'}
 
-class HISANIM_OT_KEYEVERY(bpy.types.Operator):
+class HISANIM_OT_KEYEVERY(Operator):
     bl_idname = 'hisanim.keyeverything'
     bl_label = 'Key Every Slider'
     bl_description = 'Add a keyframe to every slider on this frame'
@@ -403,15 +411,12 @@ class HISANIM_OT_KEYEVERY(bpy.types.Operator):
     def execute(self, context):
         data = bpy.context.object.data
         for i in sorted(data.keys()):
-            try:
-                prop = data.id_properties_ui(i).as_dict() # if the key is not a numerical value, skip
-            except:
-                continue
+            if type(data[i]) != float: continue
             data.keyframe_insert(data_path=f'["{i}"]')
         
         return {'FINISHED'}
     
-class HISANIM_OT_adjust(bpy.types.Operator):
+class HISANIM_OT_adjust(Operator):
     bl_idname = 'hisanim.adjust'
     bl_label = 'Adjust'
     bl_description = 'Adjust the LR weight by 0.1'
@@ -429,7 +434,7 @@ class HISANIM_OT_adjust(bpy.types.Operator):
             props.LR = floor(val)/10
         return {'FINISHED'}
     
-class HISANIM_OT_optimize(bpy.types.Operator):
+class HISANIM_OT_optimize(Operator):
     bl_idname = 'hisanim.optimize'
     bl_label = 'Optimize Merc'
     bl_description = 'Optimize scene performance by deleting shape key drivers. Disable facial movements'
@@ -471,7 +476,7 @@ class HISANIM_OT_optimize(bpy.types.Operator):
     def draw(self, context):
         self.layout.label(text='Flex controllers will not work at the cost of improved performance. Confirm?')
     
-class HISANIM_OT_restore(bpy.types.Operator):
+class HISANIM_OT_restore(Operator):
     bl_idname = 'hisanim.restore'
     bl_label = 'Restore Merc'
     bl_description = 'Restores facial features of mercenary. Harms performance'
@@ -505,6 +510,39 @@ class HISANIM_OT_restore(bpy.types.Operator):
     def draw(self, context):
         self.layout.label(text='Face movement will be restored at the cost of slower performance. Confirm?')
 
+class HISANIM_OT_override(Operator):
+    bl_idname = 'faceposer.override'
+    bl_label = 'Set Pose Library'
+    #bl_description = ''
+
+    merc_list: EnumProperty(
+        items=(
+            ('scout', 'Scout', '', '', 0),
+            ('soldier', 'Soldier', '', '', 1),
+            ('demo', 'Demo', '', '', 2),
+            ('heavy', 'Heavy', '', '', 3),
+            ('engineer', 'Engineer', '', '', 4),
+            ('medic', 'Medic', '', '', 5),
+            ('sniper', 'Sniper', '', '', 6),
+            ('spy', 'Spy', '', '', 7),
+        ),
+        name = 'Mercs',
+        default='scout'
+    )
+
+    def execute(self, context):
+        props = context.scene.hisanimvars
+        context.object.data['merc'] = self.merc_list
+        props.merc = self.merc_list
+        poselib.updateVCol()
+        return {'FINISHED'}
+    
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self)
+    
+    def draw(self, context):
+        self.layout.prop(self, 'merc_list')
+
 classes = [
     faceslider,
     HISANIM_OT_SLIDERESET,
@@ -515,7 +553,8 @@ classes = [
     HISANIM_OT_KEYEVERY,
     HISANIM_OT_adjust,
     HISANIM_OT_optimize,
-    HISANIM_OT_restore
+    HISANIM_OT_restore,
+    HISANIM_OT_override
 ]
 
 def register():

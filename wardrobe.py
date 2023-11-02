@@ -272,6 +272,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     )
     merc: StringProperty(default='')
     toggle_mat: BoolProperty(default=False)
+    needs_override: BoolProperty()
 
 class WDRB_OT_Select(bpy.types.Operator):
     bl_idname = 'wdrb.select'

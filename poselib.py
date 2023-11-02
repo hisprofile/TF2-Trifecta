@@ -8521,6 +8521,7 @@ def updateVCol() -> None: # Refresh the pose library
     scn = C.scene
     props = scn.poselibVars
     Fprops = scn.hisanimvars
+    if Fprops.merc == '': return None
     lib = getJson()
     lib = lib[Fprops.merc]
 
@@ -8548,14 +8549,15 @@ class dictVis(PropertyGroup):
         data = obj.data
         scn = C.scene
         props = scn.poselibVars
-        if self.use: data[self.name] = mix(self.original, self.value, props.value)
-        else: data[self.name] = self.original
+        if self.use: data[self.path] = mix(self.original, self.value, props.value)
+        else: data[self.path] = self.original
         data.update()
 
     name: StringProperty(default='')
     value: FloatProperty(default=0.0, options=set())
     original: FloatProperty(default=0.0, options=set())
     use: BoolProperty(default=True, update=noUse, options=set())
+    path: StringProperty(default='')
 
 class poselibVars(PropertyGroup):
     # Variables for the addon
@@ -8567,7 +8569,7 @@ class poselibVars(PropertyGroup):
         scn = C.scene
         props = scn.poselibVars
 
-        for vis in props.dictVisemes:
+        '''for vis in props.dictVisemes:
             if vis.name.startswith('!'):
                 data[vis.name[1:]] = mix(vis.original, 0.0 if self.reset else vis.original, self.value)
                 continue
@@ -8575,6 +8577,21 @@ class poselibVars(PropertyGroup):
                 data[vis.name] = vis.original# if self.reset else vis.value
                 continue
             data[vis.name] = mix(vis.original, vis.value, self.value)
+            continue'''
+        for vis in props.dictVisemes:
+            if data.get(vis.path) == None:
+                #print('uh oh!')
+                continue
+            if vis.name.startswith('!'):
+                #if 'Jaw' in vis.name:
+                    #print('l')
+                data[vis.path] = mix(vis.original, 0.0 if self.reset else vis.original, self.value)
+                continue
+            if not vis.use:
+                data[vis.path] = vis.original# if self.reset else vis.value
+                continue
+            #del data[vis.path]
+            data[vis.path] = mix(vis.original, vis.value, self.value)
             continue
         data.update()
 
@@ -8671,9 +8688,9 @@ class POSELIB_OT_cancelApply(Operator):
 
         for vis in props.dictVisemes:
             if vis.name.startswith('!'):
-                data[vis.name[1:]] = vis.original
+                data[vis.path] = vis.original
                 continue
-            data[vis.name] = vis.original
+            data[vis.path] = vis.original
 
         props.dictVisemes.clear()
         data.update()
@@ -8885,29 +8902,33 @@ class POSELIB_OT_prepareApply(Operator):
         props.stage = 'APPLY'
         props.dictVisemes.clear()
         props.visemeName = self.viseme
+        flexkeys = data.get('flexcontrollers')
+        translation = {}
 
         jsonData = getJson()
         lib = jsonData[Fprops.merc][self.viseme]
         items = list(lib.items())
 
         for item in items:
+            if (d_path := flexkeys.get(item[0][4:])) == None:
+                continue
+            translation[d_path] = item[0]
             new = props.dictVisemes.add()
             new.name = item[0]
             new.value = item[1]
-            new.original = data[item[0]]
+            new.original = data[d_path]
+            new.path = d_path
         for n, key in enumerate(data.keys()):
-            try:
-                data.id_properties_ui(key).as_dict()
-            except:
-                continue
+            if type(data[key]) != float: continue
             if props.dictVisemes.get('!'+key) != None: continue
-            if props.dictVisemes.get(key) == None:
+            if props.dictVisemes.get(str(translation.get(key))) == None:
                 new = props.dictVisemes.add()
             else:
                 continue
             new.name = "!"+key
             new.value = 0
             new.original = data.get(key)
+            new.path = key
         poselibVars.applyVisemes(props, 'poop')
         return {'FINISHED'}
 
