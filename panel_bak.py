@@ -660,32 +660,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                 row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
                 row.label(text='Lock Sliders', icon='LOCKED')
 
-class WARDROBE_PT_SEARCH(bpy.types.Panel):
-    bl_label = 'Search'
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_parent_id = "TRIFECTA_PT_PANEL"
-    bl_category = 'TF2-Trifecta'
-
-    @classmethod
-    def poll(cls, context):
-        props = context.scene.hisanimvars
-        return props.tools == 'WARDROBE'
-
-    def draw(self, context):
-        prefs = context.preferences.addons[__package__].preferences
-        props = context.scene.hisanimvars
-        poselib = context.scene.poselibVars
-        layout = self.layout
-        box = layout.box()
-        box.label(text='Search', icon='VIEWZOOM')
-        box.row().prop(props, 'query', text="", icon="VIEWZOOM")
-        box.row().prop(context.scene.hisanimvars, 'hisanimweapons')
-        if props.hisanimweapons:
-            box.row().prop(props, 'autobind')
-        box.row().operator('hisanim.search', icon='VIEWZOOM')
-        box.row().operator('hisanim.clearsearch', icon='X')
-
 def textBox(self, sentence, icon='NONE', line=56):
     layout = self
     sentence = sentence.split(' ')
@@ -735,7 +709,6 @@ class TRIFECTA_OT_genericText(bpy.types.Operator):
 
 classes = [
     TRIFECTA_PT_PANEL,
-    WARDROBE_PT_SEARCH,
     HISANIM_UL_SLIDERS,
     HISANIM_UL_RESULTS,
     HISANIM_UL_LOCKSLIDER,

@@ -239,7 +239,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     activeslider: StringProperty()
     activeface: PointerProperty(type=bpy.types.Object)
     lastactiveface: PointerProperty(type=bpy.types.Object)
-    loadout_data: CollectionProperty(type=loadout.genericGroup)
+    loadout_data: CollectionProperty(type=loadout.funny_funnygroup)
     loadout_index:IntProperty(default=0)
     sliders: CollectionProperty(type=faceposer.faceslider)
     sliderindex: IntProperty(options=set())

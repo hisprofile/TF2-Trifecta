@@ -47,7 +47,7 @@ def update() -> None:
             new = props.loadout_data.add()
             new.name = key
 
-class genericGroup(PropertyGroup):
+class funny_funnygroup(PropertyGroup):
     name: StringProperty(default='')
 
 class LOADOUT_OT_select(Operator):
@@ -185,7 +185,7 @@ class LOADOUT_OT_refreshJson(Operator):
         return {'FINISHED'}
 
 classes = [
-    genericGroup,
+    funny_funnygroup,
     LOADOUT_OT_select,
     LOADOUT_OT_load,
     LOADOUT_OT_rename,
