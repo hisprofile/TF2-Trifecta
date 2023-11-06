@@ -61,7 +61,7 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
             layout.row().label(text='Operation in progress.')
             return None
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            layout.row() # used as a little space to set the active item
+            #layout.row() # used as a little space to set the active item
             if item.split:
                 row = layout.row(align=True)
                 Name = item.name.split('_')[-1]
@@ -74,10 +74,10 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
                     row.prop(props.activeface.data, f'["{item.R}"]', text='R')
                     row.prop(props.activeface.data, f'["{item.L}"]', text='L')
                 
-                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
+                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed, emboss=False)
                 op.delete = isKeyed
                 op.slider = item.name
-                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')
+                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='', emboss = False)
 
             else:
                 row = layout.row(align=True)
@@ -86,12 +86,14 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
                     row.alert = isKeyed
                     row.prop(item, 'value', slider=True, text=Name)
                     row.alert = False
+                    
                 else:
-                    row.prop(props.activeface.data, f'["{item.name}"]', text=item.name[4:])
-                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed)
+                    row.prop(props.activeface.data, f'["{item.name}"]', text='Flex Scale' if item.name[4:] == 'fs' else item.name[4:])
+                    #row.prop_decorator(context.object.data, f'["{item.name}"]')
+                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed, emboss=False)
                 op.delete = isKeyed
                 op.slider = item.name
-                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='')
+                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='', emboss=False)
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
@@ -312,8 +314,8 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             row = layout.row()
             row.alert = True
             row.label(text='Assets missing. Check preferences for info.', icon='ERROR')
-
         if props.tools == 'WARDROBE':
+            return
             layout.row().label(text='Spawn TF2 Cosmetics', icon='MOD_CLOTH')
             
             
@@ -493,6 +495,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             layout.row().operator('hisanim.attemptfix')
 
         if props.tools == 'FACE POSER':
+            #props.enable_faceposer = False
             if len(context.selected_objects) == 0:
                 layout.label(text='Select a face!')
                 return None
@@ -512,165 +515,23 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     row.label(text="ThatLazyArtist's and Eccentric's rigs are not supported.")
                     layout.row().label(text='There is a face panel on the rig. Pose the face there!')
                     return
-                
-            box = layout.box()
-            row = box.row()
-            if props.ddfacepanel or not prefs.compactable:
-                if prefs.compactable:
-                    row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_DOWN', emboss=False)
-                row.label(text='Face Poser')
-                op = row.operator('trifecta.textbox', icon='QUESTION', text='')
-                op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is BLUE, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.\nOptimizing mercenaries can give a significant performance boost by disabling the flex controllers, which will somewhat lock the face. Don't forget to restore the face on final render."
-                op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA,MODIFIER_ON'
-                op.size = '76,76,76,76,76,76'
-                op.width = 400
-                row = box.row(align=True)
-                row.operator('hisanim.optimize', icon='MODIFIER_ON')
-                row.operator('hisanim.restore', icon='MODIFIER_OFF')
-                row = box.row(align=True)
-                row.prop(props, 'use_flexes', toggle=True)
-                row.prop(props, 'use_skeys', toggle=True)
-                row = box.row(align=True)
-                col = row.column()
-                if props.mode == 'FLEXES':
-                    col.template_list('HISANIM_UL_SLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
-                else:
-                    ob = context.object
-                    key = ob.data.shape_keys
-                    col.template_list("MESH_UL_skeys_nodriver", "", key, "key_blocks", ob, "active_shape_key_index", rows=5)
-                col = row.column()
-                col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
-                col.row().prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
-                col.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
-                
-                row = box.row(align=True)
-                op = row.operator('hisanim.adjust', text='', icon='TRIA_LEFT')
-                op.amount = -0.1
-                row.prop(props, 'LR', slider=True)
-                op = row.operator('hisanim.adjust', text='', icon='TRIA_RIGHT')
-                op.amount = 0.1
-                row = box.row(align=True)
-                row.prop(props, 'up', text='Upper', toggle=True)
-                row.prop(props, 'mid', text='Mid', toggle=True)
-                row.prop(props, 'low', text='Lower', toggle=True)
-            else:
-                row.prop(props, 'ddfacepanel', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
-                row.label(text='Face Poser', icon='RESTRICT_SELECT_OFF')
-            
-            box = layout.box()
-            row = box.row()
-
-            if props.ddposelib or not prefs.compactable:
-                if prefs.compactable:
-                    row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_DOWN', emboss=False)
-                row.label(text=f'''Pose Library: {poselib.stage.title()}{(' "'  + poselib.visemeName + '"') if poselib.stage == 'APPLY' else ''}''')
-                op = row.operator('trifecta.textbox', text='', icon='QUESTION')
-                op.text = 'The Pose Library is a place to store presets for face shapes. It will only save flex controller data.\nEnabling "Reset All" will reset the face before applying the preset.'
-                op.icons = 'OUTLINER_OB_GROUP_INSTANCE,LOOP_BACK'
-                op.size = '56,56'
-                op.width = 290
-                
-                if obj.data.get('merc') and props.needs_override:
-                    box.row().label(text=f'Using: {obj.data.get("merc").title()}')
-                    box.operator('faceposer.override')
-
-                row = box.row()
-
-                if obj.data.get('merc') == None and props.needs_override:
-                    textBox(box, "The face you have selected doesn't natively support the pose library, but you can choose a mercenary preset and see if it works!")
-                    box.operator('faceposer.override')
-                
-                    
-                elif poselib.stage == 'SELECT':
-                    col = row.column()
-                    col.template_list('POSELIB_UL_panel', 'Pose Library', poselib, 'visemesCol', poselib, 'activeViseme')
-                    col = row.column()
-                    col.operator('poselib.prepareadd', text='', icon='ADD')
-                    col.operator('poselib.remove', text='', icon='REMOVE')
-                    col.operator('poselib.refresh', icon='FILE_REFRESH', text='', emboss=False)
-                    op = col.operator('poselib.move', text='', icon='TRIA_UP')
-                    op.pos = 1
-                    op1 = col.operator('poselib.move', text='', icon='TRIA_DOWN')
-                    op1.pos = -1
-                    row = box.row()
-                    row.operator('poselib.rename')
-
-                elif poselib.stage == 'ADD':
-                    row.template_list('HISANIM_UL_USESLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
-                    row = box.row(align=True)
-                    row.prop(poselib, 'sort', toggle=True)
-                    row.prop(props, 'up', text='Upper', toggle=True)
-                    row.prop(props, 'mid', text='Mid', toggle=True)
-                    row.prop(props, 'low', text='Lower', toggle=True)
-                    box.row().prop(poselib, 'name')
-                    box.row().operator('poselib.add')
-                    box.row().operator('poselib.cancel')
-
-                elif poselib.stage == 'APPLY':
-                    row.template_list('POSELIB_UL_visemes', 'Items', poselib, 'dictVisemes', poselib, 'activeItem')
-                    box.row().prop(poselib, 'value', slider=True)
-                    box.row().prop(poselib, 'keyframe')
-                    box.row().prop(poselib, 'reset')
-                    box.row().operator('poselib.apply')
-                    box.row().operator('poselib.cancelapply')
-            else:
-                row.prop(props, 'ddposelib', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
-                row.label(text='Pose Library', icon='OUTLINER_OB_GROUP_INSTANCE')
-                
-            box = layout.box()
-            row = box.row()
-
-            if props.ddrandomize or not prefs.compactable:
-                if prefs.compactable:
-                    row.prop(props, 'ddrandomize', icon='DISCLOSURE_TRI_DOWN', emboss=False)
-                row.label(text='Face Randomizer')
-                op = row.operator('trifecta.textbox', icon='QUESTION', text='')
-                op.text = 'Make funny faces!'
-                op.icons = 'MONKEY'
-                op.size = '56'
-                op.width = 125
-                row = box.row()
-                row.prop(props, 'keyframe')
-                row.prop(props, 'randomadditive')
-                
-                box.row().prop(props, 'randomstrength', slider=True)
-                box.row().operator('hisanim.randomizeface')
-                box.row().operator('hisanim.resetface')
-                box.row().prop(context.object.data, '["aaa_fs"]', text='Flex Scale')
-            else:
-                row.prop(props, 'ddrandomize', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
-                row.label(text='Face Randomizer', icon='RNDCURVE')
-
-            box = layout.box()
-            row = box.row()
-
-            if props.ddlocks or not prefs.compactable:
-                if prefs.compactable:
-                    row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_DOWN', emboss=False)
-                row.label(text='Lock Sliders')
-                op = row.operator('trifecta.textbox', text='', icon='QUESTION')
-                op.text = 'Locking a flex controller will keep it from getting randomized.'
-                op.icons = 'LOCKED'
-                op.size = '128'
-                op.width = 340
-                
-                data = context.object.data
-                box.row().template_list('HISANIM_UL_LOCKSLIDER', 'Lock Sliders', props, 'sliders', props, 'sliderindex')
-            else:
-                row.prop(props, 'ddlocks', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
-                row.label(text='Lock Sliders', icon='LOCKED')
 
 class WARDROBE_PT_SEARCH(bpy.types.Panel):
-    bl_label = 'Search'
+    bl_label = ''
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_parent_id = "TRIFECTA_PT_PANEL"
     bl_category = 'TF2-Trifecta'
+    
 
     @classmethod
     def poll(cls, context):
         props = context.scene.hisanimvars
         return props.tools == 'WARDROBE'
+
+    def draw_header(self, context):
+        self.layout.separator()
+        self.layout.label(icon='VIEWZOOM', text='Search')
 
     def draw(self, context):
         prefs = context.preferences.addons[__package__].preferences
@@ -678,13 +539,437 @@ class WARDROBE_PT_SEARCH(bpy.types.Panel):
         poselib = context.scene.poselibVars
         layout = self.layout
         box = layout.box()
-        box.label(text='Search', icon='VIEWZOOM')
+        #box.label(text='Search', icon='VIEWZOOM')
         box.row().prop(props, 'query', text="", icon="VIEWZOOM")
         box.row().prop(context.scene.hisanimvars, 'hisanimweapons')
         if props.hisanimweapons:
             box.row().prop(props, 'autobind')
         box.row().operator('hisanim.search', icon='VIEWZOOM')
         box.row().operator('hisanim.clearsearch', icon='X')
+
+class WARDROBE_PT_MATERIAL(bpy.types.Panel):
+    bl_label = ''
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_parent_id = "TRIFECTA_PT_PANEL"
+    bl_category = 'TF2-Trifecta'
+    bl_options = {'HEADER_LAYOUT_EXPAND'}
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.hisanimvars
+        return props.tools == 'WARDROBE'
+    
+    def draw_header(self, context):
+        l = self.layout
+        l.separator()
+        l.label(icon='MATERIAL', text='Material Settings')
+        op = self.layout.operator('trifecta.textbox', icon='QUESTION', text='')
+        op.text = "When using EEVEE, Enabling TF2 style on all spawned items will make them appear closer in appearance to the mercenaries, fixing any contrast issues. When using Cycles, this should be set to default.\nRimlight Strength determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default."
+        op.icons = 'SHADING_RENDERED,SHADING_RENDERED'
+        op.size = '76,76'
+        op.width = 425
+        l.separator()
+    
+    def draw(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        props = context.scene.hisanimvars
+        poselib = context.scene.poselibVars
+        obj = context.object
+        layout = self.layout
+        box = layout.box()
+        
+        if props.toggle_mat: box.row().operator('hisanim.removelightwarps')
+        else: box.row().operator('hisanim.lightwarps')
+        box.row().prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
+        row = box.row()
+        row.prop(context.scene.hisanimvars, 'wrdbbluteam')
+        
+            
+class WARDROBE_PT_PAINTS(bpy.types.Panel):
+    bl_label = ''
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_parent_id = "TRIFECTA_PT_PANEL"
+    bl_category = 'TF2-Trifecta'
+    bl_options = {'HEADER_LAYOUT_EXPAND', 'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.hisanimvars
+        if context.object == None: return False
+        if context.object.type != 'MESH': return False
+        if context.object.get('skin_groups') == None: return False
+        return props.tools == 'WARDROBE'
+    
+    def draw_header(self, context):
+        l = self.layout
+        l.alignment = 'EXPAND'
+        l.separator()
+        l.label(icon='BRUSH_DATA', text='Paints')
+        op = l.operator('trifecta.textbox', icon='QUESTION', text='')
+        op.text = 'If a cosmetic seems to be painted incorrectly, selecting one of the materials and executing "Fix Material" may help.'
+        op.icons = 'SHADING_RENDERED'
+        op.size = '56'
+        op.width = 260
+        l.separator()
+
+    def draw(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        props = context.scene.hisanimvars
+        poselib = context.scene.poselibVars
+        obj = context.object
+        layout = self.layout
+        box = layout.box()
+        #row = box.row()
+        row = box.row()
+        row.label(text='Attempt to fix material')
+        
+        ob = context.object
+        box.row().template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
+        row = box.row(align=True)
+        row.operator('hisanim.materialfix')
+        row.operator('hisanim.revertfix')
+        box.row().label(text='Add Paint')
+        box.row().template_icon_view(context.window_manager, 'hisanim_paints', show_labels=True, scale=4, scale_popup=4)
+        row=box.row(align=True)
+        oper = row.operator('hisanim.paint', text = 'Add Paint')
+        oper.PAINT = newuilist.paints[context.window_manager.hisanim_paints]
+        row.operator('hisanim.paintclear')
+
+class WARDROBE_PT_LOADOUT(bpy.types.Panel):
+    bl_label = ''
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_parent_id = "TRIFECTA_PT_PANEL"
+    bl_category = 'TF2-Trifecta'
+    bl_options = {'HEADER_LAYOUT_EXPAND', 'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.hisanimvars
+        return props.tools == 'WARDROBE'
+    
+    def draw_header(self, context):
+        l = self.layout
+        l.alignment = 'EXPAND'
+        l.separator()
+        l.label(icon='ASSET_MANAGER', text='Loadout')
+        op = l.operator('trifecta.textbox', icon='QUESTION', text='')
+        op.text = 'The Loadout tool allows you to save combinations of equippable items to be spawned by batch at any time, saving you the time of having to search and spawn for each one.'
+        op.icons = 'ASSET_MANAGER'
+        op.size = '56'
+        op.width = 290
+        l.separator()
+
+    def draw(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        props = context.scene.hisanimvars
+        poselib = context.scene.poselibVars
+        obj = context.object
+        layout = self.layout
+        box = layout.box()
+        row = box.row()
+        col = row.column()
+        col.template_list('LOADOUT_UL_loadouts', 'Loadouts', props, 'loadout_data', props, 'loadout_index')
+        col = row.column()
+        col.operator('wdrb.select', text='', icon='ADD')
+        col.operator('loadout.remove', text='', icon='REMOVE')
+        col.operator('loadout.refresh', icon='FILE_REFRESH', text='', emboss=False)
+        op = col.operator('loadout.move', text='', icon='TRIA_UP')
+        op.pos = 1
+        op1 = col.operator('loadout.move', text='', icon='TRIA_DOWN')
+        op1.pos = -1
+        if props.stage == 'SELECT':
+            if (len(bpy.types.Scene.loadout_temp) == 0): box.row().label(text='No Cosmetics Selected!')
+            box.row().prop(props, 'loadout_name', text='Name')
+            row = box.row()
+            row.operator('wdrb.cancel')
+            row.operator('wdrb.confirm')
+
+        if props.stage == 'DISPLAY':
+            box.row().operator('wdrb.cancel')
+            box.row().operator('loadout.load')
+
+        if props.stage == 'NONE':
+            row = box.row()
+            row.operator('loadout.rename')
+
+class WARDROBE_PT_RESULTS(bpy.types.Panel):
+    bl_label = ''
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_parent_id = "TRIFECTA_PT_PANEL"
+    bl_category = 'TF2-Trifecta'
+    bl_options = {'HEADER_LAYOUT_EXPAND', 'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.hisanimvars
+        return props.tools == 'WARDROBE'
+    
+    def draw_header(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        props = context.scene.hisanimvars
+        poselib = context.scene.poselibVars
+        hits = props.results
+        self.layout.alignment = 'EXPAND'
+        self.layout.separator()
+        self.layout.label(icon='VIEWZOOM', text=f'{"Search Result" if (len(hits) == 1) and props.searched else "Search Results"}{(" : " + str(len(hits))) if props.searched else ""}')
+
+    def draw(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        props = context.scene.hisanimvars
+        poselib = context.scene.poselibVars
+        obj = context.object
+        layout = self.layout
+        box = layout.box()
+        #row = box.row()
+        hits = props.results
+        #if props.ddsearch or not prefs.compactable:
+            #if prefs.compactable: row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_DOWN', emboss=False)
+        #row.label(text=f'{"Search Result" if (len(hits) == 1) and props.searched else "Search Results"}{(" : " + str(len(hits))) if props.searched else ""}')
+        if len(hits) > 0 and props.searched:
+            box.row().template_list('HISANIM_UL_RESULTS', 'Results', props, 'results', props, 'resultindex')
+        else:
+            if props.searched:
+                box.label(text='Nothing found!')
+            else:
+                box.label(text='Search for something!')
+        #else:
+            #row.prop(props, 'ddsearch', icon='DISCLOSURE_TRI_RIGHT', emboss=False)
+            #row.label(text=f'{"Search Result" if (len(hits) == 1) and props.searched else "Search Results"}{(" : " + str(len(hits))) if props.searched else ""}', icon='VIEWZOOM')
+
+class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
+    bl_label = ''
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_parent_id = "TRIFECTA_PT_PANEL"
+    bl_category = 'TF2-Trifecta'
+    bl_options = {'HEADER_LAYOUT_EXPAND'}
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.hisanimvars
+        if props.tools != 'FACE POSER': return False
+        return props.enable_faceposer
+    
+    def draw_header(self, context):
+        l = self.layout
+        l.alignment = 'EXPAND'
+        l.separator()
+        l.label(icon='RESTRICT_SELECT_OFF', text='Face Poser')
+        op = l.operator('trifecta.textbox', icon='QUESTION', text='')
+        op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is BLUE, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.\nOptimizing mercenaries can give a significant performance boost by disabling the flex controllers, which will somewhat lock the face. Don't forget to restore the face on final render."
+        op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA,MODIFIER_ON'
+        op.size = '76,76,76,76,76,76'
+        op.width = 400
+        l.separator()
+
+    def draw(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        props = context.scene.hisanimvars
+        poselib = context.scene.poselibVars
+        obj = context.object
+        layout = self.layout
+        box = layout.box()
+        row = box.row(align=True)
+        row.operator('hisanim.optimize', icon='MODIFIER_ON')
+        row.operator('hisanim.restore', icon='MODIFIER_OFF')
+        row = box.row(align=True)
+        row.prop(props, 'use_flexes', toggle=True)
+        row.prop(props, 'use_skeys', toggle=True)
+        row = box.row(align=True)
+        col = row.column()
+        if props.mode == 'FLEXES':
+            col.template_list('HISANIM_UL_SLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
+        else:
+            ob = context.object
+            key = ob.data.shape_keys
+            col.template_list("MESH_UL_skeys_nodriver", "", key, "key_blocks", ob, "active_shape_key_index", rows=5)
+        col = row.column()
+        col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
+        col.row().prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
+        col.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
+
+        row = box.row(align=True)
+        op = row.operator('hisanim.adjust', text='', icon='TRIA_LEFT')
+        op.amount = -0.1
+        row.prop(props, 'LR', slider=True)
+        op = row.operator('hisanim.adjust', text='', icon='TRIA_RIGHT')
+        op.amount = 0.1
+        row = box.row(align=True)
+        row.prop(props, 'up', text='Upper', toggle=True)
+        row.prop(props, 'mid', text='Mid', toggle=True)
+        row.prop(props, 'low', text='Lower', toggle=True)
+
+class FACEPOSER_PT_POSELIBRARY(bpy.types.Panel):
+    bl_label = ''
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_parent_id = "TRIFECTA_PT_PANEL"
+    bl_category = 'TF2-Trifecta'
+    bl_options = {'HEADER_LAYOUT_EXPAND'}
+
+    def __init__(self):
+        self.x = False
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.hisanimvars
+        if props.tools != 'FACE POSER': return False
+        return props.enable_faceposer
+    
+    def draw_header(self, context):
+        l = self.layout
+        l.alignment = 'EXPAND'
+        l.separator()
+        l.label(icon='OUTLINER_OB_GROUP_INSTANCE', text='Pose Library')
+        op = l.operator('trifecta.textbox', text='', icon='QUESTION')
+        op.text = 'The Pose Library is a place to store presets for face shapes. It will only save flex controller data.\nEnabling "Reset All" will reset the face before applying the preset.'
+        op.icons = 'OUTLINER_OB_GROUP_INSTANCE,LOOP_BACK'
+        op.size = '56,56'
+        op.width = 290
+        l.separator()
+        #g = self.bl_rna.properties
+        #l.label(text=str(self.bl_rna.properties['draw'].is_hidden))
+        #l.label(text=self.text, icon='BLANK1')
+
+    def draw(self, context):
+        #self.text = str(round(time.time(), 5))[-10:]
+        self.x = True
+        #self.isDrawing = True
+        #self.custom_data = 'fart'
+        prefs = context.preferences.addons[__package__].preferences
+        props = context.scene.hisanimvars
+        poselib = context.scene.poselibVars
+        obj = context.object
+        layout = self.layout
+        box = layout.box()
+        row = box.row()
+        row.label(text=f'''{poselib.stage.title()}{(' "'  + poselib.visemeName + '"') if poselib.stage == 'APPLY' else ''}''')
+        
+        if obj.data.get('merc') and props.needs_override:
+            box.row().label(text=f'Using: {obj.data.get("merc").title()}')
+            box.operator('faceposer.override')
+
+        row = box.row()
+
+        if obj.data.get('merc') == None and props.needs_override:
+            textBox(box, "The face you have selected doesn't natively support the pose library, but you can choose a mercenary preset and see if it works!")
+            box.operator('faceposer.override')
+        
+            
+        elif poselib.stage == 'SELECT':
+            col = row.column()
+            col.template_list('POSELIB_UL_panel', 'Pose Library', poselib, 'visemesCol', poselib, 'activeViseme')
+            col = row.column()
+            col.operator('poselib.prepareadd', text='', icon='ADD')
+            col.operator('poselib.remove', text='', icon='REMOVE')
+            col.operator('poselib.refresh', icon='FILE_REFRESH', text='', emboss=False)
+            op = col.operator('poselib.move', text='', icon='TRIA_UP')
+            op.pos = 1
+            op1 = col.operator('poselib.move', text='', icon='TRIA_DOWN')
+            op1.pos = -1
+            row = box.row()
+            row.operator('poselib.rename')
+
+        elif poselib.stage == 'ADD':
+            row.template_list('HISANIM_UL_USESLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
+            row = box.row(align=True)
+            row.prop(poselib, 'sort', toggle=True)
+            row.prop(props, 'up', text='Upper', toggle=True)
+            row.prop(props, 'mid', text='Mid', toggle=True)
+            row.prop(props, 'low', text='Lower', toggle=True)
+            box.row().prop(poselib, 'name')
+            box.row().operator('poselib.add')
+            box.row().operator('poselib.cancel')
+
+        elif poselib.stage == 'APPLY':
+            row.template_list('POSELIB_UL_visemes', 'Items', poselib, 'dictVisemes', poselib, 'activeItem')
+            box.row().prop(poselib, 'value', slider=True)
+            box.row().prop(poselib, 'keyframe')
+            box.row().prop(poselib, 'reset')
+            box.row().operator('poselib.apply')
+            box.row().operator('poselib.cancelapply')
+ 
+class FACEPOSER_PT_RANDOMIZER(bpy.types.Panel):
+    bl_label = ''
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_parent_id = "TRIFECTA_PT_PANEL"
+    bl_category = 'TF2-Trifecta'
+    bl_options = {'HEADER_LAYOUT_EXPAND', 'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.hisanimvars
+        if props.tools != 'FACE POSER': return False
+        return props.enable_faceposer
+    
+    def draw_header(self, context):
+        l = self.layout
+        l.alignment = 'EXPAND'
+        l.separator()
+        l.label(icon='RNDCURVE', text='Face Poser')
+        op = l.operator('trifecta.textbox', icon='QUESTION', text='')
+        op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is BLUE, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.\nOptimizing mercenaries can give a significant performance boost by disabling the flex controllers, which will somewhat lock the face. Don't forget to restore the face on final render."
+        op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA,MODIFIER_ON'
+        op.size = '76,76,76,76,76,76'
+        op.width = 400
+        l.separator()
+
+    def draw(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        props = context.scene.hisanimvars
+        poselib = context.scene.poselibVars
+        obj = context.object
+        layout = self.layout
+        box = layout.box()
+        row = box.row()
+        row.prop(props, 'keyframe')
+        row.prop(props, 'randomadditive')
+        
+        box.row().prop(props, 'randomstrength', slider=True)
+        box.row().operator('hisanim.randomizeface')
+        box.row().operator('hisanim.resetface')
+        box.row().prop(context.object.data, '["aaa_fs"]', text='Flex Scale')
+
+class FACEPOSER_PT_LOCKLIST(bpy.types.Panel):
+    bl_label = ''
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_parent_id = "TRIFECTA_PT_PANEL"
+    bl_category = 'TF2-Trifecta'
+    bl_options = {'HEADER_LAYOUT_EXPAND', 'DEFAULT_CLOSED'}
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.hisanimvars
+        if props.tools != 'FACE POSER': return False
+        return props.enable_faceposer
+    
+    def draw_header(self, context):
+        l = self.layout
+        l.alignment = 'EXPAND'
+        l.separator()
+        l.label(icon='LOCKED', text='Lock List')
+        op = l.operator('trifecta.textbox', text='', icon='QUESTION')
+        op.text = 'Locking a flex controller will keep it from getting randomized.'
+        op.icons = 'LOCKED'
+        op.size = '128'
+        op.width = 340
+        l.separator()
+
+    def draw(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        props = context.scene.hisanimvars
+        poselib = context.scene.poselibVars
+        obj = context.object
+        layout = self.layout
+        box = layout.box()
+        data = context.object.data
+        box.row().template_list('HISANIM_UL_LOCKSLIDER', 'Lock Sliders', props, 'sliders', props, 'sliderindex')
 
 def textBox(self, sentence, icon='NONE', line=56):
     layout = self
@@ -736,6 +1021,14 @@ class TRIFECTA_OT_genericText(bpy.types.Operator):
 classes = [
     TRIFECTA_PT_PANEL,
     WARDROBE_PT_SEARCH,
+    WARDROBE_PT_MATERIAL,
+    WARDROBE_PT_PAINTS,
+    WARDROBE_PT_LOADOUT,
+    WARDROBE_PT_RESULTS,
+    FACEPOSER_PT_FACEPOSER,
+    FACEPOSER_PT_POSELIBRARY,
+    FACEPOSER_PT_RANDOMIZER,
+    FACEPOSER_PT_LOCKLIST,
     HISANIM_UL_SLIDERS,
     HISANIM_UL_RESULTS,
     HISANIM_UL_LOCKSLIDER,
@@ -744,7 +1037,7 @@ classes = [
     POSELIB_UL_visemes,
     LOADOUT_UL_loadouts,
     MESH_UL_skeys_nodriver,
-    TRIFECTA_OT_genericText
+    TRIFECTA_OT_genericText,
 ]
 
 def register():

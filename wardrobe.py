@@ -224,14 +224,6 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     fp: BoolProperty(default=True, name='', options=set(), set=sF, get=gF)
     wardrobe: BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
     wardrobe: BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
-    ddsearch: BoolProperty(default=True, name='', options=set())
-    ddpaints: BoolProperty(default=True, name='', options=set())
-    ddmatsettings: BoolProperty(default=True, name='', options=set())
-    ddloadouts: BoolProperty(default=False, name='', options=set())
-    ddfacepanel: BoolProperty(default=True, name='', options=set())
-    ddrandomize: BoolProperty(default=True, name='', options=set())
-    ddlocks: BoolProperty(default=True, name = '', options=set())
-    ddposelib: BoolProperty(default=True, name='', options=set())
     randomadditive: BoolProperty(name = 'Additive', description='Add onto the current face values', options=set())
     randomstrength: FloatProperty(name='Random Strength', min=0.0, max=1.0, description='Any random value calculated will be multiplied with this number', default=1.0, options=set())
     keyframe: BoolProperty(default=False, name='Keyframe Sliders', description='Keyframe the randomized changes', options=set())
@@ -273,6 +265,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     merc: StringProperty(default='')
     toggle_mat: BoolProperty(default=False)
     needs_override: BoolProperty()
+    enable_faceposer: BoolProperty(default = False)
 
 class WDRB_OT_Select(bpy.types.Operator):
     bl_idname = 'wdrb.select'

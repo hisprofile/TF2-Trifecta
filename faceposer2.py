@@ -39,20 +39,18 @@ def updatefaces(scn = None):
     sliders to manipulate the keys.
     '''
     loadout.update()
+    context = bpy.context
     props = bpy.context.scene.hisanimvars
     props.needs_override = True
     props.enable_faceposer = False
-    context = bpy.context
-    if context.object == None: return
-    if context.object.data == None: return
-    data = context.object.data
+    if context.object == None: return None
+    if context.object.data == None: return None
+    data = context.object
     
     if data.get('aaa_fs') == None:
-        #bpy.ops.poselib.cancelapply()
         return None
     props.enable_faceposer = True
-    if data.animation_data != None:
-        if data.animation_data.drivers.find('["aaa_fs"]') != None: props.enable_faceposer = False
+    if data.animation_data.drivers.find('["aaa_fs"]') != None: props.enable_faceposer = False
     if data.get('flexcontrollers') == None:
         data['flexcontrollers'] = {key[4:]: key for key in data.keys() if type(data[key]) == float}
 
