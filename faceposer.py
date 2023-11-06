@@ -48,7 +48,6 @@ def updatefaces(scn = None):
     data = context.object.data
     
     if data.get('aaa_fs') == None:
-        #bpy.ops.poselib.cancelapply()
         return None
     props.enable_faceposer = True
     if data.animation_data != None:
@@ -66,18 +65,13 @@ def updatefaces(scn = None):
             props.merc = data['merc']
         else:
             props.merc = ''
-
     props.activeface = bpy.context.object
     if props.activeface != props.lastactiveface:
-        #bpy.ops.poselib.cancelapply()
+        
         props.sliders.clear()
         k = sorted(data.keys())
         z = list(zip(range(len(k)), k))
         for i in range(len(data.keys())):
-            '''try:
-                newdata = data.id_properties_ui(z[i][1]).as_dict()
-            except:
-                continue'''
             if type(data[z[i][1]]) != float: continue
             newdata = data.id_properties_ui(z[i][1]).as_dict()
             if 'left' in z[i][1]:
@@ -216,8 +210,8 @@ def slideupdate(self, value):
             props.activeface.data[self.name] = min(max(self.originalval + self.value, self.mini), self.maxi)
             if not self in scn.activesliders: scn.activesliders.append(self) # add sliders to a list of sliders being changed by the user
         else:
-            Rmult = MAP(props.LR, 0.0, 0.5, 0.0, 1.0, True)
-            Lmult = MAP(props.LR, 1.0, 0.5, 0.0, 1.0, True)
+            Rmult = MAP(props.LR, -1, 0.0, 0.0, 1.0, True)
+            Lmult = MAP(props.LR, 1.0, 0.0, 0.0, 1.0, True)
             props.activeface.data[self.R] = min(max(self.originalval + (self.value * Rmult), self.mini), self.maxi)
             props.activeface.data[self.L] = min(max(self.originalvalL + (self.value * Lmult), self.mini), self.maxi)
             if not self in scn.activesliders: scn.activesliders.append(self) # add sliders to a list of sliders being changed by the user
@@ -411,10 +405,31 @@ class HISANIM_OT_KEYEVERY(Operator):
     bl_options = {'UNDO'}
 
     def execute(self, context):
-        data = bpy.context.object.data
-        for i in sorted(data.keys()):
-            if type(data[i]) != float: continue
-            data.keyframe_insert(data_path=f'["{i}"]')
+        props = context.scene.hisanimvars
+        sliders = props.sliders
+        data = context.object.data
+        for i in sliders:
+            item = i
+            if props.up or props.mid or props.low:
+                if item.Type == 'NONE':
+                    continue
+
+                if item.Type == 'UPPER':
+                    if not props.up:
+                        continue
+                
+                if item.Type == 'MID':
+                    if not props.mid:
+                        continue
+
+                if item.Type == 'LOWER':
+                    if not props.low:
+                        continue
+            if i.split:
+                data.keyframe_insert(data_path=f'["{i.L}"]')
+                data.keyframe_insert(data_path=f'["{i.R}"]')
+                continue
+            data.keyframe_insert(data_path=f'["{i.name}"]')
         
         return {'FINISHED'}
     

@@ -223,7 +223,6 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     bm: BoolProperty(default=True, name='', options=set(), set=sB, get=gB)
     fp: BoolProperty(default=True, name='', options=set(), set=sF, get=gF)
     wardrobe: BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
-    wardrobe: BoolProperty(default=True, name='', options=set(), set=sW, get=gW)
     randomadditive: BoolProperty(name = 'Additive', description='Add onto the current face values', options=set())
     randomstrength: FloatProperty(name='Random Strength', min=0.0, max=1.0, description='Any random value calculated will be multiplied with this number', default=1.0, options=set())
     keyframe: BoolProperty(default=False, name='Keyframe Sliders', description='Keyframe the randomized changes', options=set())
@@ -238,7 +237,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     dragging: BoolProperty(default=False, options=set())
     updating: BoolProperty(default = False, options=set())
     callonce: BoolProperty(default = False, options=set())
-    LR: FloatProperty(default=0.5, options=set(), min=0.0, max=1.0, name='L <-> R', description='Which way flexing will lean more towards', step=50)
+    LR: FloatProperty(default=0.0, options=set(), min=-1.0, max=1.0, name='L <-> R', description='Which way flexing will lean more towards', step=50)
     up: BoolProperty(default=False, options=set(), name='Upper', description='Show the Upper section of the face')
     mid: BoolProperty(default=False, options=set(), name='Mid', description='Show the Mid section of the face')
     low: BoolProperty(default=False, options=set(), name='Lower', description='Show the Lower section of the face')
@@ -604,6 +603,42 @@ class HISANIM_OT_relocatePaths(bpy.types.Operator):
                 lib.filepath = os.path.join(path.path, merc)
                 lib.reload()
         return {'FINISHED'}
+    
+class TRIFECTA_OT_setWdrb(bpy.types.Operator):
+    bl_idname = 'trifecta.setwdrb'
+    bl_label = 'Wardrobe'
+    bl_description = 'Set the current tool to Wardrobe'
+
+    def execute(self, context):
+        context.scene.hisanimvars.tools = 'WARDROBE'
+        return {'FINISHED'}
+    
+class TRIFECTA_OT_setMD(bpy.types.Operator):
+    bl_idname = 'trifecta.setmd'
+    bl_label = 'Merc Deployer'
+    bl_description = 'Set the current tool to Merc Deployer'
+
+    def execute(self, context):
+        context.scene.hisanimvars.tools = 'MERC DEPLOYER'
+        return {'FINISHED'}
+    
+class TRIFECTA_OT_setBM(bpy.types.Operator):
+    bl_idname = 'trifecta.setbm'
+    bl_label = 'Bonemerge'
+    bl_description = 'Set the current tool to Wardrobe'
+
+    def execute(self, context):
+        context.scene.hisanimvars.tools = 'BONEMERGE'
+        return {'FINISHED'}
+    
+class TRIFECTA_OT_setFP(bpy.types.Operator):
+    bl_idname = 'trifecta.setfp'
+    bl_label = 'Face Poser'
+    bl_description = 'Set the current tool to Wardrobe'
+
+    def execute(self, context):
+        context.scene.hisanimvars.tools = 'FACE POSER'
+        return {'FINISHED'}
 
 classes = [
             searchHits,
@@ -620,7 +655,11 @@ classes = [
             HISANIM_OT_relocatePaths,
             WDRB_OT_Select,
             WDRB_OT_Cancel,
-            WDRB_OT_Confirm
+            WDRB_OT_Confirm,
+            TRIFECTA_OT_setWdrb,
+            TRIFECTA_OT_setMD,
+            TRIFECTA_OT_setBM,
+            TRIFECTA_OT_setFP
             ]
 def register():
     for cls in classes:

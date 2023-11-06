@@ -13,6 +13,7 @@ class AssetPaths(PropertyGroup):
     def get_path(self):
         return self.get("path", "")
     def set_path(self, value):
+        bak = self.name
         value = bpy.path.abspath(value)
         self["path"] = value
         name = os.path.basename(value)
@@ -24,7 +25,10 @@ class AssetPaths(PropertyGroup):
             if 'cosmetics' in name: name = name.replace('cosmetics', '')
         elif os.path.exists(value[:value.rfind('.') if '.' in value else None]):
             self.this_is = 'FOLDER'
-            name = os.path.basename(Path(value))
+            if name == 'New Entry':
+                name = os.path.basename(Path(value))
+            else:
+                name = bak
         else:
             self.this_is = 'UNKNOWN'
         

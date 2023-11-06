@@ -8569,30 +8569,21 @@ class poselibVars(PropertyGroup):
         scn = C.scene
         props = scn.poselibVars
 
-        '''for vis in props.dictVisemes:
-            if vis.name.startswith('!'):
-                data[vis.name[1:]] = mix(vis.original, 0.0 if self.reset else vis.original, self.value)
-                continue
-            if not vis.use:
-                data[vis.name] = vis.original# if self.reset else vis.value
-                continue
-            data[vis.name] = mix(vis.original, vis.value, self.value)
-            continue'''
         for vis in props.dictVisemes:
             if data.get(vis.path) == None:
-                #print('uh oh!')
                 continue
+
             if vis.name.startswith('!'):
-                #if 'Jaw' in vis.name:
-                    #print('l')
                 data[vis.path] = mix(vis.original, 0.0 if self.reset else vis.original, self.value)
                 continue
+
             if not vis.use:
-                data[vis.path] = vis.original# if self.reset else vis.value
+                data[vis.path] = vis.original
                 continue
-            #del data[vis.path]
+
             data[vis.path] = mix(vis.original, vis.value, self.value)
             continue
+
         data.update()
 
     '''
@@ -8651,6 +8642,8 @@ class POSELIB_OT_cancel(Operator):
     bl_label = 'Cancel'
     bl_description = 'Cancel the current operation'
 
+    bl_options = {'UNDO'}
+
     def execute(self, context):
         C = bpy.context
         obj = C.object
@@ -8674,6 +8667,8 @@ class POSELIB_OT_cancelApply(Operator):
     bl_idname = 'poselib.cancelapply'
     bl_label = 'Cancel'
     bl_description = 'Cancel application'
+
+    bl_options = {'UNDO'}
 
     def execute(self, context):
         C = bpy.context
@@ -8700,6 +8695,11 @@ class POSELIB_OT_prepareAdd(Operator):
     bl_idname = 'poselib.prepareadd'
     bl_label = 'Add Pose'
     bl_description = 'Add a new face pose to the pose library'
+
+    @classmethod
+    def poll(cls, context):
+        Fprops = context.scene.hisanimvars
+        return not Fprops.needs_override 
 
     def execute(self, context):
         C = bpy.context
@@ -8890,6 +8890,9 @@ class POSELIB_OT_prepareApply(Operator):
     bl_idname = 'poselib.prepareapply'
     bl_label = 'Apply'
     bl_description = 'Apply this viseme'
+
+    bl_options = {'UNDO'}
+
     viseme: StringProperty(default='')
 
     def execute(self, context):
@@ -8912,6 +8915,7 @@ class POSELIB_OT_prepareApply(Operator):
         for item in items:
             if (d_path := flexkeys.get(item[0][4:])) == None:
                 continue
+            if type(data[d_path]) != float: continue
             translation[d_path] = item[0]
             new = props.dictVisemes.add()
             new.name = item[0]
@@ -8936,6 +8940,8 @@ class POSELIB_OT_apply(Operator):
     bl_idname = 'poselib.apply'
     bl_label = 'Apply'
     bl_description = 'Apply this pose'
+
+    bl_options = {'UNDO'}
 
     def execute(self, context):
         C = bpy.context

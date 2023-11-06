@@ -225,11 +225,6 @@ class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
     bl_label = 'Attempt to Fix Cosmetic'
     bl_description = 'If a cosmetic appears to be worn incorrectly, this button may fix it'
     bl_options = {'UNDO'}
-
-    @classmethod
-    def poll(cls, context):
-        if len(context.selected_objects) == 0: return False
-        return context.object.type == 'MESH'
     
     def execute(self, context):
         SELECT = context.object

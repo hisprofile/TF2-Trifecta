@@ -38,12 +38,9 @@ def writeJson(data: dict) -> None: # Take the dictionary data as a parameter, an
 
 def update() -> None:
     props = bpy.context.scene.hisanimvars
-    #props.loadout_data.clear()
-    #print('updating')
     if props.stage == 'NONE':
         props.loadout_data.clear()
         for key in getJson().keys():
-            #print(key)
             new = props.loadout_data.add()
             new.name = key
 

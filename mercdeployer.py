@@ -213,8 +213,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
 
             if (script := bpy.data.texts.get(f'{self.merc}.py')) != None:
                 script.as_module()
-                #self.report({'INFO'}, f"Script imported, {script.name, script.library}")
-                #print("Script imported")
             else:
                 self.report({'WARNING'}, "Unless you spawned Pyro, something went wrong. The face script failed to import, which is weird...")
 
