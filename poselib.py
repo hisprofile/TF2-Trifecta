@@ -8526,9 +8526,10 @@ def updateVCol() -> None: # Refresh the pose library
     lib = lib[Fprops.merc]
 
     props.visemesCol.clear()
-    for vis in lib.keys():
+    for n, vis in enumerate(lib.keys()):
         new = props.visemesCol.add()
         new.name = vis
+        new.index = n
     props.activeViseme = max(min(props.activeViseme, len(props.visemesCol) - 1 ), 0)
     return None
 
@@ -8539,6 +8540,7 @@ def mix(a, b, factor) -> float:
 
 class visemes(PropertyGroup): # Simple property group to display the names of saved poses
     name: StringProperty(default='')
+    index: IntProperty()
 
 class dictVis(PropertyGroup):
     # Property group for all the flex controllers mentioned
@@ -8625,6 +8627,7 @@ class poselibVars(PropertyGroup):
     adding: BoolProperty(default=False, options=set())
     value: FloatProperty(default=1.0, name='Mix', min=0.0, max=1.0, update=applyVisemes, options=set())
     keyframe: BoolProperty(default = True, name='Keyframe')
+    keyframe_unchanged: BoolProperty(default=False, name='Keyframe Unchanged', description='Keyframe flex controllers that have the same value before and after the application', options=set())
     reset: BoolProperty(default = False, name='Reset All', update=applyVisemes, description='Applies the preset after resetting the face')
     sort: BoolProperty(default=True, name='Sort', options=set())
 
@@ -8953,10 +8956,11 @@ class POSELIB_OT_apply(Operator):
 
         if props.keyframe:
             for item in props.dictVisemes:
+                if item.original == data[item.path] and not props.keyframe_unchanged: continue
                 if props.reset and item.name.startswith('!'):
-                    data.keyframe_insert(data_path=f'["{item.name[1:]}"]')
+                    data.keyframe_insert(data_path=f'["{item.path}"]')
                 if item.name.startswith('!'): continue
-                data.keyframe_insert(data_path=f'["{item.name}"]')
+                data.keyframe_insert(data_path=f'["{item.path}"]')
 
         props.dictVisemes.clear()
         return {'FINISHED'}
@@ -8985,39 +8989,6 @@ def textBox(self, sentence, icon='NONE', line=56):
                 layout.row().label(text=mix)
                 return None
 
-class POSELIB_OT_hint(Operator):
-    bl_idname = 'poselib.hint'
-    bl_label = 'Hints'
-    bl_description = 'A window will display any possible questions you have'
-
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
-
-    def execute(self, context):
-        return {'FINISHED'}
-
-    def draw(self, context):
-        textBox(self, "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all.", 'ERROR')
-        textBox(self, "When this button is blue, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.", 'REC')
-        textBox(self, "Pressing this button will add a keyframe to all sliders. Useful for starting an animation sequence.", 'DECORATE_KEYFRAME')
-        textBox(self, "Enabling this button by stereo sliders will reveal the true value for both sliders.", 'RESTRICT_VIEW_OFF')
-        textBox(self, "Flex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.", 'SHAPEKEY_DATA')
-
-class POSELIB_OT_hintPL(Operator):
-    bl_idname = 'poselib.hint_poselib'
-    bl_label = 'Hints'
-    bl_description = 'A window will display any possible questions you have'
-
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
-
-    def execute(self, context):
-        return {'FINISHED'}
-
-    def draw(self, context):
-        textBox(self, 'The Pose Library is a place to store presets for face shapes. It will only save flex controller data.', 'OUTLINER_OB_GROUP_INSTANCE')
-        textBox(self,  'Enabling "Reset All" will reset the face before applying the preset.')
-
 classes = (
     dictVis,
     visemes,
@@ -9032,8 +9003,6 @@ classes = (
     POSELIB_OT_cancelApply,
     POSELIB_OT_prepareApply,
     POSELIB_OT_apply,
-    POSELIB_OT_hint,
-    POSELIB_OT_hintPL
     )
 
 def register():

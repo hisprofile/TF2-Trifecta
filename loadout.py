@@ -194,6 +194,8 @@ classes = [
 def register():
     for i in classes:
         register_class(i)
+    
+    bpy.types.Scene.loadout_temp = []
 
     if not jsonExists():
         initJson()

@@ -214,7 +214,8 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             if (script := bpy.data.texts.get(f'{self.merc}.py')) != None:
                 script.as_module()
             else:
-                self.report({'WARNING'}, "Unless you spawned Pyro, something went wrong. The face script failed to import, which is weird...")
+                if self.merc != 'pyro':
+                    self.report({'WARNING'}, "Unless you spawned Pyro, something went wrong. The face script failed to import, which is weird...")
 
             name = self.merc + self.type
             bpy.data.objects.remove(bpy.data.objects[name])
@@ -267,8 +268,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 append(self.merc, self.type)
             except:
                 self.report({'ERROR'}, f'.blend file for "{self.merc}" in "rigs" is corrupt! Redownload!')
-
-        
 
         # make a variable targeting the added collection of the character
         justadded = str(self.merc + self.type)
@@ -426,11 +425,9 @@ class MD_OT_hint(bpy.types.Operator):
         textBox(self, '''"Rimlight Strength" determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default.''', 'SHADING_RENDERED')
 
     def execute(self, context):
-        
-        print('f')
         return {'FINISHED'}
 
-classes =   [HISANIM_OT_LOADMERC, MD_OT_hint]
+classes = [HISANIM_OT_LOADMERC, MD_OT_hint]
 
 def register():
     for i in classes:

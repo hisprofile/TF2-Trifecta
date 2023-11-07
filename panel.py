@@ -237,9 +237,9 @@ class POSELIB_UL_panel(UIList):
             active_data, active_propname,
             index):
         props = context.scene.poselibVars
-        row = layout.row()
-        row.label(text=item.name)
-        op = row.operator('poselib.prepareapply', text='', icon='FORWARD')
+        split = layout.split(factor=0.75)
+        split.label(text=item.name)
+        op = split.operator('poselib.prepareapply', text='', icon='FORWARD')
         op.viseme = item.name
 
 class POSELIB_UL_visemes(UIList):
@@ -297,10 +297,6 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
         if prefs.quickswitch:
             row = layout.row()
             row.label(text=f'Tool: {props.tools.title()}')
-            '''row.prop(props, 'wr', icon='MOD_CLOTH', text='', toggle=True)
-            row.prop(props, 'md', icon='FORCE_DRAG', text='', toggle=True)
-            row.prop(props, 'bm', icon='GROUP_BONE', text='', toggle=True)
-            row.prop(props, 'fp', icon='RESTRICT_SELECT_OFF', text='', toggle=True)'''
             row.operator('trifecta.setwdrb', icon='MOD_CLOTH', text='', depress=props.tools == 'WARDROBE')
             row.operator('trifecta.setmd', icon='FORCE_DRAG', text='', depress=props.tools == 'MERC DEPLOYER')
             row.operator('trifecta.setbm', icon='GROUP_BONE', text='', depress=props.tools == 'BONEMERGE')
@@ -314,8 +310,8 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             row.label(text='Assets missing. Check preferences for info.', icon='ERROR')
 
         if props.tools == 'MERC DEPLOYER':
-            row = layout.row()
-            row.label(text='Deploy Mercenaries', icon='FORCE_DRAG')
+            #row = layout.row()
+            #row.label(text='Deploy Mercenaries', icon='FORCE_DRAG')
             cln = ["IK", "FK"]
             mercs = ['scout', 'soldier', 'pyro', 'demo',
                     'heavy', 'engineer', 'medic', 'sniper', 'spy']
@@ -330,16 +326,13 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                         for ii in cln:
                             if ii == 'FK':
                                 row.alert=True
-
                             MERC = row.operator('hisanim.loadmerc', text='New' if ii == 'IK' else 'Legacy')
                             MERC.merc = i
                             MERC.type = ii
+
                     row = layout.row()
-                    row.prop(context.scene.hisanimvars, "bluteam")
-                    op = row.operator('trifecta.textbox', text='', icon='QUESTION')
-                    op.text = '''"New" rigs are made with Rigify, allowing for more extensive control over the armature with features like IK/FK swapping. "Legacy" rigs comprise of ONLY forward kinematics, and should only be used to apply taunts onto.\nWhen "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure the most compatibility with cosmetics. When disabled, the higher-poly (A.K.A. SFM) bodygroups will be used instead.\nRimlight Strength determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default.'''
-                    op.icons='ARMATURE_DATA,OUTLINER_OB_ARMATURE,SHADING_RENDERED'
-                    op.size = '76,76,76'
+                    row.prop(context.scene.hisanimvars, "bluteam", text='BLU Team')
+                    row.operator('md.hint', text='', icon='QUESTION')
                     layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
                     layout.row().prop(props, 'hisanimrimpower', slider=True)
             
@@ -350,8 +343,8 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             return
 
         if props.tools == 'BONEMERGE':
-            row = layout.row()
-            row.label(text='Attach TF2 cosmetics.', icon='DECORATE_LINKED')
+            #row = layout.row()
+            #row.label(text='Attach TF2 cosmetics.', icon='DECORATE_LINKED')
             ob = context.object
             row = layout.row()
             self.layout.prop_search(context.scene.hisanimvars, "hisanimtarget", bpy.data, "objects", text="Link to", icon='ARMATURE_DATA')
@@ -364,12 +357,11 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             box = layout.row().box()
             row = box.row()
             row.label(text='Bind facial cosmetics')
-            '''op = row.operator('trifecta.textbox', text='', icon='QUESTION')
+            op = row.operator('trifecta.textbox', text='', icon='QUESTION')
             op.text = 'When binding a cosmetic to a face, it can only be posed through shape keys. Flex controllers are unsupported.'
             op.icons = 'MESH_MONKEY'
-            op.size = '56'
-            op.width = 310'''
-            row.operator('md.hint', text='', icon='QUESTION')
+            op.size = '60'
+            op.width = 310
             box.row().operator('hisanim.bindface')
             box.row().operator('bm.unbindface'),
             layout.row().operator('hisanim.attemptfix')
@@ -461,9 +453,8 @@ class WARDROBE_PT_MATERIAL(bpy.types.Panel):
         else: box.row().operator('hisanim.lightwarps')
         box.row().prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
         row = box.row()
-        row.prop(context.scene.hisanimvars, 'wrdbbluteam')
-        
-            
+        row.prop(context.scene.hisanimvars, 'wrdbbluteam', text='BLU Team')
+                  
 class WARDROBE_PT_PAINTS(bpy.types.Panel):
     bl_label = ''
     bl_space_type = 'VIEW_3D'
@@ -489,7 +480,7 @@ class WARDROBE_PT_PAINTS(bpy.types.Panel):
         op.text = 'If a cosmetic seems to be painted incorrectly, selecting one of the materials and executing "Fix Material" may help.'
         op.icons = 'SHADING_RENDERED'
         op.size = '56'
-        op.width = 260
+        op.width = 270
         l.separator()
 
     def draw(self, context):
@@ -536,7 +527,7 @@ class WARDROBE_PT_LOADOUT(bpy.types.Panel):
         op.text = 'The Loadout tool allows you to save combinations of equippable items to be spawned by batch at any time, saving you the time of having to search and spawn for each one.'
         op.icons = 'ASSET_MANAGER'
         op.size = '56'
-        op.width = 290
+        op.width = 310
         l.separator()
 
     def draw(self, context):
@@ -632,7 +623,7 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
         op = l.operator('trifecta.textbox', icon='QUESTION', text='')
         op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is BLUE, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.\nOptimizing mercenaries can give a significant performance boost by disabling the flex controllers, which will somewhat lock the face. Don't forget to restore the face on final render."
         op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA,MODIFIER_ON'
-        op.size = '76,76,76,76,76,76'
+        op.size = '76,72,76,76,72,76'
         op.width = 400
         l.separator()
 
@@ -661,6 +652,9 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
         col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
         col.row().prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
         col.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
+        col.row().label(text='', icon='BLANK1')
+        #col.row().operator('hisanim.randomizeface', text='', icon='RNDCURVE')
+        col.row().operator('hisanim.resetface', icon='LOOP_BACK', text='')
         row = box.row(align=True)
         op = row.operator('hisanim.adjust', text='', icon='TRIA_LEFT')
         op.amount = -0.1
@@ -698,7 +692,7 @@ class FACEPOSER_PT_POSELIBRARY(bpy.types.Panel):
         op.text = 'The Pose Library is a place to store presets for face shapes. It will only save flex controller data.\nEnabling "Reset All" will reset the face before applying the preset.'
         op.icons = 'OUTLINER_OB_GROUP_INSTANCE,LOOP_BACK'
         op.size = '56,56'
-        op.width = 290
+        op.width = 300
         l.separator()
 
     def draw(self, context):
@@ -750,7 +744,11 @@ class FACEPOSER_PT_POSELIBRARY(bpy.types.Panel):
         elif poselib.stage == 'APPLY':
             row.template_list('POSELIB_UL_visemes', 'Items', poselib, 'dictVisemes', poselib, 'activeItem')
             box.row().prop(poselib, 'value', slider=True)
-            box.row().prop(poselib, 'keyframe')
+            row = box.row()
+            row.prop(poselib, 'keyframe')
+            p = row.row()
+            p.prop(poselib, 'keyframe_unchanged')
+            p.enabled = poselib.keyframe
             box.row().prop(poselib, 'reset')
             box.row().operator('poselib.apply')
             box.row().operator('poselib.cancelapply')
@@ -773,12 +771,12 @@ class FACEPOSER_PT_RANDOMIZER(bpy.types.Panel):
         l = self.layout
         l.alignment = 'EXPAND'
         l.separator()
-        l.label(icon='RNDCURVE', text='Face Poser')
+        l.label(icon='RNDCURVE', text='Face Randomizer')
         op = l.operator('trifecta.textbox', icon='QUESTION', text='')
-        op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is BLUE, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.\nOptimizing mercenaries can give a significant performance boost by disabling the flex controllers, which will somewhat lock the face. Don't forget to restore the face on final render."
-        op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA,MODIFIER_ON'
-        op.size = '76,76,76,76,76,76'
-        op.width = 400
+        op.text = 'Make funny faces!'
+        op.icons = 'MONKEY'
+        op.size = '56'
+        op.width = 125
         l.separator()
 
     def draw(self, context):
@@ -820,7 +818,7 @@ class FACEPOSER_PT_LOCKLIST(bpy.types.Panel):
         op.text = 'Locking a flex controller will keep it from getting randomized.'
         op.icons = 'LOCKED'
         op.size = '128'
-        op.width = 340
+        op.width = 350
         l.separator()
 
     def draw(self, context):

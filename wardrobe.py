@@ -1,7 +1,6 @@
 import bpy, json, os
 from pathlib import Path
 from bpy.props import *
-#from bpy.types import *
 from bpy.types import Context
 from mathutils import *
 from . import bonemerge, mercdeployer, faceposer, loadout
@@ -625,7 +624,7 @@ class TRIFECTA_OT_setMD(bpy.types.Operator):
 class TRIFECTA_OT_setBM(bpy.types.Operator):
     bl_idname = 'trifecta.setbm'
     bl_label = 'Bonemerge'
-    bl_description = 'Set the current tool to Wardrobe'
+    bl_description = 'Set the current tool to Bonemerge'
 
     def execute(self, context):
         context.scene.hisanimvars.tools = 'BONEMERGE'
@@ -634,7 +633,7 @@ class TRIFECTA_OT_setBM(bpy.types.Operator):
 class TRIFECTA_OT_setFP(bpy.types.Operator):
     bl_idname = 'trifecta.setfp'
     bl_label = 'Face Poser'
-    bl_description = 'Set the current tool to Wardrobe'
+    bl_description = 'Set the current tool to the Face Poser'
 
     def execute(self, context):
         context.scene.hisanimvars.tools = 'FACE POSER'

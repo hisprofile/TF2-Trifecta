@@ -46,8 +46,6 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         layout.row().operator('hisanim.relocatepaths', text='Redefine Library Paths', icon='FILE_REFRESH')
         row = layout.row()
         row.prop(context.scene.hisanimvars, 'savespace')
-        row = layout.row()
-        row.prop(context.preferences.addons[__package__].preferences, 'compactable', text='Compactable View')
         layout.row().prop(context.preferences.addons[__package__].preferences, 'quickswitch')
 
 class HISANIM_OT_CLSUPDATE(bpy.types.Operator):

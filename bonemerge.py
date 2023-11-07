@@ -139,18 +139,13 @@ class HISANIM_OT_BINDFACE(bpy.types.Operator):
             return True
     
     def execute(self, context):
-        objs = context.selected_objects
-        print(objs)
-        f = []
-        f.remove()
-        objs = objs.remove(context.active_object)
-        print(objs)
+        objs = list(context.selected_objects)
+        objs.remove(context.object)
         cos = objs[0]
-
         face = context.object
 
-        if face.get('aaa_fs') == None:
-            self.report({'WARNING'}, 'A mercenary was selected as a cosmetic! Make sure the mercenary is selected last!')
+        if face.data.get('aaa_fs') == None:
+            self.report({'ERROR'}, 'The object you have as active is invalid! Make sure a mercenary is selected last!')
             return {'CANCELLED'}
         
         if cos.get('skeys') == None:
@@ -228,6 +223,9 @@ class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
     
     def execute(self, context):
         SELECT = context.object
+        if SELECT.type == 'MESH':
+            if SELECT.parent == None: return {'CANCELLED'}
+        
         if not SELECT.type == 'ARMATURE':
             SELECT = SELECT.parent
         skipbone = SELECT.data.bones[0]
@@ -241,27 +239,12 @@ class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
                 pass
         return {'FINISHED'}
     
-class BM_OT_hint(bpy.types.Operator):
-    bl_idname = 'bm.hint'
-    bl_label = 'Hints'
-    bl_description = 'A window will display any possible questions you have'
-
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self)
-    
-    def draw(self, context):
-        textBox(self, "When binding a cosmetic to a face, it can only be posed through shape keys. Flex controllers are unsupported.", 'MESH_MONKEY', 53)
-
-    def execute(self, context):
-        return {'FINISHED'}
-    
 classes = [
     HISANIM_OT_ATTACH,
     HISANIM_OT_ATTEMPTFIX,
     HISANIM_OT_BINDFACE,
     HISANIM_OT_DETACH,
     BM_OT_UNBINDFACE,
-    BM_OT_hint
 ]
 
 def register():

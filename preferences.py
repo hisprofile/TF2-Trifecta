@@ -102,7 +102,6 @@ class hisanimFilePaths(AddonPreferences):
     is_executed: BoolProperty(default=False, options=set())
     remove: CollectionProperty(type=ridOf)
     runonce_removepaths: IntProperty(default=0, options=set())
-    compactable: bpy.props.BoolProperty(default=True, description='Make the different sections of Wardrobe compactable.')
     missing: bpy.props.BoolProperty(default=True, options=set())
     quickswitch: bpy.props.BoolProperty(default=True, options=set(), name='Quick Switch', description='Replace the tool dropdown with a set of buttons')
     
