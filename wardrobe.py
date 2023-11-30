@@ -585,7 +585,7 @@ class HISANIM_OT_relocatePaths(bpy.types.Operator):
 
     def execute(self, context):
         prefs = context.preferences.addons[__package__].preferences
-        paths = prefs.assets
+        paths = prefs.hisanim_paths
         files = list(map(lambda a: a +'cosmetics.blend', mercdeployer.mercs)) + ['allclass.blend', 'allclass2.blend', 'allclass3.blend']
         filesDict = {key: key.replace('cosmetics', '').replace('.blend', '') for key in files}
         TF2_V3 = list(map(lambda a: a + '.blend', mercdeployer.mercs))
