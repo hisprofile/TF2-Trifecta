@@ -1,5 +1,5 @@
 import bpy, os, glob
-
+from bpy_extras.io_utils import ImportHelper
 from pathlib import Path
 
 from bpy.props import (StringProperty, CollectionProperty,
@@ -55,6 +55,16 @@ class AssetPaths(PropertyGroup):
         default='New Entry'
     )
 
+class rigs(PropertyGroup):
+    prefs = bpy.context.preferences.addons[__package__].preferences
+    name: StringProperty(
+        default='Rigs'
+    )
+    path: StringProperty(
+        default = '',
+        subtype = 'FILE_PATH'
+    )
+
 class HISANIM_UL_ASSETS(UIList):
 
     def draw_item(self, context,
@@ -91,6 +101,25 @@ class HISANIM_UL_ASSETS(UIList):
             layout.alignment = 'CENTER'
             layout.label(text='')
 
+class HISANIM_UL_RIGS(UIList):
+
+    def draw_item(self, context,
+            layout, data,
+            item, icon,
+            active_data, active_propname,
+            index):
+        prefs = context.preferences.addons[__package__].preferences
+        rigs = prefs.rigs
+        rigsindex = prefs.rigsindex
+
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            row = layout.row()
+            row.label(text=item.name)
+
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label(text='')
+
 class ridOf(PropertyGroup):
     name: StringProperty(default='')
     index: IntProperty(default=0)
@@ -98,10 +127,12 @@ class ridOf(PropertyGroup):
 class hisanimFilePaths(AddonPreferences):
     bl_idname = __package__
     hisanim_paths: CollectionProperty(type=AssetPaths)
+    rigs: CollectionProperty(type=rigs)
     hisanim_pathsindex: IntProperty(default=0, options=set())
+    rigsindex: IntProperty(default=0, options=set())
     is_executed: BoolProperty(default=False, options=set())
     remove: CollectionProperty(type=ridOf)
-    runonce_removepaths: IntProperty(default=0, options=set())
+    runonce_removepaths: IntProperty(default=0, options=set()) 
     missing: bpy.props.BoolProperty(default=True, options=set())
     quickswitch: bpy.props.BoolProperty(default=True, options=set(), name='Quick Switch', description='Replace the tool dropdown with a set of buttons')
     
@@ -138,6 +169,13 @@ class hisanimFilePaths(AddonPreferences):
         row.operator('trifecta.pathhelp')
         row.operator('hisanim.detectpath', text='Add Paths from Asset', icon='VIEWZOOM')
         row.operator('trifecta.batchadd', text='Add Paths from Folder', icon='VIEWZOOM')
+        row = layout.row()
+        row.template_list('HISANIM_UL_RIGS', 'Asset Paths',
+                self, 'rigs',
+                self, 'rigsindex')
+        col = row.column(align=True)
+        col.operator('hisanim.addrig', text='', icon='ADD')
+        col.operator('hisanim.removerig', text='', icon='REMOVE')
 
 class HISANIM_OT_BATCHADD(Operator):
     bl_idname = 'trifecta.batchadd'
@@ -236,7 +274,7 @@ class HISANIM_OT_PULLPATH(Operator):
     bl_description = 'Pull existing paths from asset browser.'
 
     def execute(self, context):
-        runpullpath()
+        #runpullpath()
         return {'FINISHED'}
 
 class HISANIM_OT_ADDPATH(Operator):
@@ -250,6 +288,24 @@ class HISANIM_OT_ADDPATH(Operator):
         prefs.hisanim_pathsindex = len(prefs.hisanim_paths) - 1
         return {'FINISHED'}
     
+class HISANIM_OT_ADDRIG(Operator, ImportHelper):
+    bl_idname = 'hisanim.addrig'
+    bl_label = 'Add Rig'
+    bl_description = 'Add a path for the TF2-Trifecta to search through'
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_props_dialog(self, width=450)
+    
+    def draw(self, context):
+        layout = self.layout
+        layout.row().label(text='Ensure that the folder you add has the nine .blend files DIRECTLY in that folder')
+
+    def execute(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        prefs.rigs.add()
+        prefs.rigsindex = len(prefs.rigs) - 1
+        return {'FINISHED'}
+
 class HISANIM_OT_REMOVEPATH(Operator):
     bl_idname = 'hisanim.removepath'
     bl_label = 'Remove Path'
@@ -259,6 +315,17 @@ class HISANIM_OT_REMOVEPATH(Operator):
         prefs = context.preferences.addons[__package__].preferences
         prefs.hisanim_paths.remove(prefs.hisanim_pathsindex)
         prefs.hisanim_pathsindex = min(len(prefs.hisanim_paths) - 1, prefs.hisanim_pathsindex)
+        return {'FINISHED'}
+
+class HISANIM_OT_REMOVERIG(Operator):
+    bl_idname = 'hisanim.removerig'
+    bl_label = 'Remove Rig'
+    bl_description = 'Remove the selected path'
+
+    def execute(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        prefs.rigs.remove(prefs.rigsindex)
+        prefs.rigsindex = min(len(prefs.rigs) - 1, prefs.rigsindex)
         return {'FINISHED'}
 
 class PREF_OT_pathhelp(Operator):
@@ -303,60 +370,20 @@ class PREF_OT_pathhelp(Operator):
         return {'FINISHED'}
 
 classes = [HISANIM_UL_ASSETS,
+        HISANIM_UL_RIGS,
         AssetPaths,
+        rigs,
         ridOf,
         hisanimFilePaths,
         HISANIM_OT_ADDPATH,
         HISANIM_OT_REMOVEPATH,
+        HISANIM_OT_ADDRIG,
+        HISANIM_OT_REMOVERIG,
         HISANIM_OT_DETECTPATH,
         HISANIM_OT_PULLPATH,
         PREF_OT_pathhelp,
         HISANIM_OT_BATCHADD]
 
-def runpullpath():
-    prefs = bpy.context.preferences.addons[__package__].preferences
-    paths = prefs.hisanim_paths
-    libraries = bpy.context.preferences.filepaths.asset_libraries
-    for i in names[:-1]:
-        if (assetpath := libraries.get(i)) != None and paths.get(i) == None:
-            path = glob.glob('*.blend', root_dir=assetpath.path)
-            if len(path) == 0:
-                continue
-            delete = prefs.remove.add()
-            delete.index = libraries.find(i)
-            delete.name = i
-            path = path[0]
-            newitem = paths.add()
-            newitem.path = assetpath.path + '/' + path
-            newitem.name = assetpath.name
-
-    if libraries.get('TF2-V3') != None:
-        assetpath = libraries.get('TF2-V3')
-        delete = prefs.remove.add()
-        delete.index = libraries.find('TF2-V3')
-        delete.name = 'TF2-V3'
-        newitem = paths.add()
-        newitem.path = assetpath.path
-        newitem.name = assetpath.name
-
-def deleteOldPaths():
-
-    ''' This purpose of this function was meant to be occur alongside runpullpath,
-    but because I require the bpy.ops.preferences.asset_library_remove operator,
-    it cannot be done while drawing. So I needed a way to separate the two somehow.
-    runpullpath happens instantly because of the panel drawing, and deleteOldPaths
-    happens whenever the dependency graph updates.'''
-
-    prefs = bpy.context.preferences.addons[__package__].preferences
-    if prefs.runonce_removepaths:
-        return None
-    libraries = bpy.context.preferences.filepaths.asset_libraries
-    if prefs.is_executed == True:
-        prefs.runonce_removepaths = True
-        for i in prefs.remove:
-                bpy.ops.preferences.asset_library_remove(index=libraries.find(i.name))
-        bpy.types.SpacePreferences.draw_handler_remove(deleteOldPaths)
-        return None
 
 def register():
     for i in classes:
@@ -365,6 +392,12 @@ def register():
     if (p := prefs.hisanim_paths.get('TF2-V3')) != None:
         p.name = 'rigs'
         print(p.name, 'success')
+    if (p := prefs.hisanim_paths.get('rigs')) != None:
+        new = prefs.rigs.add()
+        new.name = p.name
+        new.path = p.path
+        prefs.hisanim_paths.remove(prefs.hisanim_paths.find('rigs'))
+        prefs.hisanim_pathsindex = min(len(prefs.hisanim_paths) - 1, prefs.hisanim_pathsindex)
     
 def unregister():
     for i in classes:
