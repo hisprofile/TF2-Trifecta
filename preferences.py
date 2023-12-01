@@ -1,13 +1,13 @@
-import bpy, os, glob
+import bpy, os, glob, time
 from bpy_extras.io_utils import ImportHelper
 from pathlib import Path
 
 from bpy.props import (StringProperty, CollectionProperty,
                         IntProperty, EnumProperty,
-                        BoolProperty)
+                        BoolProperty, PointerProperty)
 from bpy.types import (UIList, PropertyGroup,
                         AddonPreferences, Operator)
-names = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy', 'allclass2', 'allclass3', 'allclass', 'weapons', 'rigs']
+names = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy', 'allclass2', 'allclass3', 'allclass', 'weapons']
 
 class AssetPaths(PropertyGroup):
     def get_path(self):
@@ -55,10 +55,23 @@ class AssetPaths(PropertyGroup):
         default='New Entry'
     )
 
-class rigs(PropertyGroup):
+def enumRigs(a = None, b = None):
     prefs = bpy.context.preferences.addons[__package__].preferences
+    if prefs == None: return None
+    rigs = prefs.rigs
+    print('f')
+    #((i, n, '', '', n))
+
+    bpy.types.Scene.trifectarigs = EnumProperty(
+        items=(
+            (i.name, i.name, '', '', n) for n, i in enumerate(rigs)
+        ),
+        name = 'Rigs'
+    )
+
+class rigs(PropertyGroup):
     name: StringProperty(
-        default='Rigs'
+        default='Rigs', update=enumRigs
     )
     path: StringProperty(
         default = '',
@@ -92,6 +105,13 @@ class HISANIM_UL_ASSETS(UIList):
             row = layout.row()
             if ICON != 'BLANK1':
                 row.label(icon=ICON)
+            if ICON == 'FILE_FOLDER':
+                row.alert = time.time() % 1 < 0.5
+                op = row.operator('trifecta.textbox', text ='', icon='ERROR')
+                op.text = 'If you were trying to add a set of rigs, do it in the window below. If you were trying to add a cosmetic file instead, select the .blend file.'
+                op.icons = 'ERROR'
+                op.size = '56'
+                op.width = 310
             if item == paths[pathsindex]:
                 row.prop(item, "name", text='')
             else:
@@ -114,7 +134,10 @@ class HISANIM_UL_RIGS(UIList):
 
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             row = layout.row()
-            row.label(text=item.name)
+            if item == rigs[rigsindex]:
+                row.prop(item, 'name', text='')
+            else:
+                row.label(text=item.name)
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
@@ -126,6 +149,7 @@ class ridOf(PropertyGroup):
 
 class hisanimFilePaths(AddonPreferences):
     bl_idname = __package__
+    prefs = bpy.context.preferences.addons[__package__].preferences
     hisanim_paths: CollectionProperty(type=AssetPaths)
     rigs: CollectionProperty(type=rigs)
     hisanim_pathsindex: IntProperty(default=0, options=set())
@@ -134,19 +158,25 @@ class hisanimFilePaths(AddonPreferences):
     remove: CollectionProperty(type=ridOf)
     runonce_removepaths: IntProperty(default=0, options=set()) 
     missing: bpy.props.BoolProperty(default=True, options=set())
+    #rigs_select: PointerProperty(type=prefs.rigs)
     quickswitch: bpy.props.BoolProperty(default=True, options=set(), name='Quick Switch', description='Replace the tool dropdown with a set of buttons')
     
     def draw(self, context):
         prefs = bpy.context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
+        rigs = prefs.rigs
         remaining = [i for i in names if paths.get(i) == None]
         layout = self.layout
-        layout.row().label(text='Every entry needs to end in .blend, except for "rigs". "rigs" needs to be a folder.')
-        layout.row().label(text='''Don't use the name "TF2-V3" anymore, use "rigs" instead.''')
-        layout.row().label(text='Names are held in the window below.')
+        #layout.row().label(text='Every entry needs to end in .blend, except for "rigs". "rigs" needs to be a folder.')
+        #layout.row().label(text='''Don't use the name "TF2-V3" anymore, use "rigs" instead.''')
+        #layout.row().label(text='Names are held in the window below.')
+        layout = layout.box()
+        #layout.alert = self.missing
+        layout.label(text='Cosmetics & Weapons', icon='MOD_CLOTH')
         if len(remaining) > 0:
             row = layout.row()
-            row.label(text='Missing entries:') if len(remaining) != 1 else row.label(text='Missing entry:')
+            row.alert = True
+            row.label(text='Missing entries:', icon = 'ERROR') if len(remaining) != 1 else row.label(text='Missing entry:', icon='ERROR')
             row = layout.row()
             row.label(text=f'{", ".join(remaining)}')
             row=layout.row()
@@ -169,6 +199,14 @@ class hisanimFilePaths(AddonPreferences):
         row.operator('trifecta.pathhelp')
         row.operator('hisanim.detectpath', text='Add Paths from Asset', icon='VIEWZOOM')
         row.operator('trifecta.batchadd', text='Add Paths from Folder', icon='VIEWZOOM')
+        layout = self.layout
+        norigs = len(prefs.rigs) < 1
+        layout = layout.box()
+        layout.label(text='Rigs', icon='ARMATURE_DATA')
+        if norigs:
+            layout.alert = True
+            layout.label(text='No rigs have been added! Add a folder of rigs!', icon='ERROR')
+            layout.alert = False
         row = layout.row()
         row.template_list('HISANIM_UL_RIGS', 'Asset Paths',
                 self, 'rigs',
@@ -176,6 +214,8 @@ class hisanimFilePaths(AddonPreferences):
         col = row.column(align=True)
         col.operator('hisanim.addrig', text='', icon='ADD')
         col.operator('hisanim.removerig', text='', icon='REMOVE')
+        if len(prefs.hisanim_paths) != 0:
+            layout.prop(rigs[prefs.rigsindex], 'path', text='Path')
 
 class HISANIM_OT_BATCHADD(Operator):
     bl_idname = 'trifecta.batchadd'
@@ -277,33 +317,60 @@ class HISANIM_OT_PULLPATH(Operator):
         #runpullpath()
         return {'FINISHED'}
 
-class HISANIM_OT_ADDPATH(Operator):
+class HISANIM_OT_ADDPATH(Operator, ImportHelper):
     bl_idname = 'hisanim.addpath'
     bl_label = 'Add Path'
     bl_description = 'Add a path for the TF2-Trifecta to search through'
 
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
     def execute(self, context):
+        if not os.path.basename(self.filepath).endswith('.blend'):
+            self.report({'ERROR'}, 'Add a .blend file!')
+            return {'CANCELLED'}
         prefs = context.preferences.addons[__package__].preferences
-        prefs.hisanim_paths.add()
+        new = prefs.hisanim_paths.add()
+        new.path = self.filepath
         prefs.hisanim_pathsindex = len(prefs.hisanim_paths) - 1
         return {'FINISHED'}
-    
-class HISANIM_OT_ADDRIG(Operator, ImportHelper):
+
+class HISANIM_OT_ADDRIG_1(Operator, ImportHelper):
     bl_idname = 'hisanim.addrig'
     bl_label = 'Add Rig'
     bl_description = 'Add a path for the TF2-Trifecta to search through'
 
     def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self, width=450)
+        result = context.window_manager.invoke_props_dialog(self, width=450)
+        return result
     
     def draw(self, context):
         layout = self.layout
-        layout.row().label(text='Ensure that the folder you add has the nine .blend files DIRECTLY in that folder')
+        layout.row().label(text='Ensure that the folder you add has the nine .blend files DIRECTLY in that folder!')
 
     def execute(self, context):
+        bpy.ops.hisanim.addrig_final('INVOKE_DEFAULT')
+        return {'FINISHED'}
+    
+class HISANIM_OT_ADDRIG_2(Operator, ImportHelper):
+    bl_idname = 'hisanim.addrig_final'
+    bl_label = 'Add Rig'
+    bl_description = 'Add a path for the TF2-Trifecta to search through'
+
+    def invoke(self, context, event):
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
+    def execute(self, context):
+        if not os.path.exists(os.path.join(self.filepath,'scout.blend')):
+            self.report({'ERROR'}, 'The folder you have chosen does not contain the rigs, like "scout.blend"')
+            return {'CANCELLED'}
         prefs = context.preferences.addons[__package__].preferences
-        prefs.rigs.add()
+        new = prefs.rigs.add()
+        new.path = self.filepath
         prefs.rigsindex = len(prefs.rigs) - 1
+        enumRigs()
         return {'FINISHED'}
 
 class HISANIM_OT_REMOVEPATH(Operator):
@@ -326,6 +393,7 @@ class HISANIM_OT_REMOVERIG(Operator):
         prefs = context.preferences.addons[__package__].preferences
         prefs.rigs.remove(prefs.rigsindex)
         prefs.rigsindex = min(len(prefs.rigs) - 1, prefs.rigsindex)
+        enumRigs()
         return {'FINISHED'}
 
 class PREF_OT_pathhelp(Operator):
@@ -377,7 +445,8 @@ classes = [HISANIM_UL_ASSETS,
         hisanimFilePaths,
         HISANIM_OT_ADDPATH,
         HISANIM_OT_REMOVEPATH,
-        HISANIM_OT_ADDRIG,
+        HISANIM_OT_ADDRIG_1,
+        HISANIM_OT_ADDRIG_2,
         HISANIM_OT_REMOVERIG,
         HISANIM_OT_DETECTPATH,
         HISANIM_OT_PULLPATH,
@@ -398,6 +467,7 @@ def register():
         new.path = p.path
         prefs.hisanim_paths.remove(prefs.hisanim_paths.find('rigs'))
         prefs.hisanim_pathsindex = min(len(prefs.hisanim_paths) - 1, prefs.hisanim_pathsindex)
+        enumRigs()
     
 def unregister():
     for i in classes:

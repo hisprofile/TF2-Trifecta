@@ -312,34 +312,34 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
         if props.tools == 'MERC DEPLOYER':
             #row = layout.row()
             #row.label(text='Deploy Mercenaries', icon='FORCE_DRAG')
+            row = layout.row()
+            #row.props
+            #row.prop_menu_enum()
+            
             cln = ["IK", "FK"]
             mercs = ['scout', 'soldier', 'pyro', 'demo',
                     'heavy', 'engineer', 'medic', 'sniper', 'spy']
-            if prefs.hisanim_paths.get('rigs') != None:
-                if prefs.hisanim_paths.get('rigs').this_is != 'FOLDER':
-                    row = layout.row()
-                    row.label(text='"rigs" have an invalid path!')
-                else:
-                    for i in mercs:
-                        row = layout.box().row(align=True)
-                        row.label(text=i.title())
-                        for ii in cln:
-                            if ii == 'FK':
-                                row.alert=True
-                            MERC = row.operator('hisanim.loadmerc', text='New' if ii == 'IK' else 'Legacy')
-                            MERC.merc = i
-                            MERC.type = ii
+            if len(prefs.rigs) > 0:
+                row.prop(context.scene, 'trifectarigs')
+                for i in mercs:
+                    row = layout.box().row(align=True)
+                    row.label(text=i.title())
+                    for ii in cln:
+                        if ii == 'FK':
+                            row.alert=True
+                        MERC = row.operator('hisanim.loadmerc', text='New' if ii == 'IK' else 'Legacy')
+                        MERC.merc = i
+                        MERC.type = ii
 
-                    row = layout.row()
-                    row.prop(context.scene.hisanimvars, "bluteam", text='BLU Team')
-                    row.operator('md.hint', text='', icon='QUESTION')
-                    layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
-                    layout.row().prop(props, 'hisanimrimpower', slider=True)
+                row = layout.row()
+                row.prop(context.scene.hisanimvars, "bluteam", text='BLU Team')
+                row.operator('md.hint', text='', icon='QUESTION')
+                layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
+                layout.row().prop(props, 'hisanimrimpower', slider=True)
             
                     
             else:
-                layout.row().label(text='"rigs" has not been added!')
-                layout.row().label(text='If it is added, check name.')
+                layout.row().label(text='A set of rigs have not been added!')
             return
 
         if props.tools == 'BONEMERGE':

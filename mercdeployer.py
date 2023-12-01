@@ -27,7 +27,8 @@ def append(a, b):  # get a class from TF2-V3
 
 
 def appendtext(a):  # add the .py script to add further control to faces
-    blendfile = f'{bpy.context.preferences.addons[__package__].preferences.hisanim_paths["rigs"].path}/{a}.blend'
+    PATH = bpy.context.preferences.addons[__package__].preferences.rigs[bpy.context.scene.trifectarigs].path
+    blendfile = f'{PATH}/{a}.blend'
     section = "/Text/"
     object = f'{a}.py'
 
@@ -177,15 +178,8 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         prefs = bpy.context.preferences.addons[__package__].preferences
         props = bpy.context.scene.hisanimvars
 
-        if prefs.hisanim_paths.get('rigs') == None:
-            self.report({'ERROR'}, 'No Mercs Found! Make sure you have "rigs" setup as an entry!')
-            return {'CANCELLED'}
-
-        if prefs.hisanim_paths['rigs'].this_is != 'FOLDER':
-            self.report({'ERROR'}, 'TF2 Rigs entry is not a folder!')
-
-        TF2V3 = prefs.hisanim_paths['rigs']
-        PATH = TF2V3.path
+        #TF2V3 = context.scene.
+        PATH = prefs.rigs[context.scene.trifectarigs].path
 
         if not os.path.exists(PATH):
             self.report({'ERROR'}, f'Entry for rigs exists, but the path does not exist!')
