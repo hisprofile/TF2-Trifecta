@@ -9,6 +9,19 @@ from bpy.types import (UIList, PropertyGroup,
                         AddonPreferences, Operator)
 names = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy', 'allclass2', 'allclass3', 'allclass', 'weapons']
 
+
+def enumRigs(a = None, b = None):
+    prefs = bpy.context.preferences.addons[__package__].preferences
+    if prefs == None: return None
+    rigs = prefs.rigs
+
+    bpy.types.Scene.trifectarigs = EnumProperty(
+        items=(
+            (i.name, i.name, '', '', n) for n, i in enumerate(rigs)
+        ),
+        name = 'Rigs'
+    )
+
 class AssetPaths(PropertyGroup):
     def get_path(self):
         return self.get("path", "")
@@ -53,20 +66,6 @@ class AssetPaths(PropertyGroup):
 
     name: StringProperty(
         default='New Entry'
-    )
-
-def enumRigs(a = None, b = None):
-    prefs = bpy.context.preferences.addons[__package__].preferences
-    if prefs == None: return None
-    rigs = prefs.rigs
-    print('f')
-    #((i, n, '', '', n))
-
-    bpy.types.Scene.trifectarigs = EnumProperty(
-        items=(
-            (i.name, i.name, '', '', n) for n, i in enumerate(rigs)
-        ),
-        name = 'Rigs'
     )
 
 class rigs(PropertyGroup):
@@ -134,6 +133,7 @@ class HISANIM_UL_RIGS(UIList):
 
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             row = layout.row()
+            row.label(icon='ARMATURE_DATA', text='')
             if item == rigs[rigsindex]:
                 row.prop(item, 'name', text='')
             else:
@@ -158,7 +158,6 @@ class hisanimFilePaths(AddonPreferences):
     remove: CollectionProperty(type=ridOf)
     runonce_removepaths: IntProperty(default=0, options=set()) 
     missing: bpy.props.BoolProperty(default=True, options=set())
-    #rigs_select: PointerProperty(type=prefs.rigs)
     quickswitch: bpy.props.BoolProperty(default=True, options=set(), name='Quick Switch', description='Replace the tool dropdown with a set of buttons')
     
     def draw(self, context):
@@ -167,11 +166,7 @@ class hisanimFilePaths(AddonPreferences):
         rigs = prefs.rigs
         remaining = [i for i in names if paths.get(i) == None]
         layout = self.layout
-        #layout.row().label(text='Every entry needs to end in .blend, except for "rigs". "rigs" needs to be a folder.')
-        #layout.row().label(text='''Don't use the name "TF2-V3" anymore, use "rigs" instead.''')
-        #layout.row().label(text='Names are held in the window below.')
         layout = layout.box()
-        #layout.alert = self.missing
         layout.label(text='Cosmetics & Weapons', icon='MOD_CLOTH')
         if len(remaining) > 0:
             row = layout.row()
@@ -208,7 +203,7 @@ class hisanimFilePaths(AddonPreferences):
             layout.label(text='No rigs have been added! Add a folder of rigs!', icon='ERROR')
             layout.alert = False
         row = layout.row()
-        row.template_list('HISANIM_UL_RIGS', 'Asset Paths',
+        row.template_list('HISANIM_UL_RIGS', 'Rigs',
                 self, 'rigs',
                 self, 'rigsindex')
         col = row.column(align=True)
@@ -248,17 +243,6 @@ class HISANIM_OT_BATCHADD(Operator):
                 new.path = f_path
                 new.name = m
         
-        if paths.get('rigs') != None: return {'FINISHED'}
-
-        if os.path.exists(os.path.join(path, 'TF2-V3')):
-            new = paths.add()
-            new.path = os.path.join(path, 'TF2-V3')
-            new.name = 'rigs'
-        
-        if os.path.exists(os.path.join(path, 'rigs')):
-            new = paths.add()
-            new.path = os.path.join(path, 'rigs')
-            new.name = 'rigs'
         return {'FINISHED'}
     
     def invoke(self, context, event):
@@ -322,6 +306,12 @@ class HISANIM_OT_ADDPATH(Operator, ImportHelper):
     bl_label = 'Add Path'
     bl_description = 'Add a path for the TF2-Trifecta to search through'
 
+    filter_glob: StringProperty(
+        default="*.blend",
+        options={'HIDDEN'},
+        maxlen=255,  # Max internal buffer length, longer would be clamped.
+    )
+
     def invoke(self, context, event):
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
@@ -334,6 +324,7 @@ class HISANIM_OT_ADDPATH(Operator, ImportHelper):
         new = prefs.hisanim_paths.add()
         new.path = self.filepath
         prefs.hisanim_pathsindex = len(prefs.hisanim_paths) - 1
+        bpy.ops.hisanim.detectpath()
         return {'FINISHED'}
 
 class HISANIM_OT_ADDRIG_1(Operator, ImportHelper):
@@ -358,13 +349,19 @@ class HISANIM_OT_ADDRIG_2(Operator, ImportHelper):
     bl_label = 'Add Rig'
     bl_description = 'Add a path for the TF2-Trifecta to search through'
 
+    filter_glob: StringProperty(
+        default="*.Blol",
+        options={'HIDDEN'},
+        maxlen=255,  # Max internal buffer length, longer would be clamped.
+    )
+
     def invoke(self, context, event):
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
     def execute(self, context):
         if not os.path.exists(os.path.join(self.filepath,'scout.blend')):
-            self.report({'ERROR'}, 'The folder you have chosen does not contain the rigs, like "scout.blend"')
+            self.report({'ERROR'}, 'The folder you have chosen does not contain the nine rigs inside!')
             return {'CANCELLED'}
         prefs = context.preferences.addons[__package__].preferences
         new = prefs.rigs.add()
@@ -394,6 +391,7 @@ class HISANIM_OT_REMOVERIG(Operator):
         prefs.rigs.remove(prefs.rigsindex)
         prefs.rigsindex = min(len(prefs.rigs) - 1, prefs.rigsindex)
         enumRigs()
+
         return {'FINISHED'}
 
 class PREF_OT_pathhelp(Operator):
@@ -407,7 +405,6 @@ class PREF_OT_pathhelp(Operator):
     def draw(self, context):
         mercs = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
         misc = ['allclass', 'allclass2', 'allclass3', 'weapons']
-        rigs = ['rigs']
 
         layout = self.layout
         prefs = context.preferences.addons[__package__].preferences
@@ -432,7 +429,6 @@ class PREF_OT_pathhelp(Operator):
         for m in misc:
             t_path = os.path.normpath(os.path.join(path, f'{m}/{m}.blend'))
             layout.row().label(text=f'"{m}" : {t_path}')
-        layout.row().label(text=f'"rigs" : {os.path.normpath(os.path.join(path, "rigs"))}')
 
     def execute(self, context):
         return {'FINISHED'}
@@ -467,7 +463,7 @@ def register():
         new.path = p.path
         prefs.hisanim_paths.remove(prefs.hisanim_paths.find('rigs'))
         prefs.hisanim_pathsindex = min(len(prefs.hisanim_paths) - 1, prefs.hisanim_pathsindex)
-        enumRigs()
+    enumRigs()
     
 def unregister():
     for i in classes:

@@ -310,17 +310,13 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             row.label(text='Assets missing. Check preferences for info.', icon='ERROR')
 
         if props.tools == 'MERC DEPLOYER':
-            #row = layout.row()
-            #row.label(text='Deploy Mercenaries', icon='FORCE_DRAG')
-            row = layout.row()
-            #row.props
-            #row.prop_menu_enum()
-            
             cln = ["IK", "FK"]
             mercs = ['scout', 'soldier', 'pyro', 'demo',
                     'heavy', 'engineer', 'medic', 'sniper', 'spy']
             if len(prefs.rigs) > 0:
+                row = layout.row()
                 row.prop(context.scene, 'trifectarigs')
+                if context.scene.trifectarigs == '': return
                 for i in mercs:
                     row = layout.box().row(align=True)
                     row.label(text=i.title())
@@ -361,7 +357,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             op.text = 'When binding a cosmetic to a face, it can only be posed through shape keys. Flex controllers are unsupported.'
             op.icons = 'MESH_MONKEY'
             op.size = '60'
-            op.width = 310
+            op.width = 350
             box.row().operator('hisanim.bindface')
             box.row().operator('bm.unbindface'),
             layout.row().operator('hisanim.attemptfix')
@@ -437,8 +433,8 @@ class WARDROBE_PT_MATERIAL(bpy.types.Panel):
         op = self.layout.operator('trifecta.textbox', icon='QUESTION', text='')
         op.text = "When using EEVEE, Enabling TF2 style on all spawned items will make them appear closer in appearance to the mercenaries, fixing any contrast issues. When using Cycles, this should be set to default.\nRimlight Strength determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default."
         op.icons = 'SHADING_RENDERED,SHADING_RENDERED'
-        op.size = '76,76'
-        op.width = 425
+        op.size = '76,78'
+        op.width = 460
         l.separator()
     
     def draw(self, context):
@@ -480,7 +476,7 @@ class WARDROBE_PT_PAINTS(bpy.types.Panel):
         op.text = 'If a cosmetic seems to be painted incorrectly, selecting one of the materials and executing "Fix Material" may help.'
         op.icons = 'SHADING_RENDERED'
         op.size = '56'
-        op.width = 270
+        op.width = 290
         l.separator()
 
     def draw(self, context):
@@ -527,7 +523,7 @@ class WARDROBE_PT_LOADOUT(bpy.types.Panel):
         op.text = 'The Loadout tool allows you to save combinations of equippable items to be spawned by batch at any time, saving you the time of having to search and spawn for each one.'
         op.icons = 'ASSET_MANAGER'
         op.size = '56'
-        op.width = 310
+        op.width = 325
         l.separator()
 
     def draw(self, context):
@@ -623,8 +619,8 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
         op = l.operator('trifecta.textbox', icon='QUESTION', text='')
         op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is BLUE, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.\nOptimizing mercenaries can give a significant performance boost by disabling the flex controllers, which will somewhat lock the face. Don't forget to restore the face on final render."
         op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA,MODIFIER_ON'
-        op.size = '76,72,76,76,72,76'
-        op.width = 400
+        op.size = '76,70,76,76,72,76'
+        op.width = 420
         l.separator()
 
     def draw(self, context):
@@ -691,7 +687,7 @@ class FACEPOSER_PT_POSELIBRARY(bpy.types.Panel):
         op = l.operator('trifecta.textbox', text='', icon='QUESTION')
         op.text = 'The Pose Library is a place to store presets for face shapes. It will only save flex controller data.\nEnabling "Reset All" will reset the face before applying the preset.'
         op.icons = 'OUTLINER_OB_GROUP_INSTANCE,LOOP_BACK'
-        op.size = '56,56'
+        op.size = '53,56'
         op.width = 300
         l.separator()
 
@@ -776,7 +772,7 @@ class FACEPOSER_PT_RANDOMIZER(bpy.types.Panel):
         op.text = 'Make funny faces!'
         op.icons = 'MONKEY'
         op.size = '56'
-        op.width = 125
+        op.width = 130
         l.separator()
 
     def draw(self, context):
@@ -818,7 +814,7 @@ class FACEPOSER_PT_LOCKLIST(bpy.types.Panel):
         op.text = 'Locking a flex controller will keep it from getting randomized.'
         op.icons = 'LOCKED'
         op.size = '128'
-        op.width = 350
+        op.width = 375
         l.separator()
 
     def draw(self, context):

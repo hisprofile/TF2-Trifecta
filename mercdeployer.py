@@ -177,8 +177,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
     def execute(self, context):
         prefs = bpy.context.preferences.addons[__package__].preferences
         props = bpy.context.scene.hisanimvars
-
-        #TF2V3 = context.scene.
         PATH = prefs.rigs[context.scene.trifectarigs].path
 
         if not os.path.exists(PATH):
@@ -410,7 +408,7 @@ class MD_OT_hint(bpy.types.Operator):
             bpy.ops.object.load_reference_image(filepath=path)
             bpy.data.images['mercdeployer.png'].pack()
             os.remove(path)
-        return context.window_manager.invoke_props_dialog(self)
+        return context.window_manager.invoke_props_dialog(self, width=325)
     
     def draw(self, context):
         from .poselib import textBox
