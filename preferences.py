@@ -26,22 +26,18 @@ class AssetPaths(PropertyGroup):
     def get_path(self):
         return self.get("path", "")
     def set_path(self, value):
-        bak = self.name
         value = bpy.path.abspath(value)
         self["path"] = value
         name = os.path.basename(value)
         if value == '':
             self.this_is = 'EMPTY'
-        elif name.endswith('.blend') and os.path.exists(value):
+        elif os.path.isfile(value) and name.endswith('.blend'):
             self.this_is = 'BLEND'
             name = name[:name.rfind('.') if "." in name else None]
             if 'cosmetics' in name: name = name.replace('cosmetics', '')
-        elif os.path.exists(value[:value.rfind('.') if '.' in value else None]):
+        elif os.path.isdir(value):
             self.this_is = 'FOLDER'
-            if name == 'New Entry':
-                name = os.path.basename(Path(value))
-            else:
-                name = bak
+            name = os.path.basename(Path(value))
         else:
             self.this_is = 'UNKNOWN'
         
