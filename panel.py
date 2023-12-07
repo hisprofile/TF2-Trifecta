@@ -2,8 +2,10 @@ import bpy
 from . import newuilist
 from bpy.types import (UIList)
 from bpy.props import *
+from . import faceposer
 
 def hasKey(obj, slider) -> bool:
+        if not bpy.context.scene.hisanimvars.noKeyStatus: return False
         data = obj.data
         if data.animation_data == None:
             return False
@@ -16,7 +18,7 @@ def hasKey(obj, slider) -> bool:
         curv = action.fcurves.find(f'["{slider.name}"]')
         if curv == None: return False
         for point in curv.keyframe_points:
-            if scene.frame_current == point.co.x:
+            if faceposer.get_frame(bpy.context) == point.co.x:
                 return True
         return False
 
@@ -648,7 +650,8 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
         col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
         col.row().prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
         col.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
-        col.row().label(text='', icon='BLANK1')
+        state = context.scene.hisanimvars.noKeyStatus
+        col.row().prop(context.scene.hisanimvars, 'noKeyStatus', text='', icon='HIDE_OFF' if state else 'HIDE_ON')
         #col.row().operator('hisanim.randomizeface', text='', icon='RNDCURVE')
         col.row().operator('hisanim.resetface', icon='LOOP_BACK', text='')
         row = box.row(align=True)

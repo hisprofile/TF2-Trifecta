@@ -29,7 +29,10 @@ def MAP(x,a,b,c,d, clamp=None):
         return min(max(y, c), d)
     else:
         return y
-    
+
+def get_frame(context):
+    return context.scene.frame_float if context.scene.show_subframe else context.scene.frame_current
+
 @persistent
 def updatefaces(scn = None):
     '''
@@ -117,16 +120,16 @@ class HISANIM_OT_SLIDEKEYFRAME(Operator):
         data = bpy.context.object.data
         if slider.split:
             if self.delete:
-                data.keyframe_delete(data_path=f'["{slider.R}"]')
-                data.keyframe_delete(data_path=f'["{slider.L}"]')
+                data.keyframe_delete(data_path=f'["{slider.R}"]', frame=get_frame(context))
+                data.keyframe_delete(data_path=f'["{slider.L}"]', frame=get_frame(context))
             else:
-                data.keyframe_insert(data_path=f'["{slider.R}"]')
-                data.keyframe_insert(data_path=f'["{slider.L}"]')
+                data.keyframe_insert(data_path=f'["{slider.R}"]', frame=get_frame(context))
+                data.keyframe_insert(data_path=f'["{slider.L}"]', frame=get_frame(context))
         else:
             if self.delete:
-                data.keyframe_delete(data_path=f'["{slider.name}"]')
+                data.keyframe_delete(data_path=f'["{slider.name}"]', frame=get_frame(context))
             else:
-                data.keyframe_insert(data_path=f'["{slider.name}"]')
+                data.keyframe_insert(data_path=f'["{slider.name}"]', frame=get_frame(context))
 
         return {'FINISHED'}
         
@@ -362,7 +365,7 @@ class HISANIM_OT_RANDOMIZEFACE(Operator):
                 data[i] = randval
             
             if props.keyframe:
-                data.keyframe_insert(data_path=f'["{i}"]')
+                data.keyframe_insert(data_path=f'["{i}"]', frame = get_frame(context))
         
         bpy.context.object.data.update()
         return {'FINISHED'}
@@ -392,7 +395,7 @@ class HISANIM_OT_resetface(Operator):
             if type(data[i]) != float: continue
             data[i] = 0.0
             if props.keyframe:
-                data.keyframe_insert(data_path=f'["{i}"]')
+                data.keyframe_insert(data_path=f'["{i}"]', frame=get_frame(context))
         
         data.update()
         return {'FINISHED'}
@@ -425,10 +428,10 @@ class HISANIM_OT_KEYEVERY(Operator):
                     if not props.low:
                         continue
             if i.split:
-                data.keyframe_insert(data_path=f'["{i.L}"]')
-                data.keyframe_insert(data_path=f'["{i.R}"]')
+                data.keyframe_insert(data_path=f'["{i.L}"]', frame=get_frame(context))
+                data.keyframe_insert(data_path=f'["{i.R}"]', frame=get_frame(context))
                 continue
-            data.keyframe_insert(data_path=f'["{i.name}"]')
+            data.keyframe_insert(data_path=f'["{i.name}"]', frame=get_frame(context))
         
         return {'FINISHED'}
     

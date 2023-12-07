@@ -2,7 +2,8 @@ import bpy, json, os
 from bpy.props import *
 from bpy.types import (Operator, PropertyGroup)
 from pathlib import Path
-
+from . import faceposer
+get_frame = faceposer.get_frame
 
 def jsonPath() -> str: # Get the .json library on the users machine
     addonPath = Path(__file__)
@@ -8958,9 +8959,9 @@ class POSELIB_OT_apply(Operator):
             for item in props.dictVisemes:
                 if item.original == data[item.path] and not props.keyframe_unchanged: continue
                 if props.reset and item.name.startswith('!'):
-                    data.keyframe_insert(data_path=f'["{item.path}"]')
+                    data.keyframe_insert(data_path=f'["{item.path}"]', frame=get_frame(context))
                 if item.name.startswith('!'): continue
-                data.keyframe_insert(data_path=f'["{item.path}"]')
+                data.keyframe_insert(data_path=f'["{item.path}"]', frame=get_frame(context))
 
         props.dictVisemes.clear()
         return {'FINISHED'}

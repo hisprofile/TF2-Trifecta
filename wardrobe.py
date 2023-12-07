@@ -264,6 +264,8 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     toggle_mat: BoolProperty(default=False)
     needs_override: BoolProperty()
     enable_faceposer: BoolProperty(default = False)
+    noKeyStatus: BoolProperty(default=True, name='Hide Keyframe Status', description='May improve performance')
+
 
 class WDRB_OT_Select(bpy.types.Operator):
     bl_idname = 'wdrb.select'

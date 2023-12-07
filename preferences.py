@@ -356,7 +356,8 @@ class HISANIM_OT_ADDRIG_2(Operator, ImportHelper):
         return {'RUNNING_MODAL'}
 
     def execute(self, context):
-        if not os.path.exists(os.path.join(self.filepath,'scout.blend')):
+        print(os.path.join(self.filepath,'scout.blend'))
+        if not os.path.isfile(os.path.join(self.filepath,'scout.blend')):
             self.report({'ERROR'}, 'The folder you have chosen does not contain the nine rigs inside!')
             return {'CANCELLED'}
         prefs = context.preferences.addons[__package__].preferences
