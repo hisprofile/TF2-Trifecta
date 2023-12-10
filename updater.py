@@ -1,23 +1,55 @@
-import bpy, os, shutil, shutil, glob, json, zipfile
+import bpy, os, shutil, shutil, glob, json, zipfile, threading, time
 from pathlib import Path
 from . import dload, icons, mercdeployer
 from urllib import request
+import requests
+
+from bpy.types import Operator, PropertyGroup
+from bpy.props import *
+
 global blend_files
 global files
-
+#bpy
 files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
 classes = mercdeployer.classes
 allclasses = ['allclass', 'allclass2', 'allclass3']
+
+def format_size(size_in_bytes):
+    """
+    Convert size in bytes to a human-readable format.
+    """
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if size_in_bytes < 1024.0:
+            return f"{size_in_bytes:.2f} {unit}"
+        size_in_bytes /= 1024.0
+
 class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Updater
     bl_label = "TF2 Trifecta"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
     bl_context = 'scene'
     def draw(self, context):
+        addon_fp = os.path.abspath(Path(__file__).parent)
+        props = bpy.context.scene.trifecta_updateprops
         layout = self.layout
         self.layout.icon
-        layout.label(text='Update Class Cosmetics')
+        #layout.label(text='Update Class Cosmetics')
+        #layout.row().prop(context.scene, 'my_progress')
+        if props.active:
+            row = layout.row()
+            row.label(text=props.stage)
+            row.label(text=str(format_size(props.size)))
+            row.progress(text='', type='RING', factor=props.var)
+        else:
+            layout.row()
+        op = layout.row().operator('trifecta.update')
+        op.id = '1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj'
+        op.filepath = addon_fp
+        op.operation = 'ZIP'
         row = layout.row()
+        row.alert = True
+        row.label(text='Updating assets has been temporarily removed.')
+        '''
         for i in files:
             OPER = row.operator('hisanim.clsupdate', text='Update ' + i, icon_value=icons.id(f'tfupdater'))
             OPER.UPDATE = i
@@ -28,6 +60,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
             OPER = row.operator('hisanim.allclsupdate', text='Update '+ i, icon_value=icons.id('tfupdater'))
             OPER.UPDATE = i
             row = layout.row()
+        
         layout.label(text='Note! Allclass will take much longer!')
         row = layout.row()
         layout.label(text='Update/Replace Rigs')  
@@ -41,6 +74,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         row.operator('hisanim.eccentricupdate')
         layout.label(text='Face Panel by Eccentric')
         layout.label(text='Open the console to view progress!')
+        '''
         row = layout.row()
         row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
         layout.row().operator('hisanim.relocatepaths', text='Redefine Library Paths', icon='FILE_REFRESH')
@@ -48,7 +82,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         row.prop(context.scene.hisanimvars, 'savespace')
         layout.row().prop(context.preferences.addons[__package__].preferences, 'quickswitch')
 
-class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
+class HISANIM_OT_CLSUPDATE(Operator):
     bl_idname = 'hisanim.clsupdate'
     bl_label = 'Update Class'
     bl_description = 'Press to update class'
@@ -96,7 +130,7 @@ class HISANIM_OT_CLSUPDATE(bpy.types.Operator):
         print(f'Updating {self.UPDATE} complete!')
         return {'FINISHED'}
 
-class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
+class HISANIM_OT_ALLCLSUPDATE(Operator):
     bl_idname = 'hisanim.allclsupdate'
     bl_label = 'Update Class'
     bl_description = 'Press to update class'
@@ -151,7 +185,7 @@ class HISANIM_OT_ALLCLSUPDATE(bpy.types.Operator):
         print(f'Updating {self.UPDATE} complete!')
         return {'FINISHED'}
 
-class HISANIM_OT_MERCUPDATE(bpy.types.Operator):
+class HISANIM_OT_MERCUPDATE(Operator):
     bl_idname = 'hisanim.mercupdate'
     bl_label = 'Standard Mercs'
     bl_description = "Download hisanimations' TF2 rigs, the default rigs to use"
@@ -183,7 +217,7 @@ class HISANIM_OT_MERCUPDATE(bpy.types.Operator):
         print("Downloaded hisanimations' port!")
         return {'FINISHED'}
 
-class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
+class HISANIM_OT_HECTORISUPDATE(Operator):
     bl_idname = 'hisanim.hectorisupdate'
     bl_label = 'Face Panel + Phonemes Rigs'
     bl_description = "Download Hectoris919's version of hisanimation's port, complete with a face rig and phonemes"
@@ -219,7 +253,7 @@ class HISANIM_OT_HECTORISUPDATE(bpy.types.Operator):
         print("Downloaded Hectoris919's port!")
         return {'FINISHED'}
     
-class HISANIM_OT_ECCENTRICUPDATE(bpy.types.Operator):
+class HISANIM_OT_ECCENTRICUPDATE(Operator):
     bl_idname = 'hisanim.eccentricupdate'
     bl_label = 'Face Panel'
     bl_description = "Download Eccentric's TF2 rigs, used with a face panel"
@@ -251,7 +285,7 @@ class HISANIM_OT_ECCENTRICUPDATE(bpy.types.Operator):
         print("Downloaded Eccentric's version!")
         return {'FINISHED'}
     
-class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
+class HISANIM_OT_ADDONUPDATER(Operator):
     bl_idname = 'hisanim.addonupdate'
     bl_label = 'Update Addon'
     bl_description = "Get the latest version of the addon. Updater made by Herwork and hisanimations"
@@ -304,7 +338,7 @@ class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
         shutil.rmtree(tempPath)
         os.remove(downPath)
         shutil.rmtree(moveFrom)
-        class HISANIM_OT_reloadAddon(bpy.types.Operator):
+        class HISANIM_OT_reloadAddon(Operator):
             bl_idname = 'temp.reloadaddon'
             bl_label = 'Reload Addon'
             bl_description = 'Press to reload the TF2-Trifecta'
@@ -337,11 +371,215 @@ class HISANIM_OT_ADDONUPDATER(bpy.types.Operator):
         self.report({'INFO'}, 'Addon downloaded! Press "Reload Addon" to apply changes.')
         return {'FINISHED'}
 
-bpyClasses = [HISANIM_PT_UPDATER, HISANIM_OT_CLSUPDATE, HISANIM_OT_ALLCLSUPDATE, HISANIM_OT_MERCUPDATE, HISANIM_OT_HECTORISUPDATE, HISANIM_OT_ADDONUPDATER, HISANIM_OT_ECCENTRICUPDATE]
+def download_file_from_google_drive(file_id, destination, chunk_size=32768):
+    url = "https://docs.google.com/uc?export=download"
+
+    session = requests.Session()
+    params = {'id': file_id, 'confirm': 1}
+    response = session.get(url, params=params, stream=True)
+    #save_response_content(response, destination, chunk_size):
+
+    #for i, chunk_size_ in save_response_content(response, destination, chunk_size):
+        #yield i, chunk_size_
+    return None
+
+def download_file_from_google_drive_blank():
+    try:
+        C = bpy.context
+        scn = C.scene
+        props = scn.trifecta_updateprops
+        prefs = C.preferences.addons[__package__].preferences
+        props.active = True
+        url = "https://docs.google.com/uc?export=download"
+        file_id = '1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj'
+        destination = os.path.join(props.filepath, 'rigs.zip')
+        chunk_size=32768
+        session = requests.Session()
+        params = {'id': file_id, 'confirm': 1}
+        response = session.get(url, params=params, stream=True)
+        wm = bpy.context.window_manager
+        if response.status_code != 200:
+            props.stop = True
+            props.fail = response.status_code
+            return None
+        with open(destination, "wb") as f:
+            for i, chunk in enumerate(response.iter_content(chunk_size)):
+                    if chunk:  # filter out keep-alive new chunks
+                        #bpy.context.scene.my_progress = i
+                        #print(i)
+                        try:
+                            props.size = i*chunk_size
+                        except Exception as e:
+                            print(e)
+                            pass
+                        f.write(chunk)
+        f.close()
+        props.size = os.stat(destination)[6]
+        if props.operation == 'ZIP':
+            props.stage = 'Moving...'
+            rigs = prefs.rigs[scn.trifectarigs]
+            props.newpath = rigs.path
+            if os.path.isfile(os.path.join(rigs.path, 'rigs.zip')):
+                os.remove(os.path.join(rigs.path, 'rigs.zip'))
+            shutil.move(destination, rigs.path)
+            
+        
+        props.finished = True
+    except:
+        props.stop = True
+        raise
+    return None
+
+def get_confirm_token(response):
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            return value
+
+    return None
+
+
+def save_response_content(response, destination, chunk_size):
+    print('fart')
+    with open(destination, "wb") as f:
+        for i, chunk in enumerate(response.iter_content(chunk_size)):
+            if chunk:  # filter out keep-alive new chunks
+                f.write(chunk)
+                print(i)
+                yield i, chunk_size
+
+
+'''if __name__ == '__main__':
+    file_id = '...'
+    destination = '...'
+    for i, chunk_size in download_file_from_google_drive(file_id, destination):
+        print(i, chunk_size)'''
+
+class updateProps(PropertyGroup):
+    id: StringProperty(name='ID')
+    active: BoolProperty(default=False)
+    file: StringProperty(name='File')
+    filepath:StringProperty(name='Filepath', subtype='FILE_PATH')
+    newpath: StringProperty(name='New path', subtype='FILE_PATH')
+    finished: BoolProperty(default=False)
+    stop:BoolProperty(default=False)
+    progress: FloatProperty(default=False)
+    var: FloatProperty(default=0.0)
+    size: FloatProperty(default=0.0)
+    fail: IntProperty(default=0)
+    operation: EnumProperty(items=(
+        ('BLEND', '', '', 0),
+        ('ZIP', '', '', 1)
+    ), name='Operation')
+    stage: StringProperty(default='')
+    
+class TRIFECTA_OT_downloader(Operator):
+    bl_idname = 'trifecta.update'
+    bl_label = 'Grab File'
+    _timer = None
+    start = 0
+    progress: FloatProperty(default=0.0)
+    id: StringProperty(name='ID')
+    file: StringProperty(name='File')
+    filepath:StringProperty(name='Filepath', subtype='FILE_PATH')
+    newpath: StringProperty(name='New path', subtype='FILE_PATH')
+    operation: EnumProperty(items=(
+        ('BLEND', '', '', 0),
+        ('ZIP', '', '', 1)
+    ), name='Operation')
+
+    def modal(self, context, event):
+        props = context.scene.trifecta_updateprops
+        prefs = context.preferences.addons[__package__].preferences
+        wm = context.window_manager
+
+        if props.stop:
+            props.stop = False
+            props.active = False
+            wm.event_timer_remove(self._timer)
+            #self.cancel(context)
+            self.report({'WARNING'}, f"Cancelling! Code: {props.fail}")
+            return {'CANCELLED'}
+
+        if not props.active:
+            thread = threading.Thread(target=download_file_from_google_drive_blank)
+            thread.start()
+            #bpy.app.timers.register(download_file_from_google_drive_blank)
+
+        if props.finished:
+            props.active = False
+            props.finished=False
+            self.report({'INFO'}, 'Finished downloading!')
+            wm.event_timer_remove(self._timer)
+            bpy.context.area.tag_redraw()
+            return {'FINISHED'}
+
+        #if event.type in {'RIGHTMOUSE', 'ESC'}:
+            #self.cancel(context)
+            #return {'CANCELLED'}
+
+        if event.type == 'TIMER':
+            wm.name = wm.name
+            #props.var = (props.var + 0.1) % 1
+            bpy.context.area.tag_redraw()
+            # change theme color, silly!
+
+        if props.stage == 'Downloading...':
+            props.var = round(time.time(), 1) % 1
+
+        if props.stage == 'Moving...':
+            if os.stat(props.newpath)[6] == 0:
+                props.var = 0.0
+            else:
+                props.var = props.size/os.stat(props.newpath)[6]
+
+        #if time.time() - self.time > 5:
+            #return {'CANCELLED'}
+
+            #context.my_progress 
+        #bpy.context.area.tag_redraw()
+        return {'PASS_THROUGH'}
+
+    def execute(self, context):
+        props = bpy.context.scene.trifecta_updateprops
+        props.stage = 'Downloading...'
+        props.id = self.id
+        props.filepath = self.filepath
+        props.operation = self.operation
+        wm = context.window_manager
+        self._timer = wm.event_timer_add(0.1, window=context.window)
+        self.time = time.time()
+        wm.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+    
+    def invoke(self, context, event):
+        if self.operation == 'ZIP':
+            return context.window_manager.invoke_props_dialog(self)
+        return self.execute(context)
+        #context.window_manager.invoke
+    
+    def draw(self, context):
+        layout = self.layout
+        layout.row().label(text='farp')
+        layout.prop(context.scene, 'trifectarigs')
+        return None
+
+bpyClasses = [HISANIM_PT_UPDATER,
+              HISANIM_OT_CLSUPDATE,
+              HISANIM_OT_ALLCLSUPDATE,
+              HISANIM_OT_MERCUPDATE,
+              HISANIM_OT_HECTORISUPDATE,
+              HISANIM_OT_ADDONUPDATER, 
+              HISANIM_OT_ECCENTRICUPDATE,
+              TRIFECTA_OT_downloader,
+              updateProps
+              ]
 
 def register():
     for operator in bpyClasses:
         bpy.utils.register_class(operator)
+    bpy.types.Scene.trifecta_updateprops = PointerProperty(type=updateProps)
+    bpy.types.Scene.my_progress = FloatProperty(default=0.0, name='ffff')
 def unregister():
     for operator in bpyClasses:
         bpy.utils.unregister_class(operator)
+    del bpy.types.Scene.trifecta_updateprops

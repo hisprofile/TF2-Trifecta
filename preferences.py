@@ -351,17 +351,23 @@ class HISANIM_OT_ADDRIG_2(Operator, ImportHelper):
         maxlen=255,  # Max internal buffer length, longer would be clamped.
     )
 
+    filename: StringProperty()
+
     def invoke(self, context, event):
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
     def execute(self, context):
-        print(os.path.join(self.filepath,'scout.blend'))
-        if not os.path.isfile(os.path.join(self.filepath,'scout.blend')):
+        filepath = self.filepath
+        filename = self.filename
+        if filename != '':
+            filepath = filepath[:-len(self.filename)]
+        if not os.path.isfile(os.path.join(filepath,'scout.blend')):
             self.report({'ERROR'}, 'The folder you have chosen does not contain the nine rigs inside!')
             return {'CANCELLED'}
         prefs = context.preferences.addons[__package__].preferences
         new = prefs.rigs.add()
+        new.name = 'Rigs'
         new.path = self.filepath
         prefs.rigsindex = len(prefs.rigs) - 1
         enumRigs()
@@ -430,6 +436,7 @@ class PREF_OT_pathhelp(Operator):
     def execute(self, context):
         return {'FINISHED'}
 
+
 classes = [HISANIM_UL_ASSETS,
         HISANIM_UL_RIGS,
         AssetPaths,
@@ -444,7 +451,9 @@ classes = [HISANIM_UL_ASSETS,
         HISANIM_OT_DETECTPATH,
         HISANIM_OT_PULLPATH,
         PREF_OT_pathhelp,
-        HISANIM_OT_BATCHADD]
+        HISANIM_OT_BATCHADD,
+        ]
+
 
 
 def register():

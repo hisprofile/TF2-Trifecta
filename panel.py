@@ -650,8 +650,9 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
         col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
         col.row().prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
         col.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
-        state = context.scene.hisanimvars.noKeyStatus
-        col.row().prop(context.scene.hisanimvars, 'noKeyStatus', text='', icon='HIDE_OFF' if state else 'HIDE_ON')
+        #state = context.scene.hisanimvars.noKeyStatus
+        col.row().label(text='', icon='BLANK1')
+        #col.row().prop(context.scene.hisanimvars, 'noKeyStatus', text='', icon='HIDE_OFF' if state else 'HIDE_ON')
         #col.row().operator('hisanim.randomizeface', text='', icon='RNDCURVE')
         col.row().operator('hisanim.resetface', icon='LOOP_BACK', text='')
         row = box.row(align=True)
