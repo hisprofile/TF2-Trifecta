@@ -74,7 +74,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
             if version[0] == 4:
                 row.progress(text='', type='RING', factor=props.var)
             else:
-                row.label(text='...')
+                row.label(text='.'*int(((time.time()*3)%3) + 1))
         else:
             if version[0] == 4:
                 layout.row().progress(text="", factor=get_day_factor(), type='BAR')
@@ -100,8 +100,6 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         box = layout.box()
         box.label(text='Download Rigs')
         op = box.row().operator('trifecta.update', text='Download Rigs', icon_value=icons.id('tfupdater'))
-        op.id = '1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj'
-        op.filepath = addon_fp
         op.operation = 'ZIP'
         box.row().prop(props, 'newRigEntry')
         if props.newRigEntry:
@@ -443,7 +441,7 @@ class TRIFECTA_OT_downloader(Operator):
                     bpy.context.area.tag_redraw()
                 else:
                     return {'PASS_THROUGH'}
-
+            props.updateAll = False
             self.report({'INFO'}, 'Finished downloading!')
             wm.event_timer_remove(self._timer)
             bpy.context.area.tag_redraw()
@@ -498,15 +496,17 @@ class TRIFECTA_OT_downloader(Operator):
             new.name = props.newRigName
             new.path = props.newRigPath
             context.scene.trifectarigs = props.newRigName
-            props.newRigEntry = False
+            props.newRigEntry = False   
             props.newRigName = 'Rigs'
             props.newRigPath = ''
+
+        elif self.operation == 'ZIP':
+            pass
         
         elif self.updateAll:
             if props.tf2ColPath == '':
                 self.report({'ERROR'}, 'Add a path to install to!')
                 return {'CANCELLED'}
-            
             props.updateAll = True
             root = Path(props.tf2ColPath)
             assets = prefs.hisanim_paths
