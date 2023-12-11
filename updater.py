@@ -61,6 +61,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
     bl_region_type = 'WINDOW'
     bl_context = 'scene'
     def draw(self, context):
+        version = bpy.data.version
         addon_fp = os.path.abspath(Path(__file__).parent)
         props = bpy.context.scene.trifecta_updateprops
         layout = self.layout
@@ -70,9 +71,15 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
             row.label(text=str(format_size(props.size)))
             if props.updateAll:
                 row.label(text=f'{list(ids.keys())[props.iter].title()}, {props.iter + 1}/14')
-            row.progress(text='', type='RING', factor=props.var)
+            if version[0] == 4:
+                row.progress(text='', type='RING', factor=props.var)
+            else:
+                row.label(text='...')
         else:
-            layout.row().progress(text="", factor=get_day_factor(), type='BAR')
+            if version[0] == 4:
+                layout.row().progress(text="", factor=get_day_factor(), type='BAR')
+            else:
+                layout.row().label(text='You should update to 4.0 ...')
         box = layout.box()
         box.label(text='Update Class Cosmetics')
         id_items = ids.items()
