@@ -14,22 +14,6 @@ files = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'snip
 classes = mercdeployer.classes
 allclasses = ['allclass', 'allclass2', 'allclass3']
 
-ids = {
-    'allclass': '1XxOCordVSxw2kal5ujeOd_wp5dcQ7RKo',
-    'allclass2' : '1RnemK8RV-J3Onzc1fMBEVf0uon0NSXtm',
-    'allclass3': '1rT_Z5o9g8IF-eALfDIIdjWB_n_03RJYm',
-    'scout': '1TS6KGbE8jKtIremS_4Go3T1eXyajifKu',
-    'solder': '1c4D0_RueeuRkAj34JPmHl7T8F6GG91Yc',
-    'pyro': '1cAP7NY1x_IHVQQtnWwjFNstQKjXp-Qlu',
-    'demo': '1p2Cu9wfxbentYMVKGdgnJuaMpT7db68j',
-    'heavy': '1JjqQXDKuDXGDkLvMvshojppd1IbNMij-',
-    'engineer': '1c8jyJlD4VknD2RfexXa6owV_kaKOExQO',
-    'medic': '1VQvixt9pW85zMafkuhsVZaZtocivy_zH',
-    'sniper': '1VMCOr8aeaJhTk2xivlsnC55DaUpLoqJV',
-    'spy': '1dhANUyTvy8ylOFUBEKCxZo11BE-IO8L3',
-    'weapons': '12WyUdeVFIvS_IM-RkKHUP-Fc4kzoGZwa',
-}
-
 def format_size(size_in_bytes):
     """
     Convert size in bytes to a human-readable format.
@@ -62,11 +46,6 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         op.id = '1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj'
         op.filepath = addon_fp
         op.operation = 'ZIP'
-        op = layout.row().operator('trifecta.update')
-        op.id = ids['scout']
-        op.asset = 'scout'
-        op.filepath = addon_fp
-        op.operation = 'BLEND'
         row = layout.row()
         row.alert = True
         row.label(text='Updating assets has been temporarily removed.')
@@ -416,7 +395,8 @@ def download_file_from_google_drive_blank():
 
         ### Download Properties ###
         url = "https://docs.google.com/uc?export=download"
-        file_id = props.id
+        file_id = '1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj'
+        destination = os.path.join(props.filepath, 'rigs.zip')
         chunk_size=32768
         session = requests.Session()
         params = {'id': file_id, 'confirm': 1}
@@ -428,16 +408,6 @@ def download_file_from_google_drive_blank():
             props.stop = True
             props.fail = response.status_code
             return None
-        
-        if props.operation == 'ZIP':
-            rigs = prefs.rigs[scn.trifectarigs]
-            destination = os.path.join(rigs.path, 'rigs.zip')
-            folder = Path(destination).parent
-
-        if props.operation == 'BLEND':
-            destination = prefs.hisanim_paths[props.asset].path
-            folder = Path(destination).parent
-
         with open(destination, "wb") as f:
             for i, chunk in enumerate(response.iter_content(chunk_size)):
                     if chunk:  # filter out keep-alive new chunks
@@ -450,11 +420,25 @@ def download_file_from_google_drive_blank():
         f.close()
         props.size = os.stat(destination)[6]
         if props.operation == 'ZIP': # ZIP is alias for downloading rig sets
+            props.stage = 'Moving...'
+            rigs = prefs.rigs[scn.trifectarigs]
+            props.file = os.path.join(rigs.path, 'rigs.zip')
+            file = destination
+            newpath = Path(rigs.path)
+
+            if Path(props.file).exists():
+                os.remove(Path(props.file))
+
+            file = shutil.move(destination, newpath)
+
             props.stage = 'Extracting...'
-            zipfile.ZipFile(destination).extractall(folder)
+            zipfile.ZipFile(file).extractall(newpath)
+
             props.stage = 'Removing...'
-            time.sleep(0.2)
-            os.remove(destination)
+            os.remove(file)
+        
+        if props.operation == 'BLEND':
+            prefs.hisanim_paths[props.asset]
 
         props.finished = True
     except:
@@ -485,8 +469,6 @@ def save_response_content(response, destination, chunk_size):
     destination = '...'
     for i, chunk_size in download_file_from_google_drive(file_id, destination):
         print(i, chunk_size)'''
-
-
 
 class updateProps(PropertyGroup):
     id: StringProperty(name='ID')
