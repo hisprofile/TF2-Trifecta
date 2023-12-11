@@ -107,10 +107,14 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
             box.row().prop(props, 'newRigPath')
 
         box = layout.box()
+        box.label(text='Install TF2 Collection')
         op = box.row().operator('trifecta.update', text='Install TF2 Collection', icon_value=icons.id('tfupdater'))
         op.updateAll = True
         box.row().label(text='Place path in an empty folder.')
-        box.row().prop(props, 'tf2ColPath')
+        row = box.row()
+        row.alignment = 'EXPAND'
+        row.label(text='TF2 Collection Path:')
+        row.prop(props, 'tf2ColPath', text='')
         box.row().prop(props, 'tf2ColRig')
         row = layout.row()
         row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
@@ -470,6 +474,7 @@ class TRIFECTA_OT_downloader(Operator):
     def execute(self, context):
         props = bpy.context.scene.trifecta_updateprops
         prefs = context.preferences.addons[__package__].preferences
+        assets = prefs.hisanim_paths
         thread = threading.Thread(target=update_masterjson)
         thread.start()
         if props.newRigEntry and self.operation == 'ZIP':
@@ -509,7 +514,6 @@ class TRIFECTA_OT_downloader(Operator):
                 return {'CANCELLED'}
             props.updateAll = True
             root = Path(props.tf2ColPath)
-            assets = prefs.hisanim_paths
             rigs = prefs.rigs
             for merc in mercs:
                 #if not eval(f'self.{merc}'):
@@ -560,6 +564,9 @@ class TRIFECTA_OT_downloader(Operator):
         props.stage = 'Downloading...'
         props.iter = 0
         props.id = self.id if self.operation == 'BLEND' else self.rigs
+        if self.operation == 'BLEND' and assets.get(self.asset) == None:
+            self.report({'ERROR'}, f'No asset added for {self.asset}!')
+            return {'CANCELLED'}
         props.filepath = self.filepath
         props.operation = self.operation
         props.asset = self.asset
@@ -571,12 +578,17 @@ class TRIFECTA_OT_downloader(Operator):
         return {'RUNNING_MODAL'}
 
     def invoke(self, context, event):
+        prefs = context.preferences.addons[__package__].preferences
+        rigs = prefs.rigs
+        props = bpy.context.scene.trifecta_updateprops
         if self.operation == 'ZIP':# or self.updateAll:
+            if not props.newRigEntry and len(rigs) == 0:
+                self.report({'ERROR'}, "Make a new set of rigs!")
+                return {'CANCELLED'}
             return context.window_manager.invoke_props_dialog(self)
         if self.updateAll:
             return context.window_manager.invoke_confirm(self, event)
         return self.execute(context)
-        #context.window_manager.invoke
     
     def draw(self, context):
         props = bpy.context.scene.trifecta_updateprops
@@ -587,7 +599,6 @@ class TRIFECTA_OT_downloader(Operator):
             for asset in list(ids.keys())[:-1]:
                 col.row().prop(self, asset, text=asset.title(), toggle=True)
             return None'''
-
 
         if self.operation == 'ZIP':
             layout.row().label(text='Choose a set of rigs to download.')
