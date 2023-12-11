@@ -104,6 +104,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         box = layout.box()
         op = box.row().operator('trifecta.update', text='Install TF2 Collection', icon_value=icons.id('tfupdater'))
         op.updateAll = True
+        box.row().label(text='Place path in an empty folder.')
         box.row().prop(props, 'tf2ColPath')
         box.row().prop(props, 'tf2ColRig')
         row = layout.row()
