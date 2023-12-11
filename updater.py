@@ -1,6 +1,6 @@
 import bpy, os, shutil, shutil, glob, json, zipfile, threading, time, requests
 from pathlib import Path
-from . import dload, icons, mercdeployer, preferences
+from . import icons, mercdeployer, preferences
 from urllib import request
 from math import sin
 from bpy.types import Operator, PropertyGroup
