@@ -65,11 +65,7 @@ Deploy any of the nine mercs into your scene. You can choose between an advanced
 # Bonemerge
 Attach cosmetics to a class by choosing a target armature and and selecting the cosmetics to attach.
 
-<<<<<<< HEAD
 <img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/a0c09a69-b839-462c-ab70-c8370f8fa28b' width='400'>
-=======
-<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/0324d0ee-a41e-4d85-8e2b-e51579bcb6cc' width='400'>
->>>>>>> ae862abcdc8041fef82bbb799a277250c182d53d
 
 # Face Poser
 (Only supported for my rigs!)
