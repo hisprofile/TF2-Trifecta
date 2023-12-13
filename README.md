@@ -99,12 +99,41 @@ Not all cosmetics are named correctly yet! Please report a cosmetic you wish to 
 
 Deploy any of the nine mercs into your scene. You can choose between an IK rig or a taunt compatible (FK) rig. You can read on how to import animations onto a rig in the [Source2Blender](https://source2blender.readthedocs.io/en/latest/TF2Vanilla/Animations.html) docs.
 
-<img src='https://user-images.githubusercontent.com/41131633/204819565-97e4fced-13b9-43b9-9cb7-669bf7eec4eb.png' width='400'>
+<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/661c0183-3c60-40c0-a73f-10959cc14361' width='400'>
 
 # Bonemerge
 Attach cosmetics to a class by choosing a target armature and and selecting the cosmetics to attach.
 
-<img src='https://user-images.githubusercontent.com/41131633/204821150-185070f0-84d7-4878-8b13-7dcb2bdce58c.png' width='400'>
+<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/a0c09a69-b839-462c-ab70-c8370f8fa28b' width='400'>
+
+# Face Poser
+(Only supported for my rigs!)
+The Face Poser tool is designed to control faces using my HWM scheme. the control layout is inspired by SFM, and functions similarly as well.
+
+## Face Poser
+<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/89f10e43-0ad0-4751-af06-9c5414aecccc'>
+
+The tool supports both stereo and mono flexing, and uses a weight slider for stereo flexes. Stereo flexes use one slider who's value will always remain at 0. Any value given to the slider will be taken as additive and applied to the flex controllers they control.
+
+The circular button is a shortcut for the auto-keyframing option. The diamond creates a keyframe on all sliders on the current frame. `Upper`, `Mid` and `Lower` can be used to filter out sliders. Switching to `Shapekeys` view will show all undriven shapekeys. Using `Optimize Merc` will remove all drivers on the shape keys, giving a small boost in performance until you wish to restore facial movements. At which point you will press `Restore Merc`
+
+## Pose Library
+<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/221e3b9b-3aa9-4960-ad40-d944091e4303' height=200> <img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/7c2ef386-c2f5-4181-8cd0-ed33c4a96fd3' height=200>
+The Pose Library allows users to save and apply face pose combinations. This is very useful for fast lipsyncing or emotions. Upon applying a saved face pose, you can choose to keyframe the change. Enabling `Reset All` will reset the face before applying the pose. Enabling `Keyframe Unchanged` will keyframe the entire face, despite some areas not having been moved.
+
+## Face Randomizer & Lock List
+<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/0f11f9c9-d397-4909-aca8-8ec76da9bd60' width=300>
+
+The `Face Randomizer` does what the name says. However, the `Lock List` will prevent locked sliders from getting randomized. Find the slider you want to lock and press the lock icon,
+
+# Rigs
+There are three official rigs that can be used with Merc Deployer: Mine, Eccentric's and ThatLazyArtist's. All of them are the same except for how they control the face. And their core, they are all a Rigify rig.
+
+My set of rigs is meant to be controlled just like how you would control faces in SFM. Therefore, I say that my rigs are recommended for users with experience in SFM.
+
+Eccentric's rigs use a face panel with control points over the face, making it closer to the industrial standard for animating faces.
+
+ThatLazyArtist's use a face panel with sliders and switches off to the side. Although each slider may be vague in what part of the face controls, you can see the name of the slider in the top right corner.
 
 # Updating Files
 You can easily update The TF2 Collection and TF2-V3 by going to `Scene Properties > TF2 Trifecta Updater`

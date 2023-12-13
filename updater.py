@@ -61,7 +61,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
     bl_region_type = 'WINDOW'
     bl_context = 'scene'
     def draw(self, context):
-        version = bpy.data.version
+        version = bpy.app.version
         addon_fp = os.path.abspath(Path(__file__).parent)
         props = bpy.context.scene.trifecta_updateprops
         layout = self.layout
