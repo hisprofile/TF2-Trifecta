@@ -2,6 +2,8 @@ import bpy, os, glob, time
 from bpy_extras.io_utils import ImportHelper
 from pathlib import Path
 
+from . import updater, icons
+
 from bpy.props import (StringProperty, CollectionProperty,
                         IntProperty, EnumProperty,
                         BoolProperty, PointerProperty)
@@ -9,6 +11,31 @@ from bpy.types import (UIList, PropertyGroup,
                         AddonPreferences, Operator)
 names = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy', 'allclass2', 'allclass3', 'allclass', 'weapons']
 
+ids = {
+    'allclass': '1XxOCordVSxw2kal5ujeOd_wp5dcQ7RKo',
+    'allclass2' : '1RnemK8RV-J3Onzc1fMBEVf0uon0NSXtm',
+    'allclass3': '1rT_Z5o9g8IF-eALfDIIdjWB_n_03RJYm',
+    'scout': '1TS6KGbE8jKtIremS_4Go3T1eXyajifKu',
+    'soldier': '1c4D0_RueeuRkAj34JPmHl7T8F6GG91Yc',
+    'pyro': '1cAP7NY1x_IHVQQtnWwjFNstQKjXp-Qlu',
+    'demo': '1p2Cu9wfxbentYMVKGdgnJuaMpT7db68j',
+    'heavy': '1JjqQXDKuDXGDkLvMvshojppd1IbNMij-',
+    'engineer': '1c8jyJlD4VknD2RfexXa6owV_kaKOExQO',
+    'medic': '1VQvixt9pW85zMafkuhsVZaZtocivy_zH',
+    'sniper': '1VMCOr8aeaJhTk2xivlsnC55DaUpLoqJV',
+    'spy': '1dhANUyTvy8ylOFUBEKCxZo11BE-IO8L3',
+    'weapons': '12WyUdeVFIvS_IM-RkKHUP-Fc4kzoGZwa',
+    'standard-rigs': '1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj'
+}
+
+def format_size(size_in_bytes):
+    """
+    Convert size in bytes to a human-readable format.
+    """
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if size_in_bytes < 1024.0:
+            return f"{size_in_bytes:.2f} {unit}"
+        size_in_bytes /= 1024.0
 
 def enumRigs(a = None, b = None):
     prefs = bpy.context.preferences.addons[__package__].preferences
@@ -160,6 +187,8 @@ class hisanimFilePaths(AddonPreferences):
         prefs = bpy.context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
         rigs = prefs.rigs
+        version = bpy.app.version
+        props = context.scene.trifecta_updateprops
         remaining = [i for i in names if paths.get(i) == None]
         layout = self.layout
         layout = layout.box()
@@ -207,6 +236,42 @@ class hisanimFilePaths(AddonPreferences):
         col.operator('hisanim.removerig', text='', icon='REMOVE')
         if len(prefs.hisanim_paths) != 0:
             layout.prop(rigs[prefs.rigsindex], 'path', text='Path')
+
+        if props.active:
+            row = layout.row()
+            row.label(text=props.stage)
+            row.label(text=str(format_size(props.size)))
+            if props.updateAll:
+                row.label(text=f'{list(ids.keys())[props.iter].title()}, {props.iter + 1}/14')
+            if version[0] > 3:
+                row.progress(text='', type='RING', factor=props.var)
+            else:
+                row.label(text='.'*int(((time.time()*3)%3) + 1))
+            layout.row().label(text='Do not close this window!')
+        else:
+            pass
+
+        box = layout.box()
+        box.label(text='Install TF2 Collection')
+        op = box.row().operator('trifecta.update', text='Install TF2 Collection', icon_value=icons.id('tfupdater'))
+        op.updateAll = True
+        box.row().label(text='Place path in an empty folder.')
+        row = box.row()
+        row.alignment = 'EXPAND'
+        row.label(text='TF2 Collection Path:')
+        row.prop(props, 'tf2ColPath', text='')
+        box.row().prop(props, 'tf2ColRig')
+
+        box = layout.box()
+        box.label(text='Download Rigs')
+        op = box.row().operator('trifecta.update', text='Download Rigs', icon_value=icons.id('tfupdater'))
+        op.operation = 'ZIP'
+        box.row().prop(props, 'newRigEntry')
+        if props.newRigEntry:
+            box.row().prop(props, 'newRigName')
+            box.row().prop(props, 'newRigPath')
+
+        
 
 class HISANIM_OT_BATCHADD(Operator):
     bl_idname = 'trifecta.batchadd'

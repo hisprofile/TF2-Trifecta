@@ -266,11 +266,13 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         # this mostly pertains to blu switching. any material added has been switched to BLU and will therefore be skipped.
         matblacklist = []
         # iterate through collection of objects
+
+        if (goto := context.scene.get('MERC_COL')) == None:
+            context.scene['MERC_COL'] = bpy.data.collections.new('Deployed Mercs')
+            context.scene.collection.children.link(context.scene['MERC_COL'])
+            goto = context.scene.get('MERC_COL')
+
         for obj in bpy.data.collections[justadded].objects:
-            if (goto := bpy.data.collections.get('Deployed Mercs')) == None:
-                # If the collection 'Deployed Mercs' does not exist yet, create it
-                bpy.context.scene.collection.children.link(bpy.data.collections.new('Deployed Mercs'))
-                goto = bpy.data.collections['Deployed Mercs']
             # link the current object to 'Deployed Mercs'
             goto.objects.link(obj)
 
@@ -289,9 +291,9 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             armature = armature.parent
 
         for i in armature.children_recursive:
-                if i.type != 'ARMATURE':
-                    continue
-                i.make_local().data.make_local()
+            if i.type != 'ARMATURE':
+                continue
+            i.make_local().data.make_local()
         armature.make_local().data.make_local()
 
         if (text := armature.get('rig_ui')) != None:
@@ -323,14 +325,11 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
 
                     if context.scene.hisanimvars.savespace: continue
 
-                    if Collapse(NODE, 'TF2 BVLG') == "continue":
-                        continue
+                    if Collapse(NODE, 'TF2 BVLG') == "continue": continue
 
-                    if Collapse(NODE, 'TF2 Diffuse') == "continue":
-                        continue
+                    if Collapse(NODE, 'TF2 Diffuse') == "continue": continue
 
-                    if Collapse(NODE, 'TF2 Eye') == "continue":
-                        continue
+                    if Collapse(NODE, 'TF2 Eye') == "continue": continue
                     # use existing images
                     if NODE.type == 'TEX_IMAGE':
                         ReuseImage(NODE, PATH + f'/{self.merc}.blend')

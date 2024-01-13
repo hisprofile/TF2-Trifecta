@@ -61,7 +61,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
     bl_region_type = 'WINDOW'
     bl_context = 'scene'
     def draw(self, context):
-        version = bpy.data.version
+        version = bpy.app.version
         addon_fp = os.path.abspath(Path(__file__).parent)
         props = bpy.context.scene.trifecta_updateprops
         layout = self.layout
@@ -122,7 +122,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         row = layout.row()
         row.prop(context.scene.hisanimvars, 'savespace')
         layout.row().prop(context.preferences.addons[__package__].preferences, 'quickswitch')
-    
+
 class HISANIM_OT_ADDONUPDATER(Operator):
     bl_idname = 'hisanim.addonupdate'
     bl_label = 'Update Addon'
@@ -203,7 +203,7 @@ class HISANIM_OT_ADDONUPDATER(Operator):
                 row = layout.row()
                 row.alert = True
                 row.label(icon='ERROR')
-                row.label(text='Blender may crash!')
+                row.label(text='Blender may crash! Be sure to restart Blender!')
         
         bpy.utils.register_class(HISANIM_OT_reloadAddon)
         bpy.utils.register_class(HISANIM_PT_tempPanel)
@@ -235,12 +235,17 @@ def download_file_from_google_drive_blank():
         time.sleep(0.5)
 
         ### Download Properties ###
-        url = "https://docs.google.com/uc?export=download"
+        #url = "https://docs.google.com/uc?export=download"
+        url = 'https://drive.usercontent.google.com/download'
         file_id = props.id
         chunk_size=32768
         session = requests.Session()
-        params = {'id': file_id, 'confirm': 1}
+        params = {'id': file_id, 'confirm': 't'}
         response = session.get(url, params=params, stream=True)
+
+        d = response
+
+
         wm = bpy.context.window_manager
 
         ### Start Download ###
@@ -303,7 +308,8 @@ def download_file_from_google_drive_blank():
         print(E)
 
         if props.operation == 'ZIP' and Path(destination).exists():
-            os.remove(destination)
+            #os.remove(destination)
+            pass
 
         if props.operation == 'BLEND':
             os.remove(destination)
@@ -457,9 +463,7 @@ class TRIFECTA_OT_downloader(Operator):
             tim = MAP(tim, -1, 1, 0.01, 0.08)
             props.var = (props.var + tim) % 1
             for area in bpy.context.screen.areas:
-                if area.type == 'PROPERTIES':
-                    area.tag_redraw()
-            # change theme color, silly!
+                area.tag_redraw()
 
         if props.stage == 'Moving...':
             print(os.stat(props.newpath)[6], props.newpath)
