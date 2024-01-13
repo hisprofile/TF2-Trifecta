@@ -320,8 +320,8 @@ class updateProps(PropertyGroup):
     id: StringProperty(name='ID')
     active: BoolProperty(default=False)
     file: StringProperty(name='File')
-    filepath:StringProperty(name='Filepath', subtype='FILE_PATH')
-    newpath: StringProperty(name='New path', subtype='FILE_PATH')
+    filepath:StringProperty(name='Filepath', subtype='DIR_PATH')
+    newpath: StringProperty(name='New path', subtype='DIR_PATH')
     finished: BoolProperty(default=False)
     stop:BoolProperty(default=False)
     fstop: BoolProperty(default=False)
@@ -344,8 +344,8 @@ class updateProps(PropertyGroup):
 
     newRigEntry: BoolProperty(default=False, name='Create New Rig-Set')
     newRigName: StringProperty(default='Rigs', name='Rig-Set Name')
-    newRigPath: StringProperty(default='', subtype='FILE_PATH', name='Rig-Set Path')
-    tf2ColPath: StringProperty(default='', subtype='FILE_PATH', name='TF2 Collection Path')
+    newRigPath: StringProperty(default='', subtype='DIR_PATH', name='Rig-Set Path')
+    tf2ColPath: StringProperty(default='', subtype='DIR_PATH', name='TF2 Collection Path')
     tf2ColRig: BoolProperty(default=False, name='Include Rigs')
     iter: IntProperty(default=0, max=13)
 
@@ -363,8 +363,8 @@ class TRIFECTA_OT_downloader(Operator):
     updateAll: BoolProperty(default=False)
     id: StringProperty(name='ID')
     file: StringProperty(name='File')
-    filepath:StringProperty(name='Filepath', subtype='FILE_PATH')
-    newpath: StringProperty(name='New path', subtype='FILE_PATH')
+    filepath:StringProperty(name='Filepath', subtype='DIR_PATH')
+    newpath: StringProperty(name='New path', subtype='DIR_PATH')
     asset: StringProperty(default='')
     operation: EnumProperty(items=(
         ('BLEND', '', '', 0),

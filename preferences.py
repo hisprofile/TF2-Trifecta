@@ -97,7 +97,7 @@ class rigs(PropertyGroup):
     )
     path: StringProperty(
         default = '',
-        subtype = 'FILE_PATH'
+        subtype = 'DIR_PATH'
     )
 
 class HISANIM_UL_ASSETS(UIList):
@@ -278,7 +278,7 @@ class HISANIM_OT_BATCHADD(Operator):
     bl_label = 'Batch Add'
     bl_description = ''
 
-    filepath: StringProperty(name='filepath', subtype='FILE_PATH')
+    filepath: StringProperty(name='filepath', subtype='DIR_PATH')
 
     def execute(self, context):
         prefs = bpy.context.preferences.addons[__package__].preferences
@@ -417,16 +417,14 @@ class HISANIM_OT_ADDRIG_2(Operator, ImportHelper):
     )
 
     filename: StringProperty()
+    directory: StringProperty()
 
     def invoke(self, context, event):
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
     def execute(self, context):
-        filepath = self.filepath
-        filename = self.filename
-        if filename != '':
-            filepath = filepath[:-len(self.filename)]
+        filepath = self.directory
         if not os.path.isfile(os.path.join(filepath,'scout.blend')):
             self.report({'ERROR'}, 'The folder you have chosen does not contain the nine rigs inside!')
             return {'CANCELLED'}
