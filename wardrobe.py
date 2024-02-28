@@ -88,6 +88,14 @@ def link(a, b, c): # get a class from TF2-V3
     
     bpy.ops.wm.link(filename=object, directory=directory)
 
+def getRigs(self, context):
+    prefs = context.preferences.addons[__package__].preferences
+    paths = prefs.hisanim_paths
+    rigs = prefs.rigs
+
+    rig_list = [(rig.name, rig.name, '', '', n) for n, rig in enumerate(rigs)]
+    return rig_list
+
 class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with a button
     bl_idname = 'hisanim.lightwarps'
     bl_label = 'Use Lightwarps (TF2 Style)'
@@ -260,6 +268,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         name = 'Stages',
         default='NONE'
     )
+    rigs: EnumProperty(items=getRigs, name='Rigs')
     merc: StringProperty(default='')
     toggle_mat: BoolProperty(default=False)
     needs_override: BoolProperty()
@@ -360,17 +369,14 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             self.report({'ERROR'}, f'Entry for "{CLASS}" exists, but the path is invalid!')
             return {'CANCELLED'}
         cos = COSMETIC
-        try:
-            with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
-                data_to.objects = [cos]
-        except:
-            self.report({'ERROR'}, f'.blend file for "{CLASS}" entry is corrupt/unable to be opened! Redownload!')
-            return {'CANCELLED'}
+        with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
+            data_to.objects = [cos]
+            
         list = [i.name for i in D.objects if not "_ARM" in i.name and cos in i.name]
 
-        try:
-            justadded = D.objects[sorted(list)[-1]]
-        except:
+        justadded = data_to.objects[0]
+
+        if justadded == None:    
             self.report({'ERROR'}, f'.blend file for "{CLASS}" entry is corrupt/unable to be opened! Redownload!')
             return {'CANCELLED'}
         skins = justadded.get('skin_groups')
@@ -598,7 +604,7 @@ class HISANIM_OT_relocatePaths(bpy.types.Operator):
                 if paths.get(filesDict[file]) == None: continue
                 lib.filepath = paths[filesDict[file]].path
                 lib.reload()
-        if (path := prefs.rigs.get(context.scene.trifectarigs)) == None: return {'FINISHED'}
+        if (path := prefs.rigs.get(context.scene.hisanimvars.rigs)) == None: return {'FINISHED'}
         for merc in TF2_V3:
             if (lib := bpy.data.libraries.get(merc)) != None:
                 lib.filepath = os.path.join(path.path, merc)

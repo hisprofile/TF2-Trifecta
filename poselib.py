@@ -2,8 +2,9 @@ import bpy, json, os
 from bpy.props import *
 from bpy.types import (Operator, PropertyGroup)
 from pathlib import Path
-from . import faceposer
-get_frame = faceposer.get_frame
+
+def get_frame(context):
+    return context.scene.frame_float if context.scene.show_subframe else context.scene.frame_current
 
 def jsonPath() -> str: # Get the .json library on the users machine
     addonPath = Path(__file__)
@@ -8965,30 +8966,6 @@ class POSELIB_OT_apply(Operator):
 
         props.dictVisemes.clear()
         return {'FINISHED'}
-    
-def textBox(self, sentence, icon='NONE', line=56):
-    layout = self.layout
-    sentence = sentence.split(' ')
-    mix = sentence[0]
-    sentence.pop(0)
-    broken = False
-    while True:
-        add = ' ' + sentence[0]
-        if len(mix + add) < line:
-            mix += add
-            sentence.pop(0)
-            if sentence == []:
-                layout.row().label(text=mix, icon='NONE' if broken else icon)
-                return None
-
-        else:
-            layout.row().label(text=mix, icon='NONE' if broken else icon)
-            broken = True
-            mix = sentence[0]
-            sentence.pop(0)
-            if sentence == []:
-                layout.row().label(text=mix)
-                return None
 
 classes = (
     dictVis,

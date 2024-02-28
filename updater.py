@@ -30,6 +30,15 @@ ids = {
     'standard-rigs': '1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj'
 }
 
+class SmallDownload(Exception):
+    "Download too small, assuming download failed!"
+
+    def __init__(self, message="Download too small, assuming download failed!"):
+        self.message = message
+        super().__init__(self.message)
+
+    pass
+
 def MAP(x,a,b,c,d, clamp=None):
     y=(x-a)/(b-a)*(d-c)+c
     
@@ -211,22 +220,27 @@ class HISANIM_OT_ADDONUPDATER(Operator):
         return {'FINISHED'}
     
 def update_masterjson():
-    url = "https://docs.google.com/uc?export=download"
-    id = '1sdpUfuXf9NyEAuu0_TVdaAmSoFlKvUOm'
-    session = requests.Session()
-    params = {'id': id, 'confirm': 1}
-    response = session.get(url, params=params, stream=True)
+    #url = "https://docs.google.com/uc?export=download"
+    #id = '1sdpUfuXf9NyEAuu0_TVdaAmSoFlKvUOm'
+    #session = requests.Session()
+    #params = {'id': id, 'confirm': 1}
+    #response = session.get(url, params=params, stream=True)
+    file = request.urlopen('https://raw.githubusercontent.com/hisprofile/TF2-Trifecta/main/master.json')
+    file = file.read()
     destination = Path(os.path.join(os.path.dirname(__file__), 'master.json'))
-    with open(destination, "wb") as f:
-        for i, chunk in enumerate(response.iter_content(32768)):
-            if chunk:  # filter out keep-alive new chunks
-                f.write(chunk)
+    with open(destination, "w+") as f:
+        #for i, chunk in enumerate(response.iter_content(32768)):
+            #if chunk:  # filter out keep-alive new chunks
+                #f.write(chunk)
+        f.write(file.decode())
+    f.close()
 
     return None
 
-def download_file_from_google_drive_blank():
+def download_file_from_google_drive_blank(context):
     try:
-        C = bpy.context
+        #C = bpy.context
+        C = context # safer to use context from operator
         scn = C.scene
         props = scn.trifecta_updateprops
         prefs = C.preferences.addons[__package__].preferences
@@ -240,11 +254,10 @@ def download_file_from_google_drive_blank():
         file_id = props.id
         chunk_size=32768
         session = requests.Session()
-        params = {'id': file_id, 'confirm': 't'}
+        params = {'id': file_id, 'confirm': 't', 'authuser': 0}
         response = session.get(url, params=params, stream=True)
 
         d = response
-
 
         wm = bpy.context.window_manager
 
@@ -255,17 +268,22 @@ def download_file_from_google_drive_blank():
             return None
         
         if props.operation == 'ZIP':
-            rigs = prefs.rigs[scn.trifectarigs]
+            rigs = prefs.rigs[scn.hisanimvars.rigs]
             destination = os.path.join(rigs.path, 'rigs.zip')
-            folder = Path(destination).parent
+            folder = rigs.path
+            
+            rigs_backup = os.path.join(folder, 'bak')
+            os.makedirs(rigs_backup)
+            for file in glob.glob('*.blend', root_dir=folder):#os.listdir(folder):
+                shutil.move(os.path.join(folder, file), os.path.join(folder, 'bak', file))
 
         if props.operation == 'BLEND':
             destination = prefs.hisanim_paths[props.asset].path
-            folder = Path(destination).parent
+            folder = os.path.dirname(destination)
             if Path(destination).exists():
                 bak = shutil.move(destination, os.path.join(folder, 'bak.blend'))
 
-        with open(destination, "wb") as f:
+        with open(destination, "wb") as file:
             for i, chunk in enumerate(response.iter_content(chunk_size)):
                     if props.fstop:
                         raise
@@ -275,8 +293,19 @@ def download_file_from_google_drive_blank():
                         except Exception as e:
                             print(e)
                             pass
-                        f.write(chunk)
-        f.close()
+                        file.write(chunk)
+        file.close()
+
+        filesize = os.stat(destination)[6]
+
+        if filesize < 2_000_000:
+            raise SmallDownload
+
+        '''
+        If the file size is less than 2mb, then it's probably gone to waste. Obviously the best thing to do would be to verify via
+        checksum, but I don't really have a way to implement that in way that's constantly up to date with the files.
+        '''
+
         props.size = os.stat(destination)[6]
         if props.operation == 'ZIP': # ZIP is alias for downloading rig sets
             props.stage = 'Extracting...'
@@ -297,18 +326,28 @@ def download_file_from_google_drive_blank():
             props.stage = 'Removing...'
             props.var = 1.0
             os.remove(destination)
+            shutil.rmtree(rigs_backup)
         
         if props.operation == 'BLEND' and bak != '':
             os.remove(bak)
         props.finished = True
+
+    #except SmallDownload:
+        #props.stop = True
+        #props.error = "Download too small, assuming download failed!"
+        #print(props.error)
+        #return None
 
     except Exception as E:
         props.stop = True
         props.error = str(E)
         print(E)
 
-        if props.operation == 'ZIP' and Path(destination).exists():
-            #os.remove(destination)
+        if props.operation == 'ZIP':# and Path(destination).exists():
+            os.remove(destination)
+            for file in os.listdir(rigs_backup):
+                shutil.move(os.path.join(rigs_backup, file), os.path.join(folder, file))
+            shutil.rmtree(rigs_backup)
             pass
 
         if props.operation == 'BLEND':
@@ -426,7 +465,7 @@ class TRIFECTA_OT_downloader(Operator):
 
         if not props.active:
             props.active = True
-            thread = threading.Thread(target=download_file_from_google_drive_blank)
+            thread = threading.Thread(target=download_file_from_google_drive_blank, args=(context,), daemon=True)
             thread.start()
 
         if props.finished:
@@ -479,7 +518,7 @@ class TRIFECTA_OT_downloader(Operator):
         props = bpy.context.scene.trifecta_updateprops
         prefs = context.preferences.addons[__package__].preferences
         assets = prefs.hisanim_paths
-        thread = threading.Thread(target=update_masterjson)
+        thread = threading.Thread(target=update_masterjson, daemon=True)
         thread.start()
         if props.newRigEntry and self.operation == 'ZIP':
             if props.newRigName == '':
@@ -504,7 +543,7 @@ class TRIFECTA_OT_downloader(Operator):
             new = prefs.rigs.add()
             new.name = props.newRigName
             new.path = props.newRigPath
-            context.scene.trifectarigs = props.newRigName
+            context.scene.hisanimvars.rigs = props.newRigName
             props.newRigEntry = False   
             props.newRigName = 'Rigs'
             props.newRigPath = ''
@@ -547,7 +586,7 @@ class TRIFECTA_OT_downloader(Operator):
                 new.name = 'rigs'
                 new.path = os.path.join(root, 'rigs')
                 preferences.enumRigs()
-                context.scene.trifectarigs = 'rigs'
+                context.scene.hisanimvars.rigs = 'rigs'
                 if not Path(os.path.join(root, 'rigs')).exists():
                     os.makedirs(os.path.join(root, 'rigs'))
 
@@ -598,18 +637,12 @@ class TRIFECTA_OT_downloader(Operator):
         props = bpy.context.scene.trifecta_updateprops
         layout = self.layout
 
-        '''if self.updateAll:
-            col = layout.column(align=True)
-            for asset in list(ids.keys())[:-1]:
-                col.row().prop(self, asset, text=asset.title(), toggle=True)
-            return None'''
-
         if self.operation == 'ZIP':
             layout.row().label(text='Choose a set of rigs to download.')
             layout.row().prop(self, 'rigs')
             if not props.newRigEntry:
                 layout.row().label(text='Choose a set of rigs to replace.')
-                layout.prop(context.scene, 'trifectarigs')
+                layout.prop(context.scene.hisanimvars, 'rigs')
 
 #class TRIFECTA_OT_updateAll(Operator):
     #bl_idname

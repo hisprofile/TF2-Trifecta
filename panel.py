@@ -2,7 +2,7 @@ import bpy
 from . import newuilist
 from bpy.types import (UIList)
 from bpy.props import *
-from . import faceposer
+from . import faceposer, icons
 
 def hasKey(obj, slider) -> bool:
         if not bpy.context.scene.hisanimvars.noKeyStatus: return False
@@ -310,6 +310,13 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             row = layout.row()
             row.alert = True
             row.label(text='Assets missing. Check preferences for info.', icon='ERROR')
+            op = row.operator('trifecta.textbox', text='', icon='QUESTION')
+            # you have no idea how many idiots don't understand this simple message. I'm adding hint box just for them.
+            # IF YOU DON'T KNOW HOW TO USE BLENDER, DON'T USE THE TF2 TRIFECTA
+            op.text = "You have assets missing in the TF2-Trifecta. Resolve this issue by going to the addon preferences and setting the paths to the missing assets."
+            op.icons = 'ERROR'
+            op.size = '60'
+            op.width=350
 
         if props.tools == 'MERC DEPLOYER':
             cln = ["IK", "FK"]
@@ -317,11 +324,11 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     'heavy', 'engineer', 'medic', 'sniper', 'spy']
             if len(prefs.rigs) > 0:
                 row = layout.row()
-                row.prop(context.scene, 'trifectarigs')
-                if context.scene.trifectarigs == '': return
+                row.prop(context.scene.hisanimvars, 'rigs')
+                if context.scene.hisanimvars.rigs == '': return
                 for i in mercs:
                     row = layout.box().row(align=True)
-                    row.label(text=i.title())
+                    row.label(text=i.title(), icon_value=icons.id(i))
                     for ii in cln:
                         if ii == 'FK':
                             row.alert=True
@@ -382,7 +389,16 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     row = layout.row()
                     row.alert = True
                     row.label(text="ThatLazyArtist's and Eccentric's rigs are not supported.")
+                    op = row.operator('trifecta.textbox', text='', icon='QUESTION')
+                    op.text = "The Faceposer tool was developed to mimic SFM's face posing UI, and only works on hisanimations' rigs. Eccentric's and ThatLazyArtist's rigs have a panel on the rigs themselves to pose the face. Enter \"Pose Mode\" and pose the face there!"
+                    op.size = '60'
+                    op.icons = 'NONE'
+                    op.width=350
                     layout.row().label(text='There is a face panel on the rig. Pose the face there!')
+                    box = layout.box()
+                    row = box.row(align=True)
+                    row.operator('hisanim.optimize', icon='MODIFIER_ON')
+                    row.operator('hisanim.restore', icon='MODIFIER_OFF')
                     return
 
 class WARDROBE_PT_SEARCH(bpy.types.Panel):
@@ -832,7 +848,7 @@ class FACEPOSER_PT_LOCKLIST(bpy.types.Panel):
         box.row().template_list('HISANIM_UL_LOCKSLIDER', 'Lock Sliders', props, 'sliders', props, 'sliderindex')
 
 def textBox(self, sentence, icon='NONE', line=56):
-    layout = self
+    layout = self.box().column()
     sentence = sentence.split(' ')
     mix = sentence[0]
     sentence.pop(0)

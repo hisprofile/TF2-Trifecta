@@ -59,10 +59,10 @@ def updatefaces(scn = None):
         data['flexcontrollers'] = {key[4:]: key for key in data.keys() if type(data[key]) == float}
 
     for i in mercdeployer.mercs:
-            if i in data.name:
-                props.merc = i
-                props.needs_override = False
-                break
+        if i in data.name:
+            props.merc = i
+            props.needs_override = False
+            break
     else:
         if data.get('merc'):
             props.merc = data['merc']
@@ -183,10 +183,10 @@ class HISANIM_OT_SLIDERESET(Operator):
                 if context.scene.tool_settings.use_keyframe_insert_auto:
                     for i in scn.activesliders:
                         if i.split:
-                            face.data.keyframe_insert(data_path=f'["{i.R}"]')
-                            face.data.keyframe_insert(data_path=f'["{i.L}"]')
+                            face.data.keyframe_insert(data_path=f'["{i.R}"]', frame=get_frame(context))
+                            face.data.keyframe_insert(data_path=f'["{i.L}"]', frame=get_frame(context))
                         else:
-                            face.data.keyframe_insert(data_path=f'["{i.name}"]')
+                            face.data.keyframe_insert(data_path=f'["{i.name}"]', frame=get_frame(context))
 
             for i in scn.activesliders:                
                 i.value = 0

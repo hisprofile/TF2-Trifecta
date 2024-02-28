@@ -42,12 +42,12 @@ def enumRigs(a = None, b = None):
     if prefs == None: return None
     rigs = prefs.rigs
 
-    bpy.types.Scene.trifectarigs = EnumProperty(
+    '''bpy.types.Scene.trifectarigs = EnumProperty(
         items=(
             (i.name, i.name, '', '', n) for n, i in enumerate(rigs)
         ),
         name = 'Rigs'
-    )
+    )'''
 
 class AssetPaths(PropertyGroup):
     def get_path(self):
@@ -184,7 +184,7 @@ class hisanimFilePaths(AddonPreferences):
     quickswitch: bpy.props.BoolProperty(default=True, options=set(), name='Quick Switch', description='Replace the tool dropdown with a set of buttons')
     
     def draw(self, context):
-        prefs = bpy.context.preferences.addons[__package__].preferences
+        prefs = context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
         rigs = prefs.rigs
         version = bpy.app.version
@@ -525,7 +525,6 @@ def register():
     prefs = bpy.context.preferences.addons[__package__].preferences
     if (p := prefs.hisanim_paths.get('TF2-V3')) != None:
         p.name = 'rigs'
-        print(p.name, 'success')
     if (p := prefs.hisanim_paths.get('rigs')) != None:
         new = prefs.rigs.add()
         new.name = p.name

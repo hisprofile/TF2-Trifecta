@@ -1,5 +1,6 @@
 import bpy
 import os
+from . import icons, panel
 
 global path
 global cln
@@ -15,42 +16,6 @@ def MAP(x,a,b,c,d, clamp=None):
         return min(max(y, c), d)
     else:
         return y
-
-def append(a, b):  # get a class from TF2-V3
-    blendfile = f'{bpy.context.preferences.addons[__package__].preferences.hisanim_paths["rigs"].path}/{a}.blend'
-    section = "/Collection/"
-    object = a + b
-
-    directory = blendfile + section
-
-    bpy.ops.wm.append(filename=object, directory=directory)
-
-
-def appendtext(a):  # add the .py script to add further control to faces
-    PATH = bpy.context.preferences.addons[__package__].preferences.rigs[bpy.context.scene.trifectarigs].path
-    blendfile = f'{PATH}/{a}.blend'
-    section = "/Text/"
-    object = f'{a}.py'
-
-    directory = blendfile + section
-    try:
-        text = bpy.data.texts[f'{a}.py']
-        text.use_fake_user = True
-    except:
-        try:
-            bpy.ops.wm.append(filename=object, directory=directory)
-        except:
-            return "cancelled"
-        try:
-            text = bpy.data.texts[f'{a}.py']
-            text.as_module()
-        except:
-            return "cancelled"
-        text.use_module = True
-        text.use_fake_user = True
-        bpy.data.texts.remove(text)
-    return {'FINISHED'}
-
 
 # iterate through every node and node group by using the "tree" method and removing said nodes
 def RemoveNodeGroups(a):
@@ -73,20 +38,6 @@ def NoUserNodeGroup(a):  # remove fake users from node groups
                 i.use_fake_user = False
             except:
                 pass
-
-
-def PurgeNodeGroups():  # delete unused node groups from the .blend file
-    for i in bpy.data.node_groups:
-        if i.users == 0:
-            bpy.data.node_groups.remove(i)
-    return {'FINISHED'}
-
-
-def PurgeImages():  # delete unused images
-    for i in bpy.data.images:
-        if i.users == 0:
-            bpy.data.images.remove(i)
-    return {'FINISHED'}
 
 
 def SetActiveCol(a=None):  # set the active collection
@@ -174,10 +125,15 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
     bl_description = 'Deploy a mercenary with a specified rig into your scene'
     bl_options = {'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        prefs = context.preferences.addons[__package__].preferences
+        return prefs.rigs.get(context.scene.hisanimvars.rigs) != None
+
     def execute(self, context):
         prefs = bpy.context.preferences.addons[__package__].preferences
         props = bpy.context.scene.hisanimvars
-        PATH = prefs.rigs[context.scene.trifectarigs].path
+        PATH = prefs.rigs[context.scene.hisanimvars.rigs].path
 
         if not os.path.exists(PATH):
             self.report({'ERROR'}, f'Entry for rigs exists, but the path does not exist!')
@@ -191,17 +147,27 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             self.report({'ERROR'}, f'Entry for rigs exists, but "{self.merc}.blend" could not be found inside!')
             return {'CANCELLED'}
         
-        if appendtext(self.merc) == "cancelled":
+        '''if appendtext(self.merc) == "cancelled":
             self.report(
                 {'ERROR'}, "Entry for rigs exists, but .blend file could not be found!")
-            return {'CANCELLED'}
+            return {'CANCELLED'}'''
         
+        merc_blend = os.path.join(PATH, f'{self.merc}.blend')
+        print(merc_blend)
+
         if context.scene.hisanimvars.savespace:  # if linking is enabled
-            try:
+            '''try:
                 link(os.path.join(PATH, f'{self.merc}.blend'),
                     self.merc + self.type, 'Collection')
             except:
-                self.report({'ERROR'}, f'.blend file for "{self.merc}" in rigs is corrupt! Redownload!')
+                self.report({'ERROR'}, f'.blend file for "{self.merc}" in rigs is corrupt! Redownload!')'''
+            
+            with bpy.data.libraries.load(merc_blend, link=True) as (data_from, data_to):
+                data_to.collections = [self.merc+self.type]
+            
+            if data_to.collections[0] == None:
+                self.report({'CANCELLED'}, f'.blend file for "{self.merc}" in rigs is corrupt! Redownload!')
+                return {'CANCELLED'}
 
             if (script := bpy.data.texts.get(f'{self.merc}.py')) != None:
                 script.as_module()
@@ -210,9 +176,8 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     self.report({'WARNING'}, "Unless you spawned Pyro, something went wrong. The face script failed to import, which is weird...")
 
             name = self.merc + self.type
-            bpy.data.objects.remove(bpy.data.objects[name])
-            bpy.context.scene.collection.children.link(
-                bpy.data.collections[name].make_local())
+
+            context.scene.collection.children.link(data_to.collections[0].make_local())
             
             '''
             This is to make everything but images and node groups localized. Everything must be localized in order,
@@ -225,7 +190,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             If all users of a data block attempting to be localized are ALL localized, then the linked data block will be deleted upon all localized users receiving their localized version of the data block.
             '''
 
-            for i in bpy.data.collections[name].objects:
+            for i in data_to.collections[0].objects:
                 if i.type != 'MESH':
                     continue
                 NEW = i.make_local()
@@ -235,19 +200,19 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                         mod.node_group.make_local()
                 NEW.data.make_local()
 
-            for i in bpy.data.collections[name].objects:
+            for i in data_to.collections[0].objects:
                 if i.type != 'MESH':
                     continue
                 for m in i.material_slots:
                     if m.material.library != None:
                         m.material.make_local()
 
-            for i in bpy.data.collections[name].objects:
+            for i in data_to.collections[0].objects:
                 if i.type != 'EMPTY':
                     continue
                 i.make_local()
 
-            armature = bpy.data.collections[name].objects[0]
+            armature = data_to.collections[0].objects[0]
             while armature.parent != None:  # get the absolute root of the objects
                 armature = armature.parent
             for i in armature.children_recursive:
@@ -256,10 +221,18 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 i.make_local().data.make_local()
             armature.make_local().data.make_local()
         else:
-            try:
-                append(self.merc, self.type)
-            except:
-                self.report({'ERROR'}, f'.blend file for "{self.merc}" in "rigs" is corrupt! Redownload!')
+            with bpy.data.libraries.load(merc_blend) as (data_from, data_to):
+                data_to.collections = [self.merc+self.type]
+            
+            if data_to.collections[0] == None:
+                self.report({'CANCELLED'}, f'.blend file for "{self.merc}" in rigs is corrupt! Redownload!')
+                return {'CANCELLED'}
+
+            if (script := bpy.data.texts.get(f'{self.merc}.py')) != None:
+                script.as_module()
+            else:
+                if self.merc != 'pyro':
+                    self.report({'WARNING'}, "Unless you spawned Pyro, something went wrong. The face script failed to import, which is weird...")
 
         # make a variable targeting the added collection of the character
         justadded = str(self.merc + self.type)
@@ -272,7 +245,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             context.scene.collection.children.link(context.scene['MERC_COL'])
             goto = context.scene.get('MERC_COL')
 
-        for obj in bpy.data.collections[justadded].objects:
+        for obj in data_to.collections[0].objects:
             # link the current object to 'Deployed Mercs'
             goto.objects.link(obj)
 
@@ -285,7 +258,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if not context.scene.hisanimvars.cosmeticcompatibility and obj['COSMETIC']:
                     bpy.data.objects.remove(obj)
                     continue
-        armature = bpy.data.collections[justadded].objects[0]
+        armature = data_to.collections[0].objects[0]
         
         while armature.parent != None:  # get the absolute root of the objects
             armature = armature.parent
@@ -300,14 +273,13 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             text.as_module()
 
         armature.location = bpy.context.scene.cursor.location # set the character to 3d cursor location
-        for obj in bpy.data.collections[justadded].objects: # go through the collection 
+        for obj in data_to.collections[0].objects: # go through the collection 
             for mat in obj.material_slots:
                 # if Save Space is enabled, this is useless as all material contents will be linked.
                 mat = mat.material
                 if mat in matblacklist:
                     continue
                 if context.scene.hisanimvars.bluteam:
-                    print('blue!')
                     if (red := mat.node_tree.nodes.get('REDTEX')) != None and (blu := mat.node_tree.nodes.get('BLUTEX')) != None:
                         getconnect = red.outputs[0].links[0].to_node
                         mat.node_tree.links.new(
@@ -336,7 +308,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 matblacklist.append(mat)
 
                  # relevant towards BLU. if the material has already been swapped to BLU, continue.
-        armature = bpy.data.collections[justadded].objects[0]
+        armature = data_to.collections[0].objects[0]
         while armature.parent != None:  # get the absolute root of the objects
             armature = armature.parent
         try:
@@ -385,9 +357,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
 
         print("DELETING")
         # delete  unused images and nodegroups.
-        PurgeNodeGroups()
-        PurgeImages()
-        PurgeNodeGroups()
         bpy.context.view_layer.active_layer_collection = bak
         bpy.ops.outliner.orphans_purge(do_recursive=True)
         return {'FINISHED'}
@@ -410,20 +379,49 @@ class MD_OT_hint(bpy.types.Operator):
         return context.window_manager.invoke_props_dialog(self, width=325)
     
     def draw(self, context):
-        from .poselib import textBox
-        textBox(self, '"New" rigs are made with Rigify, allowing for more extensive control over the armature with features like IK/FK swapping. "Legacy" rigs comprise of ONLY forward kinematics, and should only be used to apply taunts onto.', 'ARMATURE_DATA', 56)
-        textBox(self, 'When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure the most compatibility with cosmetics. When disabled, the higher-poly (A.K.A. SFM) bodygroups will be used instead.', 'OUTLINER_OB_ARMATURE', 50)
-        textBox(self, '''"Rimlight Strength" determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default.''', 'SHADING_RENDERED')
+        textBox = panel.textBox
+        textBox(self.layout, '"New" rigs are made with Rigify, allowing for more extensive control over the armature with features like IK/FK swapping. "Legacy" rigs comprise of ONLY forward kinematics, and should only be used to apply taunts onto.', 'ARMATURE_DATA', 56)
+        textBox(self.layout, 'When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure the most compatibility with cosmetics. When disabled, the higher-poly (A.K.A. SFM) bodygroups will be used instead.', 'OUTLINER_OB_ARMATURE', 50)
+        textBox(self.layout, '''"Rimlight Strength" determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default.''', 'SHADING_RENDERED')
 
     def execute(self, context):
         return {'FINISHED'}
 
-classes = [HISANIM_OT_LOADMERC, MD_OT_hint]
+
+class MD_MT_Menu(bpy.types.Menu):
+    bl_label = 'Merc Deployer'
+    bl_idname = 'VIEW3D_MT_merc_deployer'
+
+    def draw(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        layout = self.layout
+        layout.alignment = 'LEFT'
+        if len(prefs.rigs) < 1:
+            layout.row().label(text='No rigs added!')
+            return None
+        grid = layout.column_flow(columns=2, align=False)
+        for c in cln:
+            grid.label(text='New' if c == 'IK' else 'Legacy')
+            for merc in mercs:
+                op = grid.operator('hisanim.loadmerc', text=merc.title(), icon_value=icons.id(merc) if c == 'IK' else 0)
+                grid.alert = True
+                op.merc = merc
+                op.type = c
+
+def menu_func(self, context):
+    self.layout.menu(MD_MT_Menu.bl_idname, icon='FORCE_DRAG')
+
+classes = [HISANIM_OT_LOADMERC,
+           MD_OT_hint,
+           MD_MT_Menu,
+           ]
 
 def register():
     for i in classes:
         bpy.utils.register_class(i)
+    bpy.types.VIEW3D_MT_add.append(menu_func)
 
 def unregister():
+    bpy.types.VIEW3D_MT_add.remove(menu_func)
     for i in reversed(classes):
         bpy.utils.unregister_class(i)
