@@ -240,7 +240,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         matblacklist = []
         # iterate through collection of objects
 
-        if (goto := context.scene.get('MERC_COL')) == None:
+        if ((goto := context.scene.get('MERC_COL')) == None) or (context.scene.get('MERC_COL') not in context.scene.collection.children_recursive):
             context.scene['MERC_COL'] = bpy.data.collections.new('Deployed Mercs')
             context.scene.collection.children.link(context.scene['MERC_COL'])
             goto = context.scene.get('MERC_COL')
