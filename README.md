@@ -3,7 +3,7 @@
 Opening a whole new way to create TF2 art for the masses.
 
 # What is the TF2-Trifecta?
-The TF2-Trifecta is a combination of Wardrobe, Merc Deployer, and Bonemerge.
+The TF2-Trifecta is a multi-purpose tool to masterfully manipulate Team Fortress 2 assets.
 
 **Wardrobe** lets you index through a catalog of almost 10000 cosmetic files.
 
