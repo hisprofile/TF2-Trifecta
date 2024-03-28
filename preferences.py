@@ -234,7 +234,7 @@ class hisanimFilePaths(AddonPreferences):
         col = row.column(align=True)
         col.operator('hisanim.addrig', text='', icon='ADD')
         col.operator('hisanim.removerig', text='', icon='REMOVE')
-        if len(prefs.hisanim_paths) != 0:
+        if len(prefs.rigs) != 0:
             layout.prop(rigs[prefs.rigsindex], 'path', text='Path')
 
         if props.active:
@@ -271,14 +271,14 @@ class hisanimFilePaths(AddonPreferences):
             box.row().prop(props, 'newRigName')
             box.row().prop(props, 'newRigPath')
 
-        
 
-class HISANIM_OT_BATCHADD(Operator):
+class HISANIM_OT_BATCHADD(Operator, ImportHelper):
     bl_idname = 'trifecta.batchadd'
     bl_label = 'Batch Add'
     bl_description = ''
 
     filepath: StringProperty(name='filepath', subtype='DIR_PATH')
+    directory: StringProperty()
 
     def execute(self, context):
         prefs = bpy.context.preferences.addons[__package__].preferences
@@ -287,7 +287,7 @@ class HISANIM_OT_BATCHADD(Operator):
         mercs = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
         misc = ['allclass', 'allclass2', 'allclass3', 'weapons']
 
-        path = self.filepath
+        path = self.directory
         for merc in mercs:
             if paths.get(merc) != None: continue
             f_path = os.path.join(path, f'{merc}/{merc}cosmetics.blend')
@@ -409,12 +409,6 @@ class HISANIM_OT_ADDRIG_2(Operator, ImportHelper):
     bl_idname = 'hisanim.addrig_final'
     bl_label = 'Add Rig'
     bl_description = 'Add a path for the TF2-Trifecta to search through'
-
-    filter_glob: StringProperty(
-        default="*.Blol",
-        options={'HIDDEN'},
-        maxlen=255,  # Max internal buffer length, longer would be clamped.
-    )
 
     filename: StringProperty()
     directory: StringProperty()

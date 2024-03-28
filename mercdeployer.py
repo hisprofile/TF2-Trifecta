@@ -387,6 +387,62 @@ class MD_OT_hint(bpy.types.Operator):
     def execute(self, context):
         return {'FINISHED'}
 
+class MD_PT_spawnmenu(bpy.types.Panel):
+    bl_label = ''
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'WINDOW'
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.hisanimvars
+        prefs = context.preferences.addons[__package__].preferences
+
+        '''if len(prefs.rigs) > 0:
+            row = layout.row()
+            row.prop(context.scene.hisanimvars, 'rigs')
+            if context.scene.hisanimvars.rigs == '': return
+            for i in mercs:
+                row = layout.box().row(align=True)
+                row.label(text=i.title(), icon_value=icons.id(i))
+                for ii in cln:
+                    if ii == 'FK':
+                        row.alert=True
+                    MERC = row.operator('hisanim.loadmerc', text='New' if ii == 'IK' else 'Legacy')
+                    MERC.merc = i
+                    MERC.type = ii
+
+            row = layout.row()
+            row.prop(context.scene.hisanimvars, "bluteam", text='BLU Team')
+            row.operator('md.hint', text='', icon='QUESTION')
+            layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
+            layout.row().prop(props, 'hisanimrimpower', slider=True)
+        
+                
+        else:
+            layout.row().label(text='A set of rigs have not been added!')
+        return'''
+
+        if len(prefs.rigs) < 1:
+            layout.row().label(text='No rigs added!')
+            return None
+        
+        row = layout.row()
+        row.prop(context.scene.hisanimvars, 'rigs')
+
+        row = layout.row()
+        row.prop(props, "bluteam", text='BLU Team')
+
+        layout.row().prop(props, "cosmeticcompatibility")
+        layout.row().prop(props, 'hisanimrimpower', slider=True)
+        
+        grid = layout.box().column_flow(columns=2, align=False)
+        for c in cln:
+            grid.label(text='New' if c == 'IK' else 'Legacy')
+            grid.alert = False if c == 'IK' else True
+            for merc in mercs:
+                op = grid.operator('hisanim.loadmerc', text=merc.title(), icon_value=icons.id(merc) if c == 'IK' else 0)
+                op.merc = merc
+                op.type = c
 
 class MD_MT_Menu(bpy.types.Menu):
     bl_label = 'Merc Deployer'
@@ -396,6 +452,7 @@ class MD_MT_Menu(bpy.types.Menu):
         prefs = context.preferences.addons[__package__].preferences
         layout = self.layout
         layout.alignment = 'LEFT'
+        layout.popover(panel='MD_PT_props', text='Properties')
         if len(prefs.rigs) < 1:
             layout.row().label(text='No rigs added!')
             return None
@@ -409,11 +466,13 @@ class MD_MT_Menu(bpy.types.Menu):
                 op.type = c
 
 def menu_func(self, context):
-    self.layout.menu(MD_MT_Menu.bl_idname, icon='FORCE_DRAG')
+    #self.layout.menu(MD_MT_Menu.bl_idname, icon='FORCE_DRAG')
+    self.layout.popover(panel='MD_PT_spawnmenu', text='Merc Deployer', icon='FORCE_DRAG')
 
 classes = [HISANIM_OT_LOADMERC,
            MD_OT_hint,
            MD_MT_Menu,
+           MD_PT_spawnmenu
            ]
 
 def register():

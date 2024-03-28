@@ -481,6 +481,11 @@ class HISANIM_OT_optimize(Operator):
                     vdat = {}
                     vdat['name'] = var.name
                     vdat['data_path'] = var.targets[0].data_path
+
+                    if var.targets[0].id_type == 'OBJECT':
+                        vdat['arm'] = True
+                        vdat['obj'] = obj.name
+
                     vars.append(vdat)
                 drivers['variables'] = vars
                 template['drivers'] = drivers
@@ -523,6 +528,11 @@ class HISANIM_OT_restore(Operator):
                     var.targets[0].id_type = 'MESH'
                     var.targets[0].id = obj.data
                     var.targets[0].data_path = v['data_path']
+
+                    if v['arm']:
+                        var.targets[0].id_type = 'OBJECT'
+                        var.targets[0].id = bpy.data.objects[v['obj']]
+
             del obj.data['skdata']
         return {'FINISHED'}
     
