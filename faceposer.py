@@ -484,7 +484,7 @@ class HISANIM_OT_optimize(Operator):
 
                     if var.targets[0].id_type == 'OBJECT':
                         vdat['arm'] = True
-                        vdat['obj'] = obj.name
+                        vdat['obj'] = var.targets[0].id.name
 
                     vars.append(vdat)
                 drivers['variables'] = vars
@@ -529,7 +529,7 @@ class HISANIM_OT_restore(Operator):
                     var.targets[0].id = obj.data
                     var.targets[0].data_path = v['data_path']
 
-                    if v['arm']:
+                    if v.get('arm'):
                         var.targets[0].id_type = 'OBJECT'
                         var.targets[0].id = bpy.data.objects[v['obj']]
 
@@ -572,6 +572,26 @@ class HISANIM_OT_override(Operator):
     def draw(self, context):
         self.layout.prop(self, 'merc_list')
 
+class HISANIM_OT_refresh_face(Operator):
+    bl_idname = 'faceposer.refresh'
+    bl_label = 'Refresh Face Drivers'
+    bl_description = 'Use this tool if parts of the face do not work'
+
+    def execute(self, context):
+        script = context.object.get('script')
+        if script == None and context.object.parent != None:
+            script = context.object.parent.get('script')
+        if script != None:
+            script.as_module()
+            if context.preferences.filepaths.use_scripts_auto_execute == False:
+                self.report({'WARNING'}, 'Enable "Auto Run Python Scripts" in "Preferences > Save & Load" if you want this process to be automatic!')
+        else:
+            self.report({'WARNING'}, 'Failed to find face script for face! Try executing manually!')
+        
+        for driver in context.object.data.shape_keys.animation_data.drivers:
+            driver.driver.expression = driver.driver.expression
+        return {'FINISHED'}
+
 classes = [
     faceslider,
     HISANIM_OT_SLIDERESET,
@@ -583,7 +603,8 @@ classes = [
     HISANIM_OT_adjust,
     HISANIM_OT_optimize,
     HISANIM_OT_restore,
-    HISANIM_OT_override
+    HISANIM_OT_override,
+    HISANIM_OT_refresh_face
 ]
 
 def register():

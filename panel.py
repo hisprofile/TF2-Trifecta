@@ -289,6 +289,11 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
     bl_category = 'TF2-Trifecta'
     bl_icon = "MOD_CLOTH"
 
+    def draw_header(self, context):
+        layout = self.layout
+        #bpy.ops.wm.url_open()
+        layout.operator('wm.url_open', text='', icon='URL').url = 'https://github.com/hisprofile/blenderstuff/tree/main/Guides/TF2%20Blender'
+
     def draw(self, context):
         prefs = context.preferences.addons[__package__].preferences
         props = context.scene.hisanimvars
@@ -311,9 +316,17 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             row.alert = True
             row.label(text='Assets missing. Check preferences for info.', icon='ERROR')
             op = row.operator('trifecta.textbox', text='', icon='QUESTION')
-            # you have no idea how many idiots don't understand this simple message. I'm adding hint box just for them.
-            # IF YOU DON'T KNOW HOW TO USE BLENDER, DON'T USE THE TF2 TRIFECTA
             op.text = "You have assets missing in the TF2-Trifecta. Resolve this issue by going to the addon preferences and setting the paths to the missing assets."
+            op.icons = 'ERROR'
+            op.size = '60'
+            op.width=350
+
+        if not context.preferences.filepaths.use_scripts_auto_execute:
+            row = layout.row()
+            row.alert = True
+            row.label(text='Auto-Execute Scripts is off.', icon='ERROR')
+            op = row.operator('trifecta.textbox', text='', icon='QUESTION')
+            op.text = 'To ensure full functionality of the face scripts, "Auto Execute Python Scripts" must be enabled. Be careful of what .blend files you open, and NEVER run Blender in administrator mode.'
             op.icons = 'ERROR'
             op.size = '60'
             op.width=350
@@ -667,7 +680,8 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
         col.row().prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
         col.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
         #state = context.scene.hisanimvars.noKeyStatus
-        col.row().label(text='', icon='BLANK1')
+        #col.row().label(text='', icon='BLANK1')
+        col.row().operator('faceposer.refresh', text='', icon='FILE_REFRESH')
         #col.row().prop(context.scene.hisanimvars, 'noKeyStatus', text='', icon='HIDE_OFF' if state else 'HIDE_ON')
         #col.row().operator('hisanim.randomizeface', text='', icon='RNDCURVE')
         col.row().operator('hisanim.resetface', icon='LOOP_BACK', text='')
@@ -880,8 +894,12 @@ class TRIFECTA_OT_genericText(bpy.types.Operator):
     icons: StringProperty()
     size: StringProperty()
     width: IntProperty(default=400)
+    url: StringProperty(default='')
 
     def invoke(self, context, event):
+        if event.shift and self.url != '':
+            bpy.ops.wm.url_open(url=self.url)
+            return self.execute(context)
         return context.window_manager.invoke_props_dialog(self, width=self.width)
     
     def draw(self, context):
