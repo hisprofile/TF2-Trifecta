@@ -70,6 +70,9 @@ Deploy any of the nine mercs into your scene. You can choose between an advanced
 # Bonemerge
 Attach cosmetics to a class by choosing a target armature and and selecting the cosmetics to attach.
 
+## Attaching Facial Cosmetics  
+To bind a facial cosmetic to the face, select the cosmetic and THEN the face, then click on "Bind Face Cosmetic." However, the facial cosmetic can only be posed in the `Shapekeys` panel of the Face Poser. Flex controllers will not work.
+
 <img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/a0c09a69-b839-462c-ab70-c8370f8fa28b' width='400'>
 
 # Face Poser

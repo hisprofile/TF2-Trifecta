@@ -368,7 +368,7 @@ class MD_OT_hint(bpy.types.Operator):
 
     def invoke(self, context, event):
         import random
-        if random.random() >= 0.99:
+        if random.random() >= 0.5:
             from urllib import request
             from pathlib import Path
             img = request.urlretrieve('https://i.imgur.com/WHs40vm.png', 'mercdeployer.png')
@@ -376,6 +376,7 @@ class MD_OT_hint(bpy.types.Operator):
             bpy.ops.object.load_reference_image(filepath=path)
             bpy.data.images['mercdeployer.png'].pack()
             os.remove(path)
+        del random
         return context.window_manager.invoke_props_dialog(self, width=325)
     
     def draw(self, context):

@@ -351,7 +351,15 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
 
                 row = layout.row()
                 row.prop(context.scene.hisanimvars, "bluteam", text='BLU Team')
-                row.operator('md.hint', text='', icon='QUESTION')
+                op = row.operator('trifecta.textbox', text='', icon='QUESTION')
+                op.text='''"New" rigs are made with Rigify, allowing for more extensive control over the armature with features like IK/FK swapping. "Legacy" rigs comprise of ONLY forward kinematics, and should only be used to apply taunts onto.
+When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure the most compatibility with cosmetics. When disabled, the higher-poly (A.K.A. SFM) bodygroups will be used instead.
+"Rimlight Strength" determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default.'''
+                op.width=325
+                op.size='56,50,56'
+                op.icons='ARMATURE_DATA,OUTLINER_OB_ARMATURE,SHADING_RENDERED'
+                op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#merc-deployer'
+
                 layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
                 layout.row().prop(props, 'hisanimrimpower', slider=True)
             
@@ -380,6 +388,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             op.icons = 'MESH_MONKEY'
             op.size = '60'
             op.width = 350
+            op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#bonemerge'
             box.row().operator('hisanim.bindface')
             box.row().operator('bm.unbindface'),
             layout.row().operator('hisanim.attemptfix')
@@ -466,6 +475,7 @@ class WARDROBE_PT_MATERIAL(bpy.types.Panel):
         op.icons = 'SHADING_RENDERED,SHADING_RENDERED'
         op.size = '76,78'
         op.width = 460
+        op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#material-settings'
         l.separator()
     
     def draw(self, context):
@@ -508,6 +518,7 @@ class WARDROBE_PT_PAINTS(bpy.types.Panel):
         op.icons = 'SHADING_RENDERED'
         op.size = '56'
         op.width = 290
+        op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#paints'
         l.separator()
 
     def draw(self, context):
@@ -652,6 +663,7 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
         op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA,MODIFIER_ON'
         op.size = '76,70,76,76,72,76'
         op.width = 420
+        op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#face-poser-1'
         l.separator()
 
     def draw(self, context):
@@ -723,6 +735,7 @@ class FACEPOSER_PT_POSELIBRARY(bpy.types.Panel):
         op.icons = 'OUTLINER_OB_GROUP_INSTANCE,LOOP_BACK'
         op.size = '53,56'
         op.width = 300
+        op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#pose-library'
         l.separator()
 
     def draw(self, context):
@@ -807,6 +820,7 @@ class FACEPOSER_PT_RANDOMIZER(bpy.types.Panel):
         op.icons = 'MONKEY'
         op.size = '56'
         op.width = 130
+        op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#face-randomizer--lock-list'
         l.separator()
 
     def draw(self, context):
@@ -849,6 +863,7 @@ class FACEPOSER_PT_LOCKLIST(bpy.types.Panel):
         op.icons = 'LOCKED'
         op.size = '128'
         op.width = 375
+        op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#face-randomizer--lock-list'
         l.separator()
 
     def draw(self, context):
