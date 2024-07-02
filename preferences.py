@@ -28,15 +28,6 @@ ids = {
     'standard-rigs': '1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj'
 }
 
-def format_size(size_in_bytes):
-    """
-    Convert size in bytes to a human-readable format.
-    """
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-        if size_in_bytes < 1024.0:
-            return f"{size_in_bytes:.2f} {unit}"
-        size_in_bytes /= 1024.0
-
 def enumRigs(a = None, b = None):
     prefs = bpy.context.preferences.addons[__package__].preferences
     if prefs == None: return None
@@ -172,11 +163,12 @@ class ridOf(PropertyGroup):
 
 class hisanimFilePaths(AddonPreferences):
     bl_idname = __package__
-    prefs = bpy.context.preferences.addons[__package__].preferences
+    #prefs = bpy.context.preferences.addons[__package__].preferences
     hisanim_paths: CollectionProperty(type=AssetPaths)
     rigs: CollectionProperty(type=rigs)
     hisanim_pathsindex: IntProperty(default=0, options=set())
     rigsindex: IntProperty(default=0, options=set())
+    hide_auto_exc_warning: BoolProperty(name='Hide Warning Anyways', default=False)
     is_executed: BoolProperty(default=False, options=set())
     remove: CollectionProperty(type=ridOf)
     runonce_removepaths: IntProperty(default=0, options=set()) 
@@ -191,6 +183,17 @@ class hisanimFilePaths(AddonPreferences):
         props = context.scene.trifecta_updateprops
         remaining = [i for i in names if paths.get(i) == None]
         layout = self.layout
+        if (not context.preferences.filepaths.use_scripts_auto_execute) and (not self.hide_auto_exc_warning):
+            box = layout.box()
+            row = box.row()
+            row.alert = True
+            row.label(text='"Auto Execute Python Scripts" is currently turned off. Enabling it will ensure full functionality of facial expressions.')
+            box.row().label(text='It is possible to enable full facial expressions with the REFRESH button in the face poser.')
+            box.row().label(text='With this option enabled, ALWAYS be aware of what .blend files you open.')
+            box.row().label(text='You can disable it later in "Save & Load"')
+            box.row().prop(context.preferences.filepaths, 'use_scripts_auto_execute', text='Auto Run Python Scripts')
+            box.row().prop(self, 'hide_auto_exc_warning')
+
         layout = layout.box()
         layout.label(text='Cosmetics & Weapons', icon='MOD_CLOTH')
         if len(remaining) > 0:
@@ -237,7 +240,7 @@ class hisanimFilePaths(AddonPreferences):
         if len(prefs.rigs) != 0:
             layout.prop(rigs[prefs.rigsindex], 'path', text='Path')
 
-        if props.active:
+        '''if props.active:
             row = layout.row()
             row.label(text=props.stage)
             row.label(text=str(format_size(props.size)))
@@ -269,7 +272,11 @@ class hisanimFilePaths(AddonPreferences):
         box.row().prop(props, 'newRigEntry')
         if props.newRigEntry:
             box.row().prop(props, 'newRigName')
-            box.row().prop(props, 'newRigPath')
+            box.row().prop(props, 'newRigPath')'''
+        layout.separator(factor=1)
+        layout.row().label(text='Install all of the required assets through the Scene Properties!', icon='SCENE_DATA')
+        op = layout.row().operator('wm.url_open', text='More from me!', icon='URL')
+        op.url = 'https://github.com/hisprofile/blenderstuff/tree/main'
 
 
 class HISANIM_OT_BATCHADD(Operator, ImportHelper):
@@ -410,7 +417,7 @@ class HISANIM_OT_ADDRIG_2(Operator, ImportHelper):
     bl_label = 'Add Rig'
     bl_description = 'Add a path for the TF2-Trifecta to search through'
 
-    filename: StringProperty()
+    #dirname: StringProperty()
     directory: StringProperty()
 
     def invoke(self, context, event):
@@ -419,13 +426,14 @@ class HISANIM_OT_ADDRIG_2(Operator, ImportHelper):
 
     def execute(self, context):
         filepath = self.directory
+        print(filepath)
         if not os.path.isfile(os.path.join(filepath,'scout.blend')):
             self.report({'ERROR'}, 'The folder you have chosen does not contain the nine rigs inside!')
-            return {'CANCELLED'}
+            #return {'CANCELLED'}
         prefs = context.preferences.addons[__package__].preferences
         new = prefs.rigs.add()
         new.name = 'Rigs'
-        new.path = self.filepath
+        new.path = filepath
         prefs.rigsindex = len(prefs.rigs) - 1
         enumRigs()
         return {'FINISHED'}

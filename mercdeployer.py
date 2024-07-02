@@ -147,21 +147,10 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             self.report({'ERROR'}, f'Entry for rigs exists, but "{self.merc}.blend" could not be found inside!')
             return {'CANCELLED'}
         
-        '''if appendtext(self.merc) == "cancelled":
-            self.report(
-                {'ERROR'}, "Entry for rigs exists, but .blend file could not be found!")
-            return {'CANCELLED'}'''
         
         merc_blend = os.path.join(PATH, f'{self.merc}.blend')
-        print(merc_blend)
 
         if context.scene.hisanimvars.savespace:  # if linking is enabled
-            '''try:
-                link(os.path.join(PATH, f'{self.merc}.blend'),
-                    self.merc + self.type, 'Collection')
-            except:
-                self.report({'ERROR'}, f'.blend file for "{self.merc}" in rigs is corrupt! Redownload!')'''
-            
             with bpy.data.libraries.load(merc_blend, link=True) as (data_from, data_to):
                 data_to.collections = [self.merc+self.type]
             
@@ -336,8 +325,13 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 col.objects.unlink(i.custom_shape)
             bpy.data.collections['MDSHAPES'].objects.link(i.custom_shape)
             shape = i.custom_shape.name
+            shape = shape.rsplit('.', maxsplit=2)[0]
+            shape_obj = bpy.data.objects.get(shape)
+            if shape_obj != i.custom_shape:
+                pending.append(i.custom_shape)
+                i.custom_shape = shape_obj
 
-            if ".0" in shape: # if .0 is in the name, it's most likely a duplicate. search for the original.
+            '''if ".0" in shape: # if .0 is in the name, it's most likely a duplicate. search for the original.
                 try:
                     DELETE = shape
                     if DELETE not in pending:
@@ -345,12 +339,14 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     lookfor = shape[:shape.index(".0")]
                     i.custom_shape = bpy.data.objects[lookfor]
                 except:
-                    bpy.data.objects[shape].name = shape[:shape.index(".0")]
+                    bpy.data.objects[shape].name = shape[:shape.index(".0")]'''
+            
+
         if len(pending) > 0:
             for i in pending:
                 try:
-                    DATA = bpy.data.objects[i].data
-                    bpy.data.objects.remove(bpy.data.objects[i])
+                    DATA = i.data
+                    bpy.data.objects.remove(i)
                     bpy.data.meshes.remove(DATA)
                 except:
                     continue

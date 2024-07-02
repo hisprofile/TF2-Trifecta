@@ -5,7 +5,7 @@ from bpy.props import *
 from . import faceposer, icons
 
 def hasKey(obj, slider) -> bool:
-        if not bpy.context.scene.hisanimvars.noKeyStatus: return False
+        if bpy.context.scene.hisanimvars.noKeyStatus: return False
         data = obj.data
         if data.animation_data == None:
             return False
@@ -75,7 +75,7 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
                     row.prop(props.activeface.data, f'["{item.L}"]', text='L')
                 
                 op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed, emboss=False)
-                op.delete = isKeyed
+                #op.delete = isKeyed
                 op.slider = item.name
                 row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='', emboss = False)
 
@@ -376,7 +376,15 @@ When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure t
             self.layout.prop_search(context.scene.hisanimvars, "hisanimtarget", bpy.data, "objects", text="Link to", icon='ARMATURE_DATA')
             
             box = layout.row().box()
-            box.row().label(text='Binding cosmetics') 
+            row = box.row()
+            row.label(text='Binding cosmetics')
+            op = row.operator('trifecta.textbox', text='', icon='QUESTION')
+            op.text='Target an armature, then select a cosmetic to bind to the targeted armature.'
+            op.size='56'
+            op.icons='GROUP_BONE'
+            op.width=325
+            op.url=''
+
             box.row().operator('hisanim.attachto', icon="LINKED")
             box.row().operator('hisanim.detachfrom', icon="UNLINKED")
             box.row().prop(context.scene.hisanimvars, 'hisanimscale')
@@ -655,11 +663,13 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
     
     def draw_header(self, context):
         l = self.layout
+        props = context.scene.hisanimvars
         l.alignment = 'EXPAND'
         l.separator()
         l.label(icon='RESTRICT_SELECT_OFF', text='Face Poser')
+        l.prop(props, 'noKeyStatus', text='', icon='DECORATE_KEYFRAME' if not props.noKeyStatus else 'DECORATE_ANIMATE', invert_checkbox=True)
         op = l.operator('trifecta.textbox', icon='QUESTION', text='')
-        op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is BLUE, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.\nOptimizing mercenaries can give a significant performance boost by disabling the flex controllers, which will somewhat lock the face. Don't forget to restore the face on final render."
+        op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is HIGHLIGHTED, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.\nOptimizing mercenaries can give a significant performance boost by disabling the flex controllers, which will somewhat lock the face. Don't forget to restore the face on final render."
         op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA,MODIFIER_ON'
         op.size = '76,70,76,76,72,76'
         op.width = 420
@@ -691,11 +701,7 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
         col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
         col.row().prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
         col.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
-        #state = context.scene.hisanimvars.noKeyStatus
-        #col.row().label(text='', icon='BLANK1')
         col.row().operator('faceposer.refresh', text='', icon='FILE_REFRESH')
-        #col.row().prop(context.scene.hisanimvars, 'noKeyStatus', text='', icon='HIDE_OFF' if state else 'HIDE_ON')
-        #col.row().operator('hisanim.randomizeface', text='', icon='RNDCURVE')
         col.row().operator('hisanim.resetface', icon='LOOP_BACK', text='')
         row = box.row(align=True)
         op = row.operator('hisanim.adjust', text='', icon='TRIA_LEFT')
@@ -932,7 +938,7 @@ classes = [
     WARDROBE_PT_SEARCH,
     WARDROBE_PT_MATERIAL,
     WARDROBE_PT_PAINTS,
-    WARDROBE_PT_LOADOUT,
+    #WARDROBE_PT_LOADOUT,
     WARDROBE_PT_RESULTS,
     FACEPOSER_PT_FACEPOSER,
     FACEPOSER_PT_POSELIBRARY,

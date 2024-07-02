@@ -29,8 +29,26 @@ def MAP(x,a,b,c,d, clamp=None):
         return min(max(y, c), d)
     else:
         return y
+    
+def hasKey(obj, slider) -> bool:
+        data = obj.data
+        if data.animation_data == None:
+            return False
+        
+        scene = bpy.context.scene
+        action = data.animation_data.action
+        if action == None:
+            return False
+        
+        curv = action.fcurves.find(f'["{slider}"]')
+        if curv == None: return False
+        for point in curv.keyframe_points:
+            if get_frame(bpy.context) == point.co.x:
+                return True
+        return False
 
 def get_frame(context):
+    #if context.scene
     return context.scene.frame_float if context.scene.show_subframe else context.scene.frame_current
 
 @persistent
@@ -41,11 +59,12 @@ def updatefaces(scn = None):
     cycle through its keys and create sliders from them. Then, use those
     sliders to manipulate the keys.
     '''
-    loadout.update()
+    #loadout.update()
     props = bpy.context.scene.hisanimvars
     props.needs_override = True
     props.enable_faceposer = False
     context = bpy.context
+    if not hasattr(context, 'object'): return
     if context.object == None: return
     if context.object.data == None: return
     data = context.object.data
@@ -117,16 +136,17 @@ class HISANIM_OT_SLIDEKEYFRAME(Operator):
     def execute(self, context):
         props = context.scene.hisanimvars
         slider = props.sliders[self.slider]
+        isKeyed = hasKey(context.object, self.slider)
         data = bpy.context.object.data
         if slider.split:
-            if self.delete:
+            if isKeyed:
                 data.keyframe_delete(data_path=f'["{slider.R}"]', frame=get_frame(context))
                 data.keyframe_delete(data_path=f'["{slider.L}"]', frame=get_frame(context))
             else:
                 data.keyframe_insert(data_path=f'["{slider.R}"]', frame=get_frame(context))
                 data.keyframe_insert(data_path=f'["{slider.L}"]', frame=get_frame(context))
         else:
-            if self.delete:
+            if isKeyed:
                 data.keyframe_delete(data_path=f'["{slider.name}"]', frame=get_frame(context))
             else:
                 data.keyframe_insert(data_path=f'["{slider.name}"]', frame=get_frame(context))
@@ -463,6 +483,7 @@ class HISANIM_OT_optimize(Operator):
         return context.window_manager.invoke_props_dialog(self, width=390)
 
     def execute(self, context):
+        mod_tally = 0
         for obj in bpy.context.selected_objects:
             D = obj.data
             if D.get('skdata') != None: continue
@@ -495,6 +516,14 @@ class HISANIM_OT_optimize(Operator):
 
             for driv in skdata.animation_data.drivers:
                 skdata.animation_data.drivers.remove(driv)
+            if (mod := obj.modifiers.get('wrinkle')) == None:
+                mod_tally += 1
+                self.report({'WARNING'}, f'Failed to disable wrinkle node group on "{obj.name}"!')
+            else:
+                mod.show_viewport = False
+        if mod_tally > 0:
+            pass
+            self.report({'WARNING'}, f'{mod_tally} wrinkle node group(s) failed to disable in viewport. Resolve manually. Check INFO')
         return {'FINISHED'}
     
     def draw(self, context):
@@ -510,6 +539,7 @@ class HISANIM_OT_restore(Operator):
         return context.window_manager.invoke_props_dialog(self, width=390)
 
     def execute(self, context):
+        mod_tally = 0
         for obj in bpy.context.selected_objects:
             D = obj.data
             if D.get('skdata') == None: continue
@@ -534,8 +564,18 @@ class HISANIM_OT_restore(Operator):
                         var.targets[0].id = bpy.data.objects[v['obj']]
 
             del obj.data['skdata']
+
+            if (mod := obj.modifiers.get('wrinkle')) == None:
+                mod_tally += 1
+                self.report({'WARNING'}, f'Failed to enable wrinkle node group on "{obj.name}"!')
+            else:
+                mod.show_viewport = True
+
+        if mod_tally > 0:
+            self.report({'WARNING'}, f'{mod_tally} wrinkle node group(s) failed to disable in viewport. Resolve manually. Check INFO')
+
         return {'FINISHED'}
-    
+
     def draw(self, context):
         self.layout.label(text='Face movement will be restored at the cost of slower performance. Confirm?')
 

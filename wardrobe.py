@@ -1,9 +1,9 @@
-import bpy, json, os
+import bpy, json, os, time
 from pathlib import Path
 from bpy.props import *
 from bpy.types import Context
 from mathutils import *
-from . import bonemerge, mercdeployer, faceposer, loadout
+from . import bonemerge, mercdeployer, faceposer
 
 def RemoveNodeGroups(a): # iterate through every node and node group by using the "tree" method and removing said nodes
     for i in a.nodes:
@@ -165,6 +165,9 @@ class searchHits(bpy.types.PropertyGroup):
     name: StringProperty()
     use: BoolProperty(name='Use', default=False, get=gett, set=sett)
 
+def fart(a = None, b = None, c = None):
+    return str(time.time())
+
 class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs. Less to write for registering and unregistering
     def sW(self, val):
         bpy.context.scene.hisanimvars.tools = 'WARDROBE'
@@ -237,8 +240,8 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     activeslider: StringProperty()
     activeface: PointerProperty(type=bpy.types.Object)
     lastactiveface: PointerProperty(type=bpy.types.Object)
-    loadout_data: CollectionProperty(type=loadout.funny_funnygroup)
-    loadout_index:IntProperty(default=0)
+    #loadout_data: CollectionProperty(type=loadout.funny_funnygroup)
+    #loadout_index:IntProperty(default=0)
     sliders: CollectionProperty(type=faceposer.faceslider)
     sliderindex: IntProperty(options=set())
     dragging: BoolProperty(default=False, options=set())
@@ -273,7 +276,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     toggle_mat: BoolProperty(default=False)
     needs_override: BoolProperty()
     enable_faceposer: BoolProperty(default = False)
-    noKeyStatus: BoolProperty(default=True, name='Hide Keyframe Status', description='May improve performance')
+    noKeyStatus: BoolProperty(default=False, name='Hide Keyframe Status', description='May improve performance')
 
 
 class WDRB_OT_Select(bpy.types.Operator):
@@ -357,7 +360,6 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
 
         prefs = context.preferences.addons[__package__].preferences
         paths = prefs.hisanim_paths
-        
         if (p := paths.get(CLASS)) == None: # no entry
             self.report({'ERROR'}, f'Directory for "{CLASS}" not found! Make sure an entry for it exists in the addon preferences!')
             return {'CANCELLED'}
@@ -366,12 +368,10 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             self.report({'ERROR'}, f'Path for "{CLASS}" entry does not end in a .blend file!')
             return {'CANCELLED'}
         p = p.path
-
         if not os.path.exists(p): # doesn't exist
             self.report({'ERROR'}, f'Entry for "{CLASS}" exists, but the path is invalid!')
             return {'CANCELLED'}
         cos = COSMETIC
-
         with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
             data_to.objects = [cos]
             
@@ -429,6 +429,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                         continue
         if bpy.context.scene.hisanimvars.wrdbbluteam: # this one speaks for itself
             var = False
+            print("BLU")
             try:
                 SKIN = justadded['skin_groups']
                 OBJMAT = justadded.material_slots
@@ -436,12 +437,14 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                     for ii in SKIN[i]:
                         if "blu" in ii:
                             BLU = i
+                            print(BLU)
                             var = True
                             break
                     if var: break
                 else: raise
                 print(SKIN[BLU])
                 for i in enumerate(SKIN[BLU]): # set the materials as BLU
+                    print(i)
                     OBJMAT[i[0]].material = bpy.data.materials[i[1]]
                 del SKIN, OBJMAT
             except:
@@ -463,7 +466,9 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             bpy.ops.hisanim.attachto()
             context.scene.hisanimvars.hisanimtarget = bak
             del bak
-
+        
+        #mercdeployer.PurgeNodeGroups()
+        #mercdeployer.PurgeImages()
         return {'FINISHED'}
 
 class HISANIM_OT_Search(bpy.types.Operator):

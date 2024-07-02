@@ -1,5 +1,6 @@
 import bpy
 #from . import poselib
+#from .poselib import textBox
 
 loc = "BONEMERGE-ATTACH-LOC"
 rot = "BONEMERGE-ATTACH-ROT"

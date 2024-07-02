@@ -6,9 +6,13 @@ from math import sin
 from bpy.types import Operator, PropertyGroup
 from bpy.props import *
 from datetime import datetime
+import uuid
 global blend_files
 global files
 #bpy
+
+area = None
+
 mercs = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
 classes = mercdeployer.classes
 misc = ['allclass', 'allclass2', 'allclass3', 'weapons', 'rigs']
@@ -36,7 +40,22 @@ class SmallDownload(Exception):
     def __init__(self, message="Download too small, assuming download failed!"):
         self.message = message
         super().__init__(self.message)
+    pass
 
+class InvalidResponse(Exception):
+    "Response code was not 200! Failed!"
+
+    def __init__(self, message="Response code was not 200! Failed!"):
+        self.message = message
+        super().__init__(self.message)
+    pass
+
+class InvalidDownload(Exception):
+    "Download was not .blend/.zip. Failed!"
+
+    def __init__(self, message="Download was not .blend/.zip. Failed!"):
+        self.message = message
+        super().__init__(self.message)
     pass
 
 def MAP(x,a,b,c,d, clamp=None):
@@ -77,18 +96,15 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         if props.active:
             row = layout.row()
             row.label(text=props.stage)
-            row.label(text=str(format_size(props.size)))
+            row.label(text=f'{format_size(props.size)}/{format_size(props.download_size)}')
             if props.updateAll:
                 row.label(text=f'{list(ids.keys())[props.iter].title()}, {props.iter + 1}/14')
-            if version[0] == 4:
-                row.progress(text='', type='RING', factor=props.var)
+            if version >= (4, 0, 0):
+                row.progress(text='', type='RING', factor=props.progress)
             else:
                 row.label(text='.'*int(((time.time()*3)%3) + 1))
         else:
-            if version[0] == 4:
-                layout.row().progress(text="", factor=get_day_factor(), type='BAR')
-            else:
-                layout.row().label(text='You should update to 4.0 ...')
+            layout.row().operator('wm.url_open', text='Installation Documentation', icon='URL').url = 'https://github.com/hisprofile/blenderstuff/blob/main/Guides/TF2%20Blender/!TF2-Trifecta%20Installation.md'
         box = layout.box()
         box.label(text='Update Class Cosmetics')
         id_items = ids.items()
@@ -136,6 +152,9 @@ class HISANIM_OT_ADDONUPDATER(Operator):
     bl_idname = 'hisanim.addonupdate'
     bl_label = 'Update Addon'
     bl_description = "Get the latest version of the addon. Updater made by Herwork and hisanimations"
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event)
 
     def execute(self, context):
         PATH = Path(__file__).parent.parent
@@ -245,17 +264,25 @@ def download_file_from_google_drive_blank(context):
         props = scn.trifecta_updateprops
         prefs = C.preferences.addons[__package__].preferences
         props.active = True
+        props.size = 0.0
+        props.progress = 0.0
+        props.download_size = 0
         bak = ''
         time.sleep(0.5)
 
         ### Download Properties ###
         #url = "https://docs.google.com/uc?export=download"
-        url = 'https://drive.usercontent.google.com/download'
+        url = 'https://drive.usercontent.google.com/download?'
+        #https://drive.usercontent.google.com/download?id=1cAP7NY1x_IHVQQtnWwjFNstQKjXp-Qlu?confirm=t&uuid=a908a383-e795-4d21-974d-73c8e49a2d6f
         file_id = props.id
         chunk_size=32768
         session = requests.Session()
-        params = {'id': file_id, 'confirm': 't', 'authuser': 0}
+        #params = {'id': file_id, 'confirm': 't', 'authuser': 0}
+        params = {'id': file_id, 'confirm': 't', 'uuid': str(uuid.uuid4())}
         response = session.get(url, params=params, stream=True)
+        #print(response.headers.get('Content-Length', 1))
+        props.download_size = int(response.headers.get('Content-Length', 1))
+        #raise SmallDownload
 
         d = response
 
@@ -265,7 +292,7 @@ def download_file_from_google_drive_blank(context):
         if response.status_code != 200:
             props.stop = True
             props.fail = response.status_code
-            return None
+            raise InvalidResponse
         
         if props.operation == 'ZIP':
             rigs = prefs.rigs[scn.hisanimvars.rigs]
@@ -290,6 +317,7 @@ def download_file_from_google_drive_blank(context):
                     if chunk:  # filter out keep-alive new chunks
                         try:
                             props.size = i*chunk_size
+                            props.progress = props.size/props.download_size
                         except Exception as e:
                             print(e)
                             pass
@@ -315,7 +343,7 @@ def download_file_from_google_drive_blank(context):
                 obj_count = len(info)
                 print(obj_count)
                 for n, file_info in enumerate(info):
-                    props.var = obj_count / (n + 1)
+                    props.progress = obj_count / (n + 1)
                     if bpy.context.screen != None:
                         for area in bpy.context.screen.areas:
                             if area.type == 'PROPERTIES':
@@ -324,7 +352,7 @@ def download_file_from_google_drive_blank(context):
                     zip.extract(file_info, folder)
 
             props.stage = 'Removing...'
-            props.var = 1.0
+            #props.var = 1.0
             os.remove(destination)
             shutil.rmtree(rigs_backup)
         
@@ -342,6 +370,7 @@ def download_file_from_google_drive_blank(context):
         props.stop = True
         props.error = str(E)
         print(E)
+        return None
 
         if props.operation == 'ZIP':# and Path(destination).exists():
             os.remove(destination)
@@ -364,7 +393,7 @@ class updateProps(PropertyGroup):
     finished: BoolProperty(default=False)
     stop:BoolProperty(default=False)
     fstop: BoolProperty(default=False)
-    progress: FloatProperty(default=False)
+    progress: FloatProperty(default=0.0)
     var: FloatProperty(default=0.0)
     size: FloatProperty(default=0.0)
     fail: IntProperty(default=0)
@@ -378,6 +407,7 @@ class updateProps(PropertyGroup):
     error: StringProperty(default='')
     updateAll: BoolProperty(default=False)
     updateAllRig: BoolProperty(default=False)
+    download_size: IntProperty(default=0)
 
     ### Rig download properties ###
 
@@ -441,6 +471,8 @@ class TRIFECTA_OT_downloader(Operator):
         return not props.active
 
     def modal(self, context, event):
+        global area
+
         props = context.scene.trifecta_updateprops
         prefs = context.preferences.addons[__package__].preferences
         wm = context.window_manager
@@ -457,9 +489,7 @@ class TRIFECTA_OT_downloader(Operator):
             props.finished = False
             props.updateAll = False
             wm.event_timer_remove(self._timer)
-            for area in bpy.context.screen.areas:
-                if area.type == 'PROPERTIES':
-                    area.tag_redraw()
+            area.tag_redraw()
             self.report({'WARNING'}, f"Cancelling! Code: {props.fail}, Error: {props.error}")
             return {'CANCELLED'}
 
@@ -487,22 +517,21 @@ class TRIFECTA_OT_downloader(Operator):
                     props.finished = True
                     self.report({'INFO'}, 'Finished downloading!')
                     wm.event_timer_remove(self._timer)
-                    bpy.context.area.tag_redraw()
+                    area.tag_redraw()
                 else:
                     return {'PASS_THROUGH'}
             props.updateAll = False
             self.report({'INFO'}, 'Finished downloading!')
             wm.event_timer_remove(self._timer)
-            bpy.context.area.tag_redraw()
+            area.tag_redraw()
             return {'FINISHED'}
 
         if event.type == 'TIMER' and props.stage == 'Downloading...':
-            tim = time.time()
-            tim = sin(tim*5)
-            tim = MAP(tim, -1, 1, 0.01, 0.08)
-            props.var = (props.var + tim) % 1
-            for area in bpy.context.screen.areas:
-                area.tag_redraw()
+            #tim = time.time()
+            #tim = sin(tim*5)
+            #tim = MAP(tim, -1, 1, 0.01, 0.08)
+            #props.var = (props.var + tim) % 1
+            area.tag_redraw()
 
         if props.stage == 'Moving...':
             print(os.stat(props.newpath)[6], props.newpath)
@@ -515,6 +544,10 @@ class TRIFECTA_OT_downloader(Operator):
         return {'PASS_THROUGH'}
 
     def execute(self, context):
+        global area
+
+        area = context.area
+
         props = bpy.context.scene.trifecta_updateprops
         prefs = context.preferences.addons[__package__].preferences
         assets = prefs.hisanim_paths
@@ -600,6 +633,7 @@ class TRIFECTA_OT_downloader(Operator):
             wm = context.window_manager
             self._timer = wm.event_timer_add(0.1, window=context.window)
             self.time = time.time()
+            self.report({'INFO'}, 'Press ESC to cancel!')
             wm.modal_handler_add(self)
             return {'RUNNING_MODAL'}
 

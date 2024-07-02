@@ -2,7 +2,7 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A tool dedicated towards the creation of TF2 Content in Blender",
     "author" : "hisanimations",
-    "version" : (2, 8, 0),
+    "version" : (2, 9, 0),
     "blender" : (3, 5, 0),
     "location" : "View3d > TF2-Trifecta",
     "support" : "COMMUNITY",
@@ -10,7 +10,7 @@ bl_info = {
     "doc_url": "https://github.com/hisprofile/TF2-Trifecta/blob/main/README.md"
 }
 
-import os
+import os, glob
 from bpy.props import *
 from bpy.types import *
 from mathutils import *
@@ -20,9 +20,15 @@ from . import (bonemerge, mercdeployer, icons,
                 updater, newuilist, preferences,
                 wardrobe, panel, faceposer,
                 poselib, loadout)
+pack_path = os.path.dirname(__file__)
+for filename in [*glob.glob('**.py', root_dir=pack_path), *glob.glob('**/*.py', root_dir=pack_path)]:
+    #print(filename)
+    if filename == os.path.basename(__file__): continue
+    module = sys.modules.get("{}.{}".format(__name__,filename[:-3]))
+    if module: importlib.reload(module)
 
 def register():
-    loadout.register()
+    #loadout.register()
     faceposer.register()
     wardrobe.register()
     mercdeployer.register()
@@ -46,7 +52,7 @@ def unregister():
     bonemerge.unregister()
     panel.unregister()
     poselib.unregister()
-    loadout.unregister()
+    #loadout.unregister()
 
 
 if __name__ == '__main__':
