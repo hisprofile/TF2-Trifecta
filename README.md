@@ -1,4 +1,4 @@
-![alt text](https://cdn.discordapp.com/attachments/590220964298752002/1033844411664171048/TF2-trifecta.png)
+![alt text](https://github.com/user-attachments/assets/2d1ef0c8-e347-43e9-b9d8-de74fda846b5)
 # TF2-Trifecta
 Opening a whole new way to create TF2 art for the masses.
 
