@@ -1,15 +1,19 @@
 ![alt text](https://github.com/user-attachments/assets/2d1ef0c8-e347-43e9-b9d8-de74fda846b5)
-# TF2-Trifecta
-Opening a whole new way to create TF2 art for the masses.
-
 # What is the TF2-Trifecta?
-The TF2-Trifecta is a multi-purpose tool to masterfully manipulate Team Fortress 2 assets.
-
-**Wardrobe** lets you index through a catalog of almost 10000 cosmetic files.
-
-Deploy any of the nine mercs with **Merc Deployer**. You can choose to spawn from my port or Hectoris919's phoneme port.
-
-**Bonemerge** is a Blender version of the "Easy Bonemerge Tool" for GMod.
+The TF2-Trifecta is a Blender addon to spawn and manipulate my mercenaries, cosmetics, and weapons ports. It has four tools:
+## Wardrobe
+- Spawn cosmetics & weapons, both RED & BLU versions
+- Paint cosmetics
+## Merc Deployer
+- Allows you to spawn two types of pre-prepared rigs, Rigify rigs and in-game rigs (taunt compatible). They are aptly named `New` and `Legacy`
+- Can choose between sets of rigs (At this moment, only three exist. Mine, Eccentric's and ThatLazyArtist's.)
+## Bonemerge
+- Allows you to attach cosmetics and weapons to a mercenary with ease
+- Allows you to attach facial cosmetics to rigs that support it
+## Face Poser
+- Allows you to pose the face on my rigs as you would in SFM and Garry's Mod
+- Allows you to apply preset faces for quick emotions/visemes
+- Has a face randomizer for funny faces
 
 # The Setup
 Installing the TF2-Trifecta and its prerequesites is as easy as pressing one button, followed by a few minutes of waiting.
