@@ -48,6 +48,9 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
                 continue # if the target is selected while cycling through selected objects, it will be skipped.
             if i.type == 'MESH':
                 i = i.parent # if the mesh is selected instead of the parent armature, swap the iteration with its parent
+            i["influence"] = 1.0
+            x = i.id_properties_ui('influence')
+            x.update(min=0.0, max=1.0)
             for ii in i.pose.bones:
                 if obj.pose.bones.get(ii.name) != None: # check if the target bone exists. if not, continue.
                     if doOnce: # this will parent the cosmetic to the target if at least
@@ -63,6 +66,12 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
                                 LOC = i.constraints.new('COPY_LOCATION')
                                 LOC.name = 'COPLOC'
                                 LOC.target = obj
+                                driv = LOC.driver_add('influence')
+                                driv.driver.expression = 'var'
+                                var = driv.driver.variables.new()
+                                var.targets[0].id = i
+                                var.targets[0].data_path = '["influence"]'
+
                     if ii.constraints.get(loc) == None: # check if constraints already exist. if so, swap targets. if not, create constraints.
                         if context.scene.hisanimvars.hisanimscale:
                             ii.constraints.new('COPY_SCALE').name = scale
@@ -75,14 +84,30 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
 
                 LOC.target = obj
                 LOC.subtarget = ii.name
+                driv = LOC.driver_add('influence')
+                driv.driver.expression = 'var'
+                var = driv.driver.variables.new()
+                var.targets[0].id = i
+                var.targets[0].data_path = '["influence"]'
+
                 ROT.target = obj
                 ROT.subtarget = ii.name
+                driv = ROT.driver_add('influence')
+                driv.driver.expression = 'var'
+                var = driv.driver.variables.new()
+                var.targets[0].id = i
+                var.targets[0].data_path = '["influence"]'
                 if context.scene.hisanimvars.hisanimscale:
                     if ii.constraints.get(scale) == None:
                         ii.constraints.new('COPY_SCALE').name = scale
                     SCALE = ii.constraints[scale]
                     SCALE.target = obj
                     SCALE.subtarget = ii.name
+                    driv = SCALE.driver_add('influence')
+                    driv.driver.expression = 'var'
+                    var = driv.driver.variables.new()
+                    var.targets[0].id = i
+                    var.targets[0].data_path = '["influence"]'
         
         return {'FINISHED'}
     
