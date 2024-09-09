@@ -61,11 +61,7 @@ def set_abspath(self, value):
     self['items_path'] = bpy.path.abspath(value)
 
 def get_selfpath(self):
-    #print(dir(self))
-    #import time
-    #time.sleep(0.5)
     return self['items_path']
-    #return self.items_path
 
 class AssetPaths(PropertyGroup):
     def get_path(self):
@@ -205,10 +201,6 @@ class blends(PropertyGroup):
     validated: BoolProperty(default=False, options=set())
     time_validated: IntProperty()
 
-class ridOf(PropertyGroup):
-    name: StringProperty(default='')
-    index: IntProperty(default=0)
-
 class hisanimFilePaths(AddonPreferences):
     bl_idname = __package__
     #prefs = bpy.context.preferences.addons[__package__].preferences
@@ -223,7 +215,6 @@ class hisanimFilePaths(AddonPreferences):
         return self.path_temp#self.items_path#self['items_path']
 
     path_temp: StringProperty() # have to offload the get/set to another property or else RECURSION ERROR!!! :DDDD
-    assets: CollectionProperty(type=assets)
     blends: CollectionProperty(type=blends)
     blends_index: IntProperty(min=0, options=set())
     blends_more_info: BoolProperty(default=False, name='More Info', description='Show more information about .blend files and the content they hold')
@@ -232,13 +223,11 @@ class hisanimFilePaths(AddonPreferences):
     rigsindex: IntProperty(default=0, options=set())
     hide_auto_exc_warning: BoolProperty(name='Hide Warning Anyways', default=False)
     is_executed: BoolProperty(default=False, options=set())
-    remove: CollectionProperty(type=ridOf)
     runonce_removepaths: IntProperty(default=0, options=set())
     items_path: StringProperty(default='', subtype='DIR_PATH', name='TF2 Items Folder', description='Folder containing all cosmetics and weapons .blend files.',
                                set=set_abspath,
                                get=get_selfpath)
     missing: bpy.props.BoolProperty(default=True, options=set())
-    quickswitch: bpy.props.BoolProperty(default=True, options=set(), name='Quick Switch', description='Replace the tool dropdown with a set of buttons')
     
     def draw(self, context):
         prefs = context.preferences.addons[__package__].preferences
@@ -299,7 +288,7 @@ If you are a past user of the TF2-Trifecta, please note that all of the old asse
                 layout.row().label(text=f'Google Drive ID: {blend.drive_id}')
                 layout.row().label(text=f'Tag: {blend.tag}')
                 layout.row().label(text=f'Resource Only: {blend.no_search}')
-                layout.row().prop(blend, 'validated')
+                #layout.row().prop(blend, 'validated')
 
         layout = self.layout
         norigs = len(prefs.rigs) < 1
@@ -409,7 +398,7 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
                         name += f', {obj["style_index"]}'
                     if obj.get('class'):
                         asset.mercenary = obj['class']
-                        name += f', {obj["class"]}'
+                        name += f', {obj["class"].title()}'
                     asset.name = name
                 else:
                     asset.name = obj.name
@@ -521,7 +510,6 @@ classes = [
         HISANIM_UL_BLENDS,
         AssetPaths,
         rigs,
-        ridOf,
         hisanimFilePaths,
         HISANIM_OT_ADDRIG_1,
         HISANIM_OT_ADDRIG_2,
@@ -529,26 +517,11 @@ classes = [
         HISANIM_OT_SCAN
         ]
 
-#@bpy.app.handlers.persistent
-#def test(a=None,b=None):
-#    print('hello!')
-#    print(bpy.context.scene)
-
 def register():
-    #bpy.app.handlers.load_post.append(test)
-    #bpy.app.handlers.load_factory_preferences_post.append(test)
-    #bpy.app.handlers.
     for i in classes:
         bpy.utils.register_class(i)
     prefs = bpy.context.preferences.addons[__package__].preferences
-    #bpy.types.Scene.trifecta_assets = CollectionProperty(type=assets)
 
-    #bpy.context.scene.trifecta_assets.add()
-
-    #for blend in prefs.blends:
-    #    for asset in blend.assets:
-    #        bpy.
-    
 def unregister():
     for i in classes:
         bpy.utils.unregister_class(i)

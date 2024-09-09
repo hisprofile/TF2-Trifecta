@@ -336,9 +336,9 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
         elif len(prefs.blends) < 1:
             row = layout.row()
             row.alert = True
-            row.label(text='Add .blend files to your TF2 Items folder!', icon='ERROR')
+            row.label(text='Scan the .blend files in your TF2 Items folder!', icon='ERROR')
             op = row.operator('trifecta.textbox', text='', icon='QUESTION')
-            op.text = "You have set your TF2 Items path. All that is left is to download .blend files for cosmetics & weapons. In the scene properties, either open the TF2 Items Folder link, or download all the assets through the \"Install TF2 Items\" box."
+            op.text = "You have set your TF2 Items path. All that is left is to download and scan .blend files for cosmetics & weapons. In the scene properties, either open the TF2 Items Folder link, or download all the assets through the \"Install TF2 Items\" box. Downloading through the scene properties will automatically scan your files."
             op.icons = 'ERROR'
             op.size = '60'
             op.width=350
@@ -418,6 +418,8 @@ When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure t
                 bbox.row().label(text='No selected objects!')
             else:
                 obj = context.object
+                if obj.parent and obj.type == 'MESH':
+                    obj = obj.parent
 
                 targets = [(con, getattr(con, 'target', None)) for con in obj.constraints if con.name.startswith('bm_target') and hasattr(con, 'target')]
 
@@ -603,7 +605,7 @@ class WARDROBE_PT_PAINTS(bpy.types.Panel):
         row.scale_y = 1
         row = row.row(align=True)
         row.template_color_picker(TF2D.inputs['$color2'], 'default_value', value_slider=True, cubic=True)
-        box.row().prop(TF2D.inputs['$color2'], 'default_value')
+        box.row().prop(TF2D.inputs['$color2'], 'default_value', text='Color (Gamma 2.2)')
         box.row().prop(TF2D.inputs['$blendtintbybasealpha'], 'default_value', text='Blend Color by Alpha', slider=True)
         box.row().prop(TF2D.inputs['$blendtintcoloroverbase'], 'default_value', text='Multiply or Mix Color', slider=True)
         row=box.row(align=True)

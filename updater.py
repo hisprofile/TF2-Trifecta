@@ -74,6 +74,14 @@ class InvalidDownload(Exception):
         super().__init__(self.message)
     pass
 
+class UserCancelled(Exception):
+    "User cancelled task!"
+
+    def __init__(self, message="User cancelled task!"):
+        self.message = message
+        super().__init__(self.message)
+    pass
+
 def MAP(x,a,b,c,d, clamp=None):
     y=(x-a)/(b-a)*(d-c)+c
     
@@ -410,7 +418,7 @@ def download_file_from_google_drive_blank(context, operator: Operator):
         with open(destination, "wb") as file:
             for i, chunk in enumerate(response.iter_content(chunk_size)):
                     if props.fstop:
-                        raise
+                        raise UserCancelled
                     if chunk:  # filter out keep-alive new chunks
                         try:
                             props.size = i*chunk_size
@@ -471,13 +479,6 @@ def download_file_from_google_drive_blank(context, operator: Operator):
                 blend_entry.validated = False
             if bak != '':
                 os.remove(bak)
-        #props.finished = True
-
-    #except SmallDownload:
-        #props.stop = True
-        #props.error = "Download too small, assuming download failed!"
-        #print(props.error)
-        #return None
 
     except Exception as E:
         props.stop = True
@@ -708,10 +709,6 @@ class TRIFECTA_OT_GET_BLEND(TRIFECTA_OT_genericText):
         Queue = (iter(enumerate(queue)), len(queue))
         bpy.ops.trifecta.download_queue('EXEC_DEFAULT')
         return {'FINISHED'}
-
-    #def draw_extra(self, context):
-    #    layout = self.layout
-    #    layout.label(text=f'Downloading {self.item_name}.blend. Continue?')
 
 class TRIFECTA_OT_DOWNLOAD_ALL(TRIFECTA_OT_genericText):
     bl_idname = 'trifecta.download_all'

@@ -126,9 +126,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             self.report({'WARNING'}, f'{merc_blend} is missing a collection named {self.merc+self.type}. Were the rigs setup correctly?')
             self.report({'ERROR'}, f'.blend file is missing collection "{self.merc+self.type}". Check INFO for more information.')
             return {'CANCELLED'}
-
-        name = self.merc + self.type
-
+        
         col: bpy.types.Collection = data_to.collections[0]
         col = col.make_local()
 
@@ -144,19 +142,11 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             for obj in colChild.objects:
                 recursive(obj)
 
-
-        for linked, local in list(map_to_do.items()):
-            linked.user_remap(local)
-
-        map_to_do.clear()
-
         for obj in col.all_objects:
             if obj.data == None:
                 continue
+            #recursive(obj.data)
             map_to_do[obj.data] = obj.data.make_local()
-            
-        for linked, local in list(map_to_do.items()):
-            linked.user_remap(local)
 
         for obj in col.all_objects:
             if not isinstance(obj.data, bpy.types.Mesh):
@@ -169,7 +159,15 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if modifier.type != 'NODES': continue
                 modifier.node_group.make_local()
 
-        map_to_do.clear()
+
+        for linked, local in list(map_to_do.items()):
+            #print(linked, linked.library)
+            linked.user_remap(local)
+            #print(linked, linked.library)
+        #for ID in map_to_do.keys():
+        #    print(ID)
+            #bpy.data.batch_remove({ID})
+
 
         # make a variable targeting the added collection of the character
         # this mostly pertains to blu switching. any material added has been switched to BLU and will therefore be skipped.
@@ -238,9 +236,9 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         del context.scene['new_spawn']
 
         bpy.data.collections.remove(col)
-
-        # delete  unused images and nodegroups.
+        map_to_do.clear()
         bpy.context.view_layer.active_layer_collection = bak
+        bpy.data.orphans_purge(do_linked_ids=True, do_recursive=True)
         return {'FINISHED'}
     
 class MD_OT_hint(bpy.types.Operator):

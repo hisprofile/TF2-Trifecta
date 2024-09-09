@@ -382,7 +382,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
             if found:
                 for n, material in enumerate(group):
                     justadded.material_slots[n].material = material
-
+        bpy.data.orphans_purge(do_linked_ids=True, do_recursive=True)
         if (bpy.context.object == None) or (justadded.parent == None): return {'FINISHED'}
 
         select = bpy.context.object
@@ -394,7 +394,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         if select.parent:
             #select.select_set(False)
             select = select.parent
-        if select.get('BMBCOMPATIBLE') != None and (context.scene.hisanimvars.autobind if context.scene.hisanimvars.hisanimweapons else True): # if the selected armature is bonemerge compatible, bind to it.
+        if select.get('BMBCOMPATIBLE') != None: # and (context.scene.hisanimvars.autobind if context.scene.hisanimvars.hisanimweapons else True): # if the selected armature is bonemerge compatible, bind to it.
             bpy.types.Scene.host = select
             bpy.types.Scene.parasite = justadded.parent
             bpy.ops.hisanim.attachto()
@@ -418,10 +418,15 @@ class HISANIM_OT_Search(bpy.types.Operator):
         lookfor: str = bpy.context.scene.hisanimvars.query
         lookfor = lookfor.split("|")
         lookfor.sort()
+
+        if len(prefs.blends) < 1:
+            self.report({'ERROR'}, 'You have no .blend files to search through! Set your TF2 Items path and scan the folder!')
+            return {'CANCELLED'}
+
         for request in lookfor:
             for nb, blend in sorted(filter(lambda a: a[1].no_search == False, enumerate(prefs.blends)), key=lambda a: order.get(a[1].tag, -1)):
                 #print(blend)
-                for na, asset in filter(lambda a: request.lower() in a[1].name.lower(), enumerate(blend.assets)):
+                for na, asset in filter(lambda a: (request.lower() in a[1].name.lower()) or (request.lower() in blend.tag.lower()), enumerate(blend.assets)):
                     #print(asset)
                     new = context.scene.hisanimvars.results.add()
                     new.name = asset.name
