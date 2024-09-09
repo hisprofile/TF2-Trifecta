@@ -6,7 +6,7 @@ The TF2-Trifecta is a Blender addon to spawn and manipulate my mercenaries, cosm
 - Paint cosmetics
 ## Merc Deployer
 - Allows you to spawn two types of pre-prepared rigs, Rigify rigs and in-game rigs (taunt compatible). They are aptly named `New` and `Legacy`
-- Can choose between sets of rigs (At this moment, only three exist. Mine, Eccentric's and ThatLazyArtist's.)
+- Can choose between sets of rigs (At this moment, only four exist. Mine, Eccentric's and ThatLazyArtist's, and the Ragdoll rigs.)
 ## Bonemerge
 - Allows you to attach cosmetics and weapons to a mercenary with ease
 - Allows you to attach facial cosmetics to rigs that support it
@@ -63,7 +63,9 @@ Attach cosmetics to a class by choosing a target armature and and selecting the 
 
 <img src='https://github.com/user-attachments/assets/d3293c75-f805-4515-88f3-4f0536744b89' width='400'>
 
-You can adjust the influence with the value slider. Influence is added in the order the cosmetics were attached
+You can adjust the influence with the value slider. Influence is added in the order the cosmetics were attached.
+
+Enabling `Hierarchal Influence` will activate the influence of the attachements going down the bone tree.
 
 # Face Poser
 (Only supported for my rigs!)
