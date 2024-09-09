@@ -1,6 +1,8 @@
 import bpy, os, shutil, shutil, glob, json, zipfile, threading, time, requests
 from pathlib import Path
-from . import icons, mercdeployer, preferences
+from . import icons, mercdeployer
+from .preferences import ids, rigs_ids
+from .panel import TRIFECTA_OT_genericText
 from urllib import request
 from math import sin
 from bpy.types import Operator, PropertyGroup
@@ -12,27 +14,41 @@ global files
 #bpy
 
 area = None
+Queue = list()
+current_iter = None
 
-mercs = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
-classes = mercdeployer.classes
-misc = ['allclass', 'allclass2', 'allclass3', 'weapons', 'rigs']
+mercs = [
+    'scout_cosmetics',   
+    'soldier_cosmetics', 
+    'pyro_cosmetics',    
+    'demo_cosmetics' ,   
+    'heavy_cosmetics',   
+    'engineer_cosmetics',
+    'medic_cosmetics',   
+    'sniper_cosmetics',  
+    'spy_cosmetics',     
+]
 
-ids = {
-    'allclass': '1XxOCordVSxw2kal5ujeOd_wp5dcQ7RKo',
-    'allclass2' : '1RnemK8RV-J3Onzc1fMBEVf0uon0NSXtm',
-    'allclass3': '1rT_Z5o9g8IF-eALfDIIdjWB_n_03RJYm',
-    'scout': '1TS6KGbE8jKtIremS_4Go3T1eXyajifKu',
-    'soldier': '1c4D0_RueeuRkAj34JPmHl7T8F6GG91Yc',
-    'pyro': '1cAP7NY1x_IHVQQtnWwjFNstQKjXp-Qlu',
-    'demo': '1p2Cu9wfxbentYMVKGdgnJuaMpT7db68j',
-    'heavy': '1JjqQXDKuDXGDkLvMvshojppd1IbNMij-',
-    'engineer': '1c8jyJlD4VknD2RfexXa6owV_kaKOExQO',
-    'medic': '1VQvixt9pW85zMafkuhsVZaZtocivy_zH',
-    'sniper': '1VMCOr8aeaJhTk2xivlsnC55DaUpLoqJV',
-    'spy': '1dhANUyTvy8ylOFUBEKCxZo11BE-IO8L3',
-    'weapons': '12WyUdeVFIvS_IM-RkKHUP-Fc4kzoGZwa',
-    'standard-rigs': '1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj'
-}
+all_class = [
+    'allclass1',
+    'allclass2',
+    'allclass3',
+    'allclass4',
+]
+
+weapons = [
+    'weapons1',
+    'weapons2',
+    'weapons3',
+]
+
+misc = [
+    'taunts_items',
+    '_resources'
+]
+
+textchars = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
+is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
 
 class SmallDownload(Exception):
     "Download too small, assuming download failed!"
@@ -83,6 +99,15 @@ def format_size(size_in_bytes):
             return f"{size_in_bytes:.2f} {unit}"
         size_in_bytes /= 1024.0
 
+def getRigs(self, context):
+    prefs = context.preferences.addons[__package__].preferences
+    rig_list = list()
+    for n, data in enumerate(rigs_ids.items()):
+        key, value = data
+        rig_list.append((value[0], key, value[1], '', n))
+
+    return rig_list
+
 class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Updater
     bl_label = "TF2 Trifecta"
     bl_space_type = 'PROPERTIES'
@@ -90,63 +115,114 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
     bl_context = 'scene'
     def draw(self, context):
         version = bpy.app.version
+        prefs = context.preferences.addons[__package__].preferences
         addon_fp = os.path.abspath(Path(__file__).parent)
         props = bpy.context.scene.trifecta_updateprops
         layout = self.layout
-        if props.active:
-            row = layout.row()
+        if props.running:
+            row = layout.row(align=True)
+            row.alignment = 'LEFT'
             row.label(text=props.stage)
             row.label(text=f'{format_size(props.size)}/{format_size(props.download_size)}')
-            if props.updateAll:
-                row.label(text=f'{list(ids.keys())[props.iter].title()}, {props.iter + 1}/14')
+            data = current_iter[1]
+            task = current_iter[0]
+            file_name = data[0]
+            tasks = Queue[1]
+            row.label(text=f'{file_name}, {task+1}/{tasks}')
             if version >= (4, 0, 0):
                 row.progress(text='', type='RING', factor=props.progress)
             else:
                 row.label(text='.'*int(((time.time()*3)%3) + 1))
         else:
             layout.row().operator('wm.url_open', text='Installation Documentation', icon='URL').url = 'https://github.com/hisprofile/blenderstuff/blob/main/Guides/TF2%20Blender/!TF2-Trifecta%20Installation.md'
+            layout.row().operator('wm.url_open', text='TF2 Items Folder', icon='URL').url = 'https://drive.google.com/open?id=1JFzUvfiiBF8ukpL50ewZDct98E96oNmL&usp=drive_fs'
+            layout.row().operator('wm.url_open', text='Rigs', icon='URL').url = 'https://drive.google.com/open?id=1DF6S3lmqA8xtIMflWhzV242OrUnP62ws&usp=drive_fs'
         box = layout.box()
         box.label(text='Update Class Cosmetics')
         id_items = ids.items()
-        for asset, id in list(id_items)[3:-2]:
-            op = box.row().operator('trifecta.update', text=f'Download {asset.title()}', icon_value=icons.id('tfupdater'))
-            op.id = id
-            op.asset = asset
-            op.operation = 'BLEND'
+        col = box.column()
+        for item in mercs:
+            op = col.row().operator('trifecta.get_blend', text=f'Download {item.title()}', icon_value=icons.id('tfupdater'))
+            op.text = f'''Blender will momentarily pause after downloading the file to validate it.
+Downloading {item}.blend. Continue?'''
+            op.size = '56,56'
+            op.icons = 'ERROR,QUESTION'
+            op.width = 350
+            op.item_name = item
+            op.item_id = ids[item]
+
+        box = layout.box()
+        box.label(text='Update Allclass Cosmetics')
+        col = box.column()
+        for item in all_class:
+            op = col.row().operator('trifecta.get_blend', text=f'Download {item.title()}', icon_value=icons.id('tfupdater'))
+            op.text = f'''Blender will momentarily pause after downloading the file to validate it.
+Downloading {item}.blend. Continue?'''
+            op.size = '56,56'
+            op.icons = 'ERROR,QUESTION'
+            op.width = 350
+            op.item_name = item
+            op.item_id = ids[item]
+
+        box = layout.box()
+        box.label(text='Update Weapons')
+        col = box.column()
+        for item in weapons:
+            op = col.row().operator('trifecta.get_blend', text=f'Download {item.title()}', icon_value=icons.id('tfupdater'))
+            op.text = f'''Blender will momentarily pause after downloading the file to validate it.
+Downloading {item}.blend. Continue?'''
+            op.size = '56,56'
+            op.icons = 'ERROR,QUESTION'
+            op.width = 350
+            op.item_name = item
+            op.item_id = ids[item]
 
         box = layout.box()
         box.label(text='Update Misc.')
-        for asset, id in [*list(id_items)[:3], list(id_items)[-2]]:
-            op = box.row().operator('trifecta.update', text=f'Download {asset.title()}', icon_value=icons.id('tfupdater'))
-            op.id = id
-            op.asset = asset
-            op.operation = 'BLEND'
+        col = box.column()
+        for item in misc:
+            op = col.row().operator('trifecta.get_blend', text=f'Download {item.title()}', icon_value=icons.id('tfupdater'))
+            op.text = f'''Blender will momentarily pause after downloading the file to validate it.
+Downloading {item}.blend. Continue?'''
+            op.size = '56,56'
+            op.icons = 'ERROR,QUESTION'
+            op.width = 350
+            op.item_name = item
+            op.item_id = ids[item]
 
         box = layout.box()
         box.label(text='Download Rigs')
-        op = box.row().operator('trifecta.update', text='Download Rigs', icon_value=icons.id('tfupdater'))
-        op.operation = 'ZIP'
-        box.row().prop(props, 'newRigEntry')
-        if props.newRigEntry:
-            box.row().prop(props, 'newRigName')
-            box.row().prop(props, 'newRigPath')
+        op = box.row().operator('trifecta.get_rig', text='Download Rigs', icon_value=icons.id('tfupdater'))
+        op.text = '''hisanimations', Eccentric's, and ThatLazyArtist's rigs all differ based on how the face is posed. Only hisanimations' and TLA's rigs support facial cosmetics.
+hisanimations' rigs have faces that can be posed through the Face Poser tool, and have a control scheme similar to that of SFM/Garry's Mod. Therefore, it is recommended to people who have used said control scheme.
+Eccentric's rigs have control points overlayed on the face, resembling a control scheme akin to the industrial standard.
+ThatLazyArtist's rigs have a panel above the head with sliders to pose the face.
+The Ragdoll rigs are what they say they are. They come with a tool panel in the Items tab to help users use them. Legacy rigs should be bonemerged onto these rigs.'''
+        op.size='56,58,56,56,56'
+        op.icons='BLANK1,BLANK1,BLANK1,BLANK1,BLANK1'
+        op.width = 350
 
         box = layout.box()
-        box.label(text='Install TF2 Collection')
-        op = box.row().operator('trifecta.update', text='Install TF2 Collection', icon_value=icons.id('tfupdater'))
-        op.updateAll = True
-        box.row().label(text='Place path in an empty folder.')
+        box.label(text='Install TF2 Items')
+        op = box.row().operator('trifecta.download_all', text='Install TF2 Items', icon_value=icons.id('tfupdater'))
+        op.text = '''It's possible the download will fail due to not having a consistent way of downloading from Google Drive. Open the link to the folder to download the files if this doesn't work.
+The TF2-Trifecta will validate the files once the download is complete. Open the console if you wish to view progress.
+It's recommended to not do anything intensive while the TF2-Trifecta is downloading the files.'''
+        op.size='56,56,56'
+        op.icons='ERROR,CONSOLE,ERROR'
+        op.width=350
+        box.row().label(text='Path should be empty if downloading for the first time.')
         row = box.row()
         row.alignment = 'EXPAND'
-        row.label(text='TF2 Collection Path:')
-        row.prop(props, 'tf2ColPath', text='')
-        box.row().prop(props, 'tf2ColRig')
+        row.label(text='TF2 Items Path:')
+        row.prop(prefs, 'items_path', text='')
+        #box.row().prop(props, 'tf2ColRig')
+
+
         row = layout.row()
         row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
         layout.row().operator('hisanim.relocatepaths', text='Redefine Library Paths', icon='FILE_REFRESH')
         row = layout.row()
-        row.prop(context.scene.hisanimvars, 'savespace')
-        layout.row().prop(context.preferences.addons[__package__].preferences, 'quickswitch')
 
 class HISANIM_OT_ADDONUPDATER(Operator):
     bl_idname = 'hisanim.addonupdate'
@@ -237,152 +313,6 @@ class HISANIM_OT_ADDONUPDATER(Operator):
         bpy.utils.register_class(HISANIM_PT_tempPanel)
         self.report({'INFO'}, 'Addon downloaded! Press "Reload Addon" to apply changes.')
         return {'FINISHED'}
-    
-def update_masterjson():
-    #url = "https://docs.google.com/uc?export=download"
-    #id = '1sdpUfuXf9NyEAuu0_TVdaAmSoFlKvUOm'
-    #session = requests.Session()
-    #params = {'id': id, 'confirm': 1}
-    #response = session.get(url, params=params, stream=True)
-    file = request.urlopen('https://raw.githubusercontent.com/hisprofile/TF2-Trifecta/main/master.json')
-    file = file.read()
-    destination = Path(os.path.join(os.path.dirname(__file__), 'master.json'))
-    with open(destination, "w+") as f:
-        #for i, chunk in enumerate(response.iter_content(32768)):
-            #if chunk:  # filter out keep-alive new chunks
-                #f.write(chunk)
-        f.write(file.decode())
-    f.close()
-
-    return None
-
-def download_file_from_google_drive_blank(context):
-    try:
-        #C = bpy.context
-        C = context # safer to use context from operator
-        scn = C.scene
-        props = scn.trifecta_updateprops
-        prefs = C.preferences.addons[__package__].preferences
-        props.active = True
-        props.size = 0.0
-        props.progress = 0.0
-        props.download_size = 0
-        bak = ''
-        time.sleep(0.5)
-
-        ### Download Properties ###
-        #url = "https://docs.google.com/uc?export=download"
-        url = 'https://drive.usercontent.google.com/download?'
-        #https://drive.usercontent.google.com/download?id=1cAP7NY1x_IHVQQtnWwjFNstQKjXp-Qlu?confirm=t&uuid=a908a383-e795-4d21-974d-73c8e49a2d6f
-        file_id = props.id
-        chunk_size=32768
-        session = requests.Session()
-        #params = {'id': file_id, 'confirm': 't', 'authuser': 0}
-        params = {'id': file_id, 'confirm': 't', 'uuid': str(uuid.uuid4())}
-        response = session.get(url, params=params, stream=True)
-        #print(response.headers.get('Content-Length', 1))
-        props.download_size = int(response.headers.get('Content-Length', 1))
-        #raise SmallDownload
-
-        d = response
-
-        wm = bpy.context.window_manager
-
-        ### Start Download ###
-        if response.status_code != 200:
-            props.stop = True
-            props.fail = response.status_code
-            raise InvalidResponse
-        
-        if props.operation == 'ZIP':
-            rigs = prefs.rigs[scn.hisanimvars.rigs]
-            destination = os.path.join(rigs.path, 'rigs.zip')
-            folder = rigs.path
-            
-            rigs_backup = os.path.join(folder, 'bak')
-            os.makedirs(rigs_backup)
-            for file in glob.glob('*.blend', root_dir=folder):#os.listdir(folder):
-                shutil.move(os.path.join(folder, file), os.path.join(folder, 'bak', file))
-
-        if props.operation == 'BLEND':
-            destination = prefs.hisanim_paths[props.asset].path
-            folder = os.path.dirname(destination)
-            if Path(destination).exists():
-                bak = shutil.move(destination, os.path.join(folder, 'bak.blend'))
-
-        with open(destination, "wb") as file:
-            for i, chunk in enumerate(response.iter_content(chunk_size)):
-                    if props.fstop:
-                        raise
-                    if chunk:  # filter out keep-alive new chunks
-                        try:
-                            props.size = i*chunk_size
-                            props.progress = props.size/props.download_size
-                        except Exception as e:
-                            print(e)
-                            pass
-                        file.write(chunk)
-        file.close()
-
-        filesize = os.stat(destination)[6]
-
-        if filesize < 2_000_000:
-            raise SmallDownload
-
-        '''
-        If the file size is less than 2mb, then it's probably gone to waste. Obviously the best thing to do would be to verify via
-        checksum, but I don't really have a way to implement that in way that's constantly up to date with the files.
-        '''
-
-        props.size = os.stat(destination)[6]
-        if props.operation == 'ZIP': # ZIP is alias for downloading rig sets
-            props.stage = 'Extracting...'
-
-            with zipfile.ZipFile(destination, 'r') as zip:
-                info = zip.infolist()
-                obj_count = len(info)
-                print(obj_count)
-                for n, file_info in enumerate(info):
-                    props.progress = obj_count / (n + 1)
-                    if bpy.context.screen != None:
-                        for area in bpy.context.screen.areas:
-                            if area.type == 'PROPERTIES':
-                                area.tag_redraw()
-                    file_path = os.path.join(folder, file_info.filename)
-                    zip.extract(file_info, folder)
-
-            props.stage = 'Removing...'
-            #props.var = 1.0
-            os.remove(destination)
-            shutil.rmtree(rigs_backup)
-        
-        if props.operation == 'BLEND' and bak != '':
-            os.remove(bak)
-        props.finished = True
-
-    #except SmallDownload:
-        #props.stop = True
-        #props.error = "Download too small, assuming download failed!"
-        #print(props.error)
-        #return None
-
-    except Exception as E:
-        props.stop = True
-        props.error = str(E)
-        print(E)
-        return None
-
-        if props.operation == 'ZIP':# and Path(destination).exists():
-            os.remove(destination)
-            for file in os.listdir(rigs_backup):
-                shutil.move(os.path.join(rigs_backup, file), os.path.join(folder, file))
-            shutil.rmtree(rigs_backup)
-            pass
-
-        if props.operation == 'BLEND':
-            os.remove(destination)
-            if bak != '': shutil.move(bak, destination)
-    return None
 
 class updateProps(PropertyGroup):
     id: StringProperty(name='ID')
@@ -418,68 +348,178 @@ class updateProps(PropertyGroup):
     tf2ColRig: BoolProperty(default=False, name='Include Rigs')
     iter: IntProperty(default=0, max=13)
 
+def download_file_from_google_drive_blank(context, operator: Operator):
+    try:
+        #C = bpy.context
+        C = context # safer to use context from operator
+        scn = C.scene
+        props = scn.trifecta_updateprops
+        prefs = C.preferences.addons[__package__].preferences
+        props.active = True
+        props.size = 0.0
+        props.progress = 0.0
+        props.download_size = 0
+        bak = ''
+        time.sleep(0.5)
 
-class TRIFECTA_OT_downloader(Operator):
-    bl_idname = 'trifecta.update'
-    bl_label = 'Grab File'
-    bl_description = "Get file from hisanimation's Google Drive"
+        current_task = current_iter[1]
+        file_name = current_task[0]
+        blend_name = file_name+'.blend'
+        file_id = current_task[1]
+        operation = current_task[2]
+
+        ### Download Properties ###
+        #url = "https://docs.google.com/uc?export=download"
+        url = 'https://drive.usercontent.google.com/download?'
+        #https://drive.usercontent.google.com/download?id=1cAP7NY1x_IHVQQtnWwjFNstQKjXp-Qlu?confirm=t&uuid=a908a383-e795-4d21-974d-73c8e49a2d6f
+        chunk_size=32768
+        session = requests.Session()
+        #params = {'id': file_id, 'confirm': 't', 'authuser': 0}
+        params = {'id': file_id, 'confirm': 't', 'uuid': str(uuid.uuid4())}
+        response = session.get(url, params=params, stream=True)
+        #print(response.headers.get('Content-Length', 1))
+        props.download_size = int(response.headers.get('Content-Length', 1))
+        #raise SmallDownload
+
+        ##d = response
+
+        wm = bpy.context.window_manager
+
+        # Start Download ###
+        if response.status_code != 200:
+            props.stop = True
+            props.fail = response.status_code
+            raise InvalidResponse
+        
+        if operation == 'ZIP':
+            rigs = prefs.rigs[scn.hisanimvars.rigs]
+            destination = os.path.join(rigs.path, 'rigs.zip')
+            folder = rigs.path
+            
+            rigs_backup = os.path.join(folder, 'bak')
+            os.makedirs(rigs_backup)
+            for file in glob.glob('*.blend', root_dir=folder):#os.listdir(folder):
+                shutil.move(os.path.join(folder, file), os.path.join(folder, 'bak', file))
+
+        if operation == 'BLEND':
+            folder = prefs.items_path
+            destination = os.path.join(folder, blend_name)
+            if os.path.exists(destination):
+                bak = shutil.move(destination, os.path.join(folder, 'bak.blend'))        
+
+        with open(destination, "wb") as file:
+            for i, chunk in enumerate(response.iter_content(chunk_size)):
+                    if props.fstop:
+                        raise
+                    if chunk:  # filter out keep-alive new chunks
+                        try:
+                            props.size = i*chunk_size
+                            props.progress = props.size/props.download_size
+                        except Exception as e:
+                            print(e)
+                            pass
+                        file.write(chunk)
+        file.close()
+
+        open_file = open(destination, 'rb')
+        if is_binary_string(open_file.read(1024)):
+            open_file.close()
+            pass
+        else:
+            open_file.close()
+            operator.report({'ERROR'}, f'Got an .html file instead of desired result!')
+            operator.report({'INFO'}, 'This usually occurs when Google would rather you download the file through their website, or if the quota for the wanted file is full. In either case, open the link to the items folder on Drive and try getting it there.')
+            raise InvalidDownload
+
+        filesize = os.stat(destination)[6]
+
+        '''
+        If the file size is less than 2mb, then it's probably gone to waste. Obviously the best thing to do would be to verify via
+        checksum, but I don't really have a way to implement that in way that's constantly up to date with the files.
+        '''
+
+        props.size = filesize
+
+        if operation == 'ZIP': # ZIP is alias for downloading rig sets
+            props.stage = 'Extracting...'
+
+            with zipfile.ZipFile(destination, 'r') as zip:
+                info = zip.infolist()
+                obj_count = len(info)
+                for n, file_info in enumerate(info):
+                    props.progress = obj_count / (n + 1)
+                    #if bpy.context.screen != None:
+                    #    for area in bpy.context.screen.areas:
+                    #        if area.type == 'PROPERTIES':
+                    #            area.tag_redraw()
+                    file_path = os.path.join(folder, file_info.filename)
+                    zip.extract(file_info, folder)
+
+            props.stage = 'Removing...'
+            #props.var = 1.0
+            os.remove(destination)
+
+            shutil.rmtree(rigs_backup)
+        
+        if operation == 'BLEND':
+            if (blend_entry := prefs.blends.get(blend_name)) == None:
+                new_blend = prefs.blends.add()
+                new_blend.name = blend_name
+                new_blend.validated = False
+                new_blend.path = destination
+            else:
+                blend_entry.validated = False
+            if bak != '':
+                os.remove(bak)
+        #props.finished = True
+
+    #except SmallDownload:
+        #props.stop = True
+        #props.error = "Download too small, assuming download failed!"
+        #print(props.error)
+        #return None
+
+    except Exception as E:
+        props.stop = True
+        props.error = str(E)
+
+        if operation == 'ZIP':# and Path(destination).exists():
+            if os.path.exists(destination):
+                os.remove(destination)
+            for file in os.listdir(rigs_backup):
+                shutil.move(os.path.join(rigs_backup, file), os.path.join(folder, file))
+            shutil.rmtree(rigs_backup)
+            pass
+
+        if operation == 'BLEND':
+            if os.path.exists(destination):
+                os.remove(destination)
+            if bak != '': shutil.move(bak, destination)
+    props.active = False
+    return None
+
+class TRIFECTA_OT_DOWNLOAD_QUEUE(Operator):
+    bl_idname = 'trifecta.download_queue'
+    bl_label = 'Download Queue'
+    bl_description = 'Go through a queue of items to download'
+
     _timer = None
-    start = 0
-    progress: FloatProperty(default=0.0)
+    _time = None
+    _count = None
+    _wait_validated = None
+    _start_at = 0
 
-    ### Initializers for download operation ###
-
-    updateAll: BoolProperty(default=False)
-    id: StringProperty(name='ID')
-    file: StringProperty(name='File')
-    filepath:StringProperty(name='Filepath', subtype='DIR_PATH')
-    newpath: StringProperty(name='New path', subtype='DIR_PATH')
-    asset: StringProperty(default='')
-    operation: EnumProperty(items=(
-        ('BLEND', '', '', 0),
-        ('ZIP', '', '', 1)
-    ), name='Operation')
-
-    ### Rig download properties ###
-
-    rigs: EnumProperty(items=(
-        ('1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj', 'hisanimations', '', '', 0),
-        ('1-MboVZ3PZ471AmXYHnYegoXozKd8OmVU', 'Eccentric', '', '', 1),
-        ('1-MVdFejB1wtO4v2zcurCMIK6MPxNvRTs', 'ThatLazyArtist', '', '', 2)
-    ), name='Rig Set')
-
-    ### TF2 Collection update properties ###
-
-    scout: BoolProperty(default=True)
-    soldier: BoolProperty(default=True)
-    pyro: BoolProperty(default=True)
-    demo: BoolProperty(default=True)
-    heavy: BoolProperty(default=True)
-    engineer: BoolProperty(default=True)
-    medic: BoolProperty(default=True)
-    sniper: BoolProperty(default=True)
-    spy: BoolProperty(default=True)
-
-    allclass: BoolProperty(default=False)
-    allclass2: BoolProperty(default=False)
-    allclass3: BoolProperty(default=True)
-    weapons: BoolProperty(default=False)
-    
     @classmethod
     def poll(cls, context):
         props = context.scene.trifecta_updateprops
-        return not props.active
+        return not props.running
 
     def modal(self, context, event):
-        global area
-
+        global current_iter
         props = context.scene.trifecta_updateprops
         prefs = context.preferences.addons[__package__].preferences
         wm = context.window_manager
         props.running = True
-
-        if event.type in {'ESC'}:
-            props.fstop = True
 
         if props.stop:
             props.fstop = False
@@ -490,208 +530,250 @@ class TRIFECTA_OT_downloader(Operator):
             props.updateAll = False
             wm.event_timer_remove(self._timer)
             area.tag_redraw()
-            self.report({'WARNING'}, f"Cancelling! Code: {props.fail}, Error: {props.error}")
+            self.report({'WARNING'}, f"Cancelling! Code: {props.fail}, Error: {props.error}. Read INFO")
             return {'CANCELLED'}
-
-        if not props.active:
-            props.active = True
-            thread = threading.Thread(target=download_file_from_google_drive_blank, args=(context,), daemon=True)
-            thread.start()
-
-        if props.finished:
-            props.active = False
-            props.finished=False
-            if props.updateAll and props.iter != 13:
-                self.report({'INFO'}, f'{list(ids.keys())[props.iter].title()} done!')
-                props.iter += 1
-                props.size = 0.0
-                props.stage = 'Downloading...'
-                props.id = list(ids.items())[props.iter][1]
-                props.asset = list(ids.items())[props.iter][0]
-                props.operation = 'BLEND'
-                #if props.iter == 13: props.updateAll = False
-                if props.iter == 13 and props.tf2ColRig:
-                    props.operation = 'ZIP'
-                    return {'PASS_THROUGH'}
-                elif props.iter == 13 and not props.tf2ColRig:
-                    props.finished = True
-                    self.report({'INFO'}, 'Finished downloading!')
-                    wm.event_timer_remove(self._timer)
-                    area.tag_redraw()
-                else:
-                    return {'PASS_THROUGH'}
-            props.updateAll = False
-            self.report({'INFO'}, 'Finished downloading!')
-            wm.event_timer_remove(self._timer)
-            area.tag_redraw()
+        
+        if (self._wait_validated) and (time.time() > self._start_at):
+            bpy.ops.trifecta.scan('EXEC_DEFAULT', scan_all=True, revalidate=False)
+            self.report({'INFO'}, 'All files validated!')
+            props.running = False
             return {'FINISHED'}
 
-        if event.type == 'TIMER' and props.stage == 'Downloading...':
-            #tim = time.time()
-            #tim = sin(tim*5)
-            #tim = MAP(tim, -1, 1, 0.01, 0.08)
-            #props.var = (props.var + tim) % 1
+        if (not props.active) and (not self._wait_validated):
+            try:
+                current_iter = next(Queue[0])
+                self._count += 1
+            except StopIteration:
+                props.fstop = False
+                props.stop = False
+                props.active = False
+                props.finished = False
+                props.updateAll = False
+                props.running = False
+                
+                self.report({'INFO'}, 'Queue Cleared!')
+                for blend in prefs.blends:
+                    if blend.validated == False:
+                        self._wait_validated = True
+                        self._time = time.time()
+                        self._start_at = time.time() + 2
+                        props.stage = 'Validating...'
+                        self.report({'INFO'}, 'Please wait for files to be validated!')
+                        return {'PASS_THROUGH'}
+                return {'FINISHED'}
+            props.active = True
+            thread = threading.Thread(target=download_file_from_google_drive_blank,
+                        args=(context, self),
+                        daemon=True
+                        )
+            thread.start()
+
+        if event.type in {'ESC'}:
+            props.fstop = True
+            #thread.join(1)
+
+        if event.type == 'TIMER':
             area.tag_redraw()
-
-        if props.stage == 'Moving...':
-            print(os.stat(props.newpath)[6], props.newpath)
-            if os.stat(props.newpath)[6] == 0:
-                props.var = 0.0
-            else:
-                print(os.stat(props.newpath)[6])
-                props.var = props.size/os.stat(props.newpath)[6]
-
+        
         return {'PASS_THROUGH'}
+
 
     def execute(self, context):
         global area
-
+        global Queue
         area = context.area
 
         props = bpy.context.scene.trifecta_updateprops
         prefs = context.preferences.addons[__package__].preferences
-        assets = prefs.hisanim_paths
-        thread = threading.Thread(target=update_masterjson, daemon=True)
-        thread.start()
-        if props.newRigEntry and self.operation == 'ZIP':
-            if props.newRigName == '':
-                self.report({'ERROR'}, 'Rig-set must be named!')
-                return {'CANCELLED'}
-            
-            if props.newRigPath == '':
-                self.report({'ERROR'}, 'Rig-set path is empty!')
-                return {'CANCELLED'}
-            
-            if os.path.isfile(props.newRigPath):
-                props.newRigPath = Path(props.newRigPath).parent
-            
-            if not Path(props.newRigPath).exists():
-                self.report({'ERROR'}, 'Path for new rig-set is invalid!')
-                return {'CANCELLED'}
-            
-            if prefs.rigs.get(props.newRigName) != None:
-                self.report({'ERROR'}, 'Rig-set already exists!')
-                return {'CANCELLED'}
 
-            new = prefs.rigs.add()
-            new.name = props.newRigName
-            new.path = props.newRigPath
-            context.scene.hisanimvars.rigs = props.newRigName
-            props.newRigEntry = False   
-            props.newRigName = 'Rigs'
-            props.newRigPath = ''
-
-        elif self.operation == 'ZIP':
-            pass
-        
-        elif self.updateAll:
-            if props.tf2ColPath == '':
-                self.report({'ERROR'}, 'Add a path to install to!')
-                return {'CANCELLED'}
-            props.updateAll = True
-            root = Path(props.tf2ColPath)
-            rigs = prefs.rigs
-            for merc in mercs:
-                #if not eval(f'self.{merc}'):
-                #    continue
-                if (asset := assets.get(merc)) == None: 
-                    asset = prefs.hisanim_paths.add()
-                    asset.path = os.path.join(root, merc, f'{merc}cosmetics.blend')
-                    asset.name = merc
-                    asset.this_is = 'BLEND'
-                    if not Path(os.path.join(root, merc)).exists():
-                        os.makedirs(os.path.join(root, merc))
-
-            for m in misc[:-1]:
-                #if not eval(f'self.{m}'):
-                #    continue
-                if (asset := assets.get(m)) == None: 
-                    asset = prefs.hisanim_paths.add()
-                    asset.path = os.path.join(root, m, f'{m}.blend')
-                    asset.name = m
-                    asset.this_is = 'BLEND'
-                    if not Path(os.path.join(root, m)).exists():
-                        os.makedirs(os.path.join(root, m))
-
-            if props.tf2ColRig and rigs.get('rigs') == None:
-                prefs.missing = False
-                new = rigs.add()
-                new.name = 'rigs'
-                new.path = os.path.join(root, 'rigs')
-                preferences.enumRigs()
-                context.scene.hisanimvars.rigs = 'rigs'
-                if not Path(os.path.join(root, 'rigs')).exists():
-                    os.makedirs(os.path.join(root, 'rigs'))
-
-            props.size = 0.0
-            props.stage = 'Downloading...'
-            props.iter = 0
-            props.id = list(ids.items())[0][1]
-            props.operation = 'BLEND'
-            props.asset = list(ids.items())[0][0]
-
-            wm = context.window_manager
-            self._timer = wm.event_timer_add(0.1, window=context.window)
-            self.time = time.time()
-            self.report({'INFO'}, 'Press ESC to cancel!')
-            wm.modal_handler_add(self)
-            return {'RUNNING_MODAL'}
-
+        props.active = False
+        props.fstop = False
+        props.running = False
+        props.active = False
+        props.finished = False
         props.size = 0.0
         props.stage = 'Downloading...'
-        props.iter = 0
-        props.id = self.id if self.operation == 'BLEND' else self.rigs
-        if self.operation == 'BLEND' and assets.get(self.asset) == None:
-            self.report({'ERROR'}, f'No asset added for {self.asset}!')
-            return {'CANCELLED'}
-        props.filepath = self.filepath
-        props.operation = self.operation
-        props.asset = self.asset
+        props.error = 'User Cancelled'
+        props.fail = 0
 
         wm = context.window_manager
-        self._timer = wm.event_timer_add(0.1, window=context.window)
-        self.time = time.time()
+        self._time = time.time()
+        self._count = 0
+        self._wait_validated = False
+        self._start_at = 0
+        self.report({'INFO'}, 'Press ESC to cancel!')
+        self._timer = wm.event_timer_add(1/30, window=context.window)
         wm.modal_handler_add(self)
         return {'RUNNING_MODAL'}
-
-    def invoke(self, context, event):
-        prefs = context.preferences.addons[__package__].preferences
-        rigs = prefs.rigs
-        props = bpy.context.scene.trifecta_updateprops
-        if self.operation == 'ZIP':# or self.updateAll:
-            if not props.newRigEntry and len(rigs) == 0:
-                self.report({'ERROR'}, "Make a new set of rigs!")
-                return {'CANCELLED'}
-            return context.window_manager.invoke_props_dialog(self)
-        if self.updateAll:
-            return context.window_manager.invoke_confirm(self, event)
-        return self.execute(context)
     
-    def draw(self, context):
-        props = bpy.context.scene.trifecta_updateprops
-        layout = self.layout
+class TRIFECTA_OT_GET_RIG(TRIFECTA_OT_genericText):
+    bl_idname = 'trifecta.get_rig'
+    bl_label = 'Download Rig Set'
+    bl_description = 'Download a set of rigs'
 
-        if self.operation == 'ZIP':
-            layout.row().label(text='Choose a set of rigs to download.')
-            layout.row().prop(self, 'rigs')
-            if not props.newRigEntry:
-                layout.row().label(text='Choose a set of rigs to replace.')
-                layout.prop(context.scene.hisanimvars, 'rigs')
+    rigs: EnumProperty(
+        items=getRigs,
+        name='Rig-Set',
+        description='Choose a set of rigs to download'
+    )
+
+    newRigEntry: BoolProperty(default=True, name='Create New Rig-Set')
+    newRigName: StringProperty(default='Rigs', name='Rig-Set Name')
+    newRigPath: StringProperty(default='', subtype='DIR_PATH', name='Rig-Set Path')
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.trifecta_updateprops
+        return not props.running
+
+    def execute(self, context):
+        global Queue
+        prefs = context.preferences.addons[__package__].preferences
+        rigs_rev = {value[0]: key for key, value in rigs_ids.items()}
+        if self.newRigEntry:
+            newRigName = rigs_rev[self.rigs]
+            #if self.newRigName == '':
+            #    self.report({'ERROR'}, 'Rig-set must be named!')
+            #    return {'CANCELLED'}
+            
+            if (new_path := bpy.path.abspath(self.newRigPath)) == '':
+                self.report({'ERROR'}, 'Rig-set path is empty!')
+                return {'CANCELLED'}
+            new_path_parent = os.path.split(new_path)[0]
+            if not os.path.exists(new_path_parent):
+                self.report({'ERROR'}, 'Path for new rig-set is invalid!')
+                return {'CANCELLED'}
+            if prefs.rigs.get(newRigName) != None:
+                self.report({'ERROR'}, 'Rig-set already exists! Replace the rig instead!')
+                return {'CANCELLED'}
+            
+            new = prefs.rigs.add()
+            new.name = rigs_rev[self.rigs]
+            new.path = new_path
+            context.scene.hisanimvars.rigs = newRigName
+        queue = [(rigs_rev[self.rigs], self.rigs, 'ZIP')]
+        Queue = (iter(enumerate(queue)), 1)
+        bpy.ops.trifecta.download_queue('EXEC_DEFAULT')
+        return {'FINISHED'}
+
+    def invoke_extra(self, context, event):
+        self.newRigEntry = True
+        self.newRigName = ''
+        self.newRigPath = ''
+
+    def draw_extra(self, context):
+        layout = self.layout
+        props = bpy.context.scene.trifecta_updateprops
+        prefs = context.preferences.addons[__package__].preferences
+        col1 = layout.column()
+        col2 = layout.column()
+        col1.row().label(text='Choose a set of rigs to download.')
+        col1.row().prop(self, 'rigs')
+        #: return
+        
+        if not self.newRigEntry and len(prefs.rigs) > 0:
+            col2.row().label(text='Choose a set of rigs to replace.')
+            col2.prop(context.scene.hisanimvars, 'rigs')
+        else:
+            col1.prop(self, 'newRigPath')
+        if len(prefs.rigs) < 1: return
+        col1.row().prop(self, 'newRigEntry', text='Update Existing Rigs', invert_checkbox=True)
+
+class TRIFECTA_OT_GET_BLEND(TRIFECTA_OT_genericText):
+    bl_idname = 'trifecta.get_blend'
+    bl_label = 'Download .blend'
+
+    item_name: StringProperty()
+    item_id: StringProperty()
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.trifecta_updateprops
+        return not props.running
+
+    def execute(self, context):
+        global Queue
+        queue = list()
+        prefs = context.preferences.addons[__package__].preferences
+        props = bpy.context.scene.hisanimvars
+        items_path = prefs.items_path
+        if not os.path.exists(items_path):
+            self.report({'ERROR'}, 'The path you set for your TF2 Items does not exist!')
+            return {'CANCELLED'}
+        
+        queue = list()
+
+        queue.append((self.item_name, self.item_id, 'BLEND'))
+
+        Queue = (iter(enumerate(queue)), len(queue))
+        bpy.ops.trifecta.download_queue('EXEC_DEFAULT')
+        return {'FINISHED'}
+
+    #def draw_extra(self, context):
+    #    layout = self.layout
+    #    layout.label(text=f'Downloading {self.item_name}.blend. Continue?')
+
+class TRIFECTA_OT_DOWNLOAD_ALL(TRIFECTA_OT_genericText):
+    bl_idname = 'trifecta.download_all'
+    bl_label = 'Download All'
+
+    download_rigs: BoolProperty(default=False, name='Download Rigs', description='Downloads a standard set of rigs (hisanimations) next to the folder your downloads will be in')
+
+    @classmethod
+    def poll(cls, context):
+        props = context.scene.trifecta_updateprops
+        return not props.running
+
+    def execute(self, context):
+        global Queue
+        queue = list()
+        prefs = context.preferences.addons[__package__].preferences
+        props = bpy.context.scene.hisanimvars
+        items_path = prefs.items_path.rstrip('\\/')
+        if not os.path.exists(items_path):
+            self.report({'ERROR'}, 'The path you set for your TF2 Items does not exist!')
+            return {'CANCELLED'}
+        
+        for key, value in ids.items():
+            queue.append((key, value, 'BLEND'))
+
+        if self.download_rigs:
+            new_rig_set = prefs.rigs.add()
+            new_rig_set.name = 'Standard Rigs'
+            new_rig_set.path = os.path.join(
+                    os.path.split(items_path)[0],
+                    'rigs'
+            )
+            if not os.path.exists(new_rig_set.path):
+                os.makedirs(new_rig_set.path)
+            context.scene.hisanimvars.rigs = 'Standard Rigs'
+            queue.append(('standard_rigs', rigs_ids['hisanimations'], 'ZIP', ''))
+
+        Queue = (iter(enumerate(queue)), len(queue))
+        #bpy.ops.trifecta.download_queue('EXEC_DEFAULT')
+        return {'FINISHED'}
+
+    def draw_extra(self, context):
+        layout = self.layout
+        layout.prop(self, 'download_rigs')
+        
 
 #class TRIFECTA_OT_updateAll(Operator):
     #bl_idname
 
 bpyClasses = [HISANIM_PT_UPDATER,
               HISANIM_OT_ADDONUPDATER, 
-              TRIFECTA_OT_downloader,
-              updateProps
+              updateProps,
+              TRIFECTA_OT_DOWNLOAD_ALL,
+              TRIFECTA_OT_GET_RIG,
+              TRIFECTA_OT_GET_BLEND,
+              TRIFECTA_OT_DOWNLOAD_QUEUE
               ]
 
 def register():
     for operator in bpyClasses:
         bpy.utils.register_class(operator)
     bpy.types.Scene.trifecta_updateprops = PointerProperty(type=updateProps)
-    bpy.types.Scene.my_progress = FloatProperty(default=0.0, name='ffff')
 def unregister():
     for operator in bpyClasses:
         bpy.utils.unregister_class(operator)

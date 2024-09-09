@@ -9,36 +9,63 @@ from bpy.props import (StringProperty, CollectionProperty,
                         BoolProperty, PointerProperty)
 from bpy.types import (UIList, PropertyGroup,
                         AddonPreferences, Operator)
-names = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy', 'allclass2', 'allclass3', 'allclass', 'weapons']
+
+from .panel import TRIFECTA_OT_genericText, textBox
 
 ids = {
-    'allclass': '1XxOCordVSxw2kal5ujeOd_wp5dcQ7RKo',
-    'allclass2' : '1RnemK8RV-J3Onzc1fMBEVf0uon0NSXtm',
-    'allclass3': '1rT_Z5o9g8IF-eALfDIIdjWB_n_03RJYm',
-    'scout': '1TS6KGbE8jKtIremS_4Go3T1eXyajifKu',
-    'soldier': '1c4D0_RueeuRkAj34JPmHl7T8F6GG91Yc',
-    'pyro': '1cAP7NY1x_IHVQQtnWwjFNstQKjXp-Qlu',
-    'demo': '1p2Cu9wfxbentYMVKGdgnJuaMpT7db68j',
-    'heavy': '1JjqQXDKuDXGDkLvMvshojppd1IbNMij-',
-    'engineer': '1c8jyJlD4VknD2RfexXa6owV_kaKOExQO',
-    'medic': '1VQvixt9pW85zMafkuhsVZaZtocivy_zH',
-    'sniper': '1VMCOr8aeaJhTk2xivlsnC55DaUpLoqJV',
-    'spy': '1dhANUyTvy8ylOFUBEKCxZo11BE-IO8L3',
-    'weapons': '12WyUdeVFIvS_IM-RkKHUP-Fc4kzoGZwa',
-    'standard-rigs': '1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj'
+    'allclass1' :           '1JMHSJOHpCvZr_fYN9pZyXTCUZBTHq97m',
+    'allclass2' :           '1JVKsEdeh-KH-bbnFstxz6QUCyuoSX7Ji',
+    'allclass3' :           '1K3W7TyF1_BiAZmGBPe7QoNqDanAeTIJ1',
+    'allclass4' :           '1Jm-SZ2ey6KU_oV0lgLYXG64Zw2092Mlc',
+    'scout_cosmetics':      '1K5F6mD7Hz2RvKsBK5bm85H73Wd-zKrr7',
+    'soldier_cosmetics':    '1KYZtQfyyFweYe22RMr2Y9ZYj01T6NfNr',
+    'pyro_cosmetics':       '1JgsFhO-4ZOgFFvfYCIqTKDBo4CGd24v3',
+    'demo_cosmetics' :      '1JWk1EK5PYZeAymmmiHloXzNPDZpSDiy-',
+    'heavy_cosmetics':      '1JhfZOSS59D4s_Sd-cy-caIOkG1t8HUNx',
+    'engineer_cosmetics':   '1JZ698JsOEZUJhYJCojOyafeHv-TQplEm',
+    'medic_cosmetics':      '1JiPKKH2haiAdp2f3Rxngoqrsasu4Z9xK',
+    'sniper_cosmetics':     '1KH97j5-VlxINLKPyx1bzjbdQo8IJh9fV',
+    'spy_cosmetics':        '1KYibE4impR16PTnbiUF4VKbznw037wdq',
+    'taunts_items':         '1K942RdNallqPmsHrSIlEBcwJN6ERuwMl',
+    'weapons1':             '1Kw8SbHJCg7hBqVmBpphAQ32pex6NJrVb',
+    'weapons2':             '1L-lq8q22hzakOKYR-BknZ75zJh29HJhk',
+    'weapons3':             '1KbtVukiZ_xhFtbJf7P8ZW6VgfTEs5Fjx',
+    '_resources':           '1Jc8nLnU0muO-kKrqbA0qcPui_Xx9wzWb',
 }
 
-def enumRigs(a = None, b = None):
-    prefs = bpy.context.preferences.addons[__package__].preferences
-    if prefs == None: return None
-    rigs = prefs.rigs
+rigs_ids = {
+        'hisanimations': ('1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj', 'The standard set of rigs, and most supported by the TF2-Trifecta'),
+        'Eccentric': ('1-MboVZ3PZ471AmXYHnYegoXozKd8OmVU', 'Includes control points overlayed on the face to pose'),
+        'ThatLazyArtist': ('1-MVdFejB1wtO4v2zcurCMIK6MPxNvRTs', 'Includes a panel of sliders to pose the face'),
+        'Ragdoll Rigs': ('1NDj-JbGnxQSCVuDyhklC7TPNGeovskR5', 'A set of ragdoll rigs for funny stuff')
+    }
 
-    '''bpy.types.Scene.trifectarigs = EnumProperty(
-        items=(
-            (i.name, i.name, '', '', n) for n, i in enumerate(rigs)
-        ),
-        name = 'Rigs'
-    )'''
+order = {
+    'Scout': 1,
+    'Soldier': 2,
+    'Pyro': 3,
+    'Demo': 4,
+    'Heavy': 5,
+    'Engineer': 6,
+    'Medic': 7,
+    'Sniper': 8,
+    'Spy': 9,
+    'Allclass': 10,
+    'Taunts': 11,
+    'Weapons': 12,
+}
+
+VALIDATION = False
+
+def set_abspath(self, value):
+    self['items_path'] = bpy.path.abspath(value)
+
+def get_selfpath(self):
+    #print(dir(self))
+    #import time
+    #time.sleep(0.5)
+    return self['items_path']
+    #return self.items_path
 
 class AssetPaths(PropertyGroup):
     def get_path(self):
@@ -84,55 +111,12 @@ class AssetPaths(PropertyGroup):
 
 class rigs(PropertyGroup):
     name: StringProperty(
-        default='Rigs', update=enumRigs
+        default='Rigs'
     )
     path: StringProperty(
         default = '',
         subtype = 'DIR_PATH'
     )
-
-class HISANIM_UL_ASSETS(UIList):
-
-    def draw_item(self, context,
-            layout, data,
-            item, icon,
-            active_data, active_propname,
-            index):
-        prefs = context.preferences.addons[__package__].preferences
-        paths = prefs.hisanim_paths
-        pathsindex = prefs.hisanim_pathsindex
-
-        if item.this_is == 'EMPTY':
-            ICON = 'BLANK1'
-        elif item.this_is == 'BLEND':
-            ICON = 'BLENDER'
-        elif item.this_is == 'FOLDER':
-            ICON = 'FILE_FOLDER'
-        else:
-            ICON = 'QUESTION'
-
-        if item != paths[pathsindex]:
-            item.toggle = False
-
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            row = layout.row()
-            if ICON != 'BLANK1':
-                row.label(icon=ICON)
-            if ICON == 'FILE_FOLDER':
-                row.alert = time.time() % 1 < 0.5
-                op = row.operator('trifecta.textbox', text ='', icon='ERROR')
-                op.text = 'If you were trying to add a set of rigs, do it in the window below. If you were trying to add a cosmetic file instead, select the .blend file.'
-                op.icons = 'ERROR'
-                op.size = '56'
-                op.width = 310
-            if item == paths[pathsindex]:
-                row.prop(item, "name", text='')
-            else:
-                row.label(text=item.name)
-
-        elif self.layout_type in {'GRID'}:
-            layout.alignment = 'CENTER'
-            layout.label(text='')
 
 class HISANIM_UL_RIGS(UIList):
 
@@ -157,6 +141,70 @@ class HISANIM_UL_RIGS(UIList):
             layout.alignment = 'CENTER'
             layout.label(text='')
 
+class HISANIM_UL_BLENDS(UIList):
+
+    def draw_item(self, context,
+            layout: bpy.types.UILayout, data,
+            item, icon,
+            active_data, active_propname,
+            index):
+        prefs = context.preferences.addons[__package__].preferences
+        rigs = prefs.rigs
+        rigsindex = prefs.rigsindex
+
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            ICON = 'BLENDER' if not item.no_search else 'ASSET_MANAGER'
+            split = layout.split(factor=0.8)
+            split.label(text=item.name, icon=ICON)
+            split.alignment = 'EXPAND'
+            split = split.split()
+            op = split.operator('trifecta.scan')
+            op.blend = index
+            op.revalidate = False
+            op.scan_all = False
+            op.prompt = False
+
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label(text='')
+
+class HISANIM_UL_ASSETS(UIList):
+
+    def draw_item(self, context,
+            layout, data,
+            item, icon,
+            active_data, active_propname,
+            index):
+        prefs = context.preferences.addons[__package__].preferences
+        rigs = prefs.rigs
+        rigsindex = prefs.rigsindex
+
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            ICON = 'OBJECT_DATA'
+            layout.label(text=item.name, icon=ICON)
+
+        elif self.layout_type in {'GRID'}:
+            layout.alignment = 'CENTER'
+            layout.label(text='')
+
+class assets(PropertyGroup):
+    name: StringProperty(default='')
+    reference: StringProperty(default='')
+    tag: StringProperty(default='')
+    style: StringProperty(default='')
+    mercenary: StringProperty(default='')
+    blend: StringProperty(default='')
+
+class blends(PropertyGroup):
+    assets: CollectionProperty(type=assets)
+    asset_index: IntProperty(min=0, options=set())
+    drive_id: StringProperty(default='')
+    path: StringProperty(subtype='FILE_PATH')
+    tag: StringProperty(default='')
+    no_search: BoolProperty(default=False, options=set())
+    validated: BoolProperty(default=False, options=set())
+    time_validated: IntProperty()
+
 class ridOf(PropertyGroup):
     name: StringProperty(default='')
     index: IntProperty(default=0)
@@ -164,64 +212,95 @@ class ridOf(PropertyGroup):
 class hisanimFilePaths(AddonPreferences):
     bl_idname = __package__
     #prefs = bpy.context.preferences.addons[__package__].preferences
-    hisanim_paths: CollectionProperty(type=AssetPaths)
+
+    def set_abspath(self, value):
+        self['path_temp'] = bpy.path.abspath(value)
+
+    def get_selfpath(self):
+        #print(dir(self))
+        #import time
+        #time.sleep(0.5)
+        return self.path_temp#self.items_path#self['items_path']
+
+    path_temp: StringProperty() # have to offload the get/set to another property or else RECURSION ERROR!!! :DDDD
+    assets: CollectionProperty(type=assets)
+    blends: CollectionProperty(type=blends)
+    blends_index: IntProperty(min=0, options=set())
+    blends_more_info: BoolProperty(default=False, name='More Info', description='Show more information about .blend files and the content they hold')
+
     rigs: CollectionProperty(type=rigs)
-    hisanim_pathsindex: IntProperty(default=0, options=set())
     rigsindex: IntProperty(default=0, options=set())
     hide_auto_exc_warning: BoolProperty(name='Hide Warning Anyways', default=False)
     is_executed: BoolProperty(default=False, options=set())
     remove: CollectionProperty(type=ridOf)
-    runonce_removepaths: IntProperty(default=0, options=set()) 
+    runonce_removepaths: IntProperty(default=0, options=set())
+    items_path: StringProperty(default='', subtype='DIR_PATH', name='TF2 Items Folder', description='Folder containing all cosmetics and weapons .blend files.',
+                               set=set_abspath,
+                               get=get_selfpath)
     missing: bpy.props.BoolProperty(default=True, options=set())
     quickswitch: bpy.props.BoolProperty(default=True, options=set(), name='Quick Switch', description='Replace the tool dropdown with a set of buttons')
     
     def draw(self, context):
         prefs = context.preferences.addons[__package__].preferences
-        paths = prefs.hisanim_paths
         rigs = prefs.rigs
         version = bpy.app.version
         props = context.scene.trifecta_updateprops
-        remaining = [i for i in names if paths.get(i) == None]
         layout = self.layout
         if (not context.preferences.filepaths.use_scripts_auto_execute) and (not self.hide_auto_exc_warning):
             box = layout.box()
             row = box.row()
             row.alert = True
-            row.label(text='"Auto Execute Python Scripts" is currently turned off. Enabling it will ensure full functionality of facial expressions.')
-            box.row().label(text='It is possible to enable full facial expressions with the REFRESH button in the face poser.')
+            row.label(text='"Auto Execute Python Scripts" is currently turned off.')
+            box.row().label(text='Having this option enabled ensures full articulation of faces when opening the file.')
+            box.row().label(text='It is possible to enable full facial expressions later with the REFRESH button in the face poser.')
             box.row().label(text='With this option enabled, ALWAYS be aware of what .blend files you open.')
             box.row().label(text='You can disable it later in "Save & Load"')
             box.row().prop(context.preferences.filepaths, 'use_scripts_auto_execute', text='Auto Run Python Scripts')
             box.row().prop(self, 'hide_auto_exc_warning')
 
+
+        op = layout.row().operator('trifecta.textbox', text="What's different in 3.0?", icon='QUESTION')
+        op.text = '''The TF2-Trifecta has a new way of adding assets. Simply place all supported .blend files into a folder, then validate and scan for assets.
+If you are a past user of the TF2-Trifecta, please note that all of the old assets are INCOMPATIBLE with any version starting from 3.0. Users are required to download the new cosmetic ports for full functionality of the addon.'''
+        op.icons='QUESTION,ERROR'
+        op.size='56,56'
+        op.width=350
+
         layout = layout.box()
-        layout.label(text='Cosmetics & Weapons', icon='MOD_CLOTH')
-        if len(remaining) > 0:
-            row = layout.row()
-            row.alert = True
-            row.label(text='Missing entries:', icon = 'ERROR') if len(remaining) != 1 else row.label(text='Missing entry:', icon='ERROR')
-            row = layout.row()
-            row.label(text=f'{", ".join(remaining)}')
-            row=layout.row()
-            self.missing = True
+        row = layout.row()
+        row.alignment = 'EXPAND'
+        row.alert = False
+        
+
+        row.prop(self, 'items_path')
+
+        op = layout.operator('trifecta.scan')
+        op.scan_all = True
+        op.text = 'Open the console if you wish to view the progress!'
+        op.icons = 'CONSOLE'
+        op.size = '56'
+        op.width = 330
+        op.prompt = True
+        if len(self.blends) < 1:
+            layout.row().label(text='No detected .blend files')
         else:
-            self.missing = False
-        row = layout.row()
-        row.template_list('HISANIM_UL_ASSETS', 'Asset Paths',
-                self, 'hisanim_paths',
-                self, 'hisanim_pathsindex')
-        row = row.column(align=True)
-        row.operator('hisanim.addpath', icon='ADD', text='')
-        row.operator('hisanim.removepath', icon='REMOVE', text='')
-        row.separator()
-        row.operator('hisanim.detectpath', text='', icon='VIEWZOOM')
-        row = layout.row()
-        if len(prefs.hisanim_paths) != 0:
-            row.prop(paths[prefs.hisanim_pathsindex], 'path', text='Path')
-        row = layout.row()
-        row.operator('trifecta.pathhelp')
-        row.operator('hisanim.detectpath', text='Add Paths from Asset', icon='VIEWZOOM')
-        row.operator('trifecta.batchadd', text='Add Paths from Folder', icon='VIEWZOOM')
+            layout.template_list('HISANIM_UL_BLENDS', 'TF2 Items',
+                                 self, 'blends',
+                                 self, 'blends_index')
+            blend = self.blends[self.blends_index]
+            layout.prop(self, 'blends_more_info', toggle=True)
+            if self.blends_more_info:
+                layout.template_list('HISANIM_UL_ASSETS', 'TF2 Items',
+                                 blend, 'assets',
+                                 blend, 'asset_index')
+
+                layout.row().label(text=f'Path: {blend.path}')
+                layout.row().label(text=f'Assets: {len(blend.assets)}')
+                layout.row().label(text=f'Google Drive ID: {blend.drive_id}')
+                layout.row().label(text=f'Tag: {blend.tag}')
+                layout.row().label(text=f'Resource Only: {blend.no_search}')
+                layout.row().prop(blend, 'validated')
+
         layout = self.layout
         norigs = len(prefs.rigs) < 1
         layout = layout.box()
@@ -239,161 +318,147 @@ class hisanimFilePaths(AddonPreferences):
         col.operator('hisanim.removerig', text='', icon='REMOVE')
         if len(prefs.rigs) != 0:
             layout.prop(rigs[prefs.rigsindex], 'path', text='Path')
-
-        '''if props.active:
-            row = layout.row()
-            row.label(text=props.stage)
-            row.label(text=str(format_size(props.size)))
-            if props.updateAll:
-                row.label(text=f'{list(ids.keys())[props.iter].title()}, {props.iter + 1}/14')
-            if version[0] > 3:
-                row.progress(text='', type='RING', factor=props.var)
-            else:
-                row.label(text='.'*int(((time.time()*3)%3) + 1))
-            layout.row().label(text='Do not close this window!')
-        else:
-            pass
-
-        box = layout.box()
-        box.label(text='Install TF2 Collection')
-        op = box.row().operator('trifecta.update', text='Install TF2 Collection', icon_value=icons.id('tfupdater'))
-        op.updateAll = True
-        box.row().label(text='Place path in an empty folder.')
-        row = box.row()
-        row.alignment = 'EXPAND'
-        row.label(text='TF2 Collection Path:')
-        row.prop(props, 'tf2ColPath', text='')
-        box.row().prop(props, 'tf2ColRig')
-
-        box = layout.box()
-        box.label(text='Download Rigs')
-        op = box.row().operator('trifecta.update', text='Download Rigs', icon_value=icons.id('tfupdater'))
-        op.operation = 'ZIP'
-        box.row().prop(props, 'newRigEntry')
-        if props.newRigEntry:
-            box.row().prop(props, 'newRigName')
-            box.row().prop(props, 'newRigPath')'''
+        
         layout.separator(factor=1)
         layout.row().label(text='Install all of the required assets through the Scene Properties!', icon='SCENE_DATA')
         op = layout.row().operator('wm.url_open', text='More from me!', icon='URL')
         op.url = 'https://github.com/hisprofile/blenderstuff/tree/main'
 
+class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
+    bl_idname = 'trifecta.scan'
+    bl_label = 'Scan'
+    bl_description = 'Combs through .blend files to look for spawnable items'
 
-class HISANIM_OT_BATCHADD(Operator, ImportHelper):
-    bl_idname = 'trifecta.batchadd'
-    bl_label = 'Batch Add'
-    bl_description = ''
-
-    filepath: StringProperty(name='filepath', subtype='DIR_PATH')
-    directory: StringProperty()
+    prompt: BoolProperty(default=True)
+    blend: IntProperty(name='.blend file', default=-1)
+    scan_all: BoolProperty()
+    revalidate: BoolProperty(default=False, name='Revalidate Existing .blends', description='When enabled, this will go through all files regardless if they have been validated.')
 
     def execute(self, context):
-        prefs = bpy.context.preferences.addons[__package__].preferences
-        paths = prefs.hisanim_paths
-
-        mercs = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
-        misc = ['allclass', 'allclass2', 'allclass3', 'weapons']
-
-        path = self.directory
-        for merc in mercs:
-            if paths.get(merc) != None: continue
-            f_path = os.path.join(path, f'{merc}/{merc}cosmetics.blend')
-            if os.path.exists(f_path):
-                new = paths.add()
-                new.path = f_path
-                new.name = merc
+        prefs = context.preferences.addons[__package__].preferences
+        blends = prefs.blends
+        if not os.path.exists(prefs.items_path):
+            self.report({'ERROR'}, f'Your items path is invalid!')
+            return {'CANCELLED'}
         
-        for m in misc:
-            if paths.get(m) != None: continue
-            f_path = os.path.normpath(os.path.join(path, f'{m}/{m}.blend'))
-            if os.path.exists(f_path):
-                new = paths.add()
-                new.path = f_path
-                new.name = m
-        
+        def remove_lib(path: str):
+            for library in bpy.data.libraries:
+                if bpy.path.abspath(library.filepath) == path:
+                    bpy.data.libraries.remove(library, do_unlink=True)
+                    return
+                
+        def scan(path, blend_obj = None):
+            if blend_obj:
+                blend_obj.validated = False
+            try:
+                with bpy.data.libraries.load(path, link=True) as (F, T):
+                    T.scenes = ['tag_data']
+            except:
+                self.report({'ERROR', f'Failed to open {path}'})
+                fail_count +=1
+                remove_lib(path)
+                return
+            if T.scenes[0] == None:
+                self.report({'WARNING'}, f'{path} missing scene "tag_data"')
+                remove_lib(path)
+                return
+            scn = T.scenes[0]
+            if not (tag := scn.get('tag')):
+                self.report({'WARNING'}, f'{path} is not compatible with the TF2-Trifecta. Missing "tag" property on scene.')
+                remove_lib(path)
+                return
+            if blend_obj == None:
+                new_blend = blends.add()
+            else:
+                new_blend = blend_obj
+            new_blend.name = os.path.basename(path)
+            new_blend.path = path
+            new_blend.tag = tag
+            print(f'.blend is supported. Tag is {tag}.')
+            if not (drive_id := scn.get('drive_id')):
+                self.report({'WARNING'}, f'{path} has no "drive_id" property on scene! It cannot be updated!')
+            else:
+                print(f'.blend has drive ID {drive_id}')
+                new_blend.drive_id = drive_id
+
+            if scn.get('resource_only'):
+                print(f'.blend is resource only')
+                new_blend.no_search= True
+            bpy.data.batch_remove(T.scenes)
+            remove_lib(path)
+            if new_blend.no_search:
+                print('Finished with .blend')
+                new_blend.validated = True
+                return
+            print('Loading objects...')
+            with bpy.data.libraries.load(path, link=True, assets_only=True) as (F, T):
+                T.objects = F.objects
+            obj_count = 0
+            valid_objs = []
+            new_blend.assets.clear()
+            for obj in sorted(T.objects, key=lambda a: a.name.lower()):
+               
+                asset = new_blend.assets.add()
+                if obj.get('name_search_props') != None:
+                    name = obj['tf_name']
+                    if obj.get('style_name'):
+                        asset.style = obj['style_name']
+                        name += f', {obj["style_name"]}'
+                    if obj.get('style_index') and not obj.get('style_name'):
+                        asset.style = obj['style_index']
+                        name += f', {obj["style_index"]}'
+                    if obj.get('class'):
+                        asset.mercenary = obj['class']
+                        name += f', {obj["class"]}'
+                    asset.name = name
+                else:
+                    asset.name = obj.name
+                asset.reference = obj.name
+                obj_count += 1
+                valid_objs.append(obj)
+                print('\033[F\033[K', end='', flush=True)
+                print(f'Found {obj_count} object{"" if obj_count == 1 else "s"}')
+            new_blend.validated = True
+            print(f'.blend has {obj_count} spawnables.')
+            print('Finished with .blend')
+            bpy.data.batch_remove(T.objects)
+            remove_lib(path)
+            return
+
+        fail_count = 0
+
+        if self.scan_all:
+            blend_files = set(map(lambda a: os.path.join(prefs.items_path, a), glob.glob('*.blend', root_dir=prefs.items_path)))
+            #print(blend_files)
+            if not self.revalidate:
+                existing_paths = tuple(blend.path for blend in blends)
+                blend_files = set(filter(lambda a: not a in existing_paths, blend_files))
+                for blend in prefs.blends:
+                    if blend.validated == False: blend_files.add(blend.path)
+            if len(list(blend_files)) == 0:
+                self.report({'INFO'}, 'No new .blend files were validated')
+            #print(existing_paths)
+            for blend in blend_files:
+                blend_obj = blends.get(os.path.basename(blend))
+                print(f'Opening {blend}...')
+                scan(blend, blend_obj)
+            
+
+        else:
+            blend_obj = blends[self.blend]
+            blend = blend_obj.path
+            print(f'Opening {blend}...')
+            scan(blend, blend_obj)
+
+        if fail_count > 0:
+            self.report({'WARNING'}, 'Is it possible the files were extracted wrong?')
+            self.report({'WARNING'}, f'{fail_count} .blend file{"" if fail_count == 1 else "s"} failed to validate. Open INFO to read more.')
+        else:
+            self.report({'INFO'}, 'All files validated and scanned!')
         return {'FINISHED'}
     
-    def invoke(self, context, event):
-        context.window_manager.fileselect_add(self)
-        return {'RUNNING_MODAL'}
-
-class HISANIM_OT_DETECTPATH(Operator):
-    bl_idname = 'hisanim.detectpath'
-    bl_label = 'Detect Paths'
-    bl_description = 'If the required assets for the TF2-Trifecta are relative to your selected entry, the addon will attempt to locate them'
-
-    def execute(self, context):
-        prefs = context.preferences.addons[__package__].preferences
-        paths = prefs.hisanim_paths
-
-        if len(paths) == 0:
-            self.report({'ERROR'}, "Add at least one asset! This asset's path will be used to search for other assets!")
-            return {'CANCELLED'}
-
-        pathsindex = prefs.hisanim_pathsindex
-        selectedpath = paths[pathsindex].path
-
-        parent = Path(selectedpath).parents[0]
-        parent2 = Path(selectedpath).parents[1]
-
-        for i in glob.glob('**/*.blend', root_dir=parent2):
-            path = os.path.join(parent2, i)
-            name = os.path.basename(path)
-            name = name[:name.rfind('.')]
-            for file in names:
-                if file in name and paths.get(file) == None:
-                    newitem = paths.add()
-                    newitem.path = path
-                    newitem.name = file
-
-        for i in [parent, parent2]:
-            for folder in glob.glob('./**/', root_dir=i):
-                folder = folder[2:-1]
-                path = os.path.join(i, folder)
-                name = os.path.basename(path)
-                for file in names:
-                    if file in name and paths.get(file) == None:
-                        newitem = paths.add()
-                        newitem.path = path
-                        newitem.name = file
-
-        prefs.autonaming = False
-        return {'FINISHED'}
-
-class HISANIM_OT_PULLPATH(Operator):
-    bl_idname = 'hisanim.pullpath'
-    bl_label = 'Pull Paths'
-    bl_description = 'Pull existing paths from asset browser.'
-
-    def execute(self, context):
-        #runpullpath()
-        return {'FINISHED'}
-
-class HISANIM_OT_ADDPATH(Operator, ImportHelper):
-    bl_idname = 'hisanim.addpath'
-    bl_label = 'Add Path'
-    bl_description = 'Add a path for the TF2-Trifecta to search through'
-
-    filter_glob: StringProperty(
-        default="*.blend",
-        options={'HIDDEN'},
-        maxlen=255,  # Max internal buffer length, longer would be clamped.
-    )
-
-    def invoke(self, context, event):
-        context.window_manager.fileselect_add(self)
-        return {'RUNNING_MODAL'}
-
-    def execute(self, context):
-        if not os.path.basename(self.filepath).endswith('.blend'):
-            self.report({'ERROR'}, 'Add a .blend file!')
-            return {'CANCELLED'}
-        prefs = context.preferences.addons[__package__].preferences
-        new = prefs.hisanim_paths.add()
-        new.path = self.filepath
-        prefs.hisanim_pathsindex = len(prefs.hisanim_paths) - 1
-        bpy.ops.hisanim.detectpath()
-        return {'FINISHED'}
+    def draw_extra(self, context):
+        self.layout.row().prop(self, 'revalidate')
 
 class HISANIM_OT_ADDRIG_1(Operator, ImportHelper):
     bl_idname = 'hisanim.addrig'
@@ -426,7 +491,6 @@ class HISANIM_OT_ADDRIG_2(Operator, ImportHelper):
 
     def execute(self, context):
         filepath = self.directory
-        print(filepath)
         if not os.path.isfile(os.path.join(filepath,'scout.blend')):
             self.report({'ERROR'}, 'The folder you have chosen does not contain the nine rigs inside!')
             #return {'CANCELLED'}
@@ -435,18 +499,6 @@ class HISANIM_OT_ADDRIG_2(Operator, ImportHelper):
         new.name = 'Rigs'
         new.path = filepath
         prefs.rigsindex = len(prefs.rigs) - 1
-        enumRigs()
-        return {'FINISHED'}
-
-class HISANIM_OT_REMOVEPATH(Operator):
-    bl_idname = 'hisanim.removepath'
-    bl_label = 'Remove Path'
-    bl_description = 'Remove the selected path'
-
-    def execute(self, context):
-        prefs = context.preferences.addons[__package__].preferences
-        prefs.hisanim_paths.remove(prefs.hisanim_pathsindex)
-        prefs.hisanim_pathsindex = min(len(prefs.hisanim_paths) - 1, prefs.hisanim_pathsindex)
         return {'FINISHED'}
 
 class HISANIM_OT_REMOVERIG(Operator):
@@ -458,82 +510,44 @@ class HISANIM_OT_REMOVERIG(Operator):
         prefs = context.preferences.addons[__package__].preferences
         prefs.rigs.remove(prefs.rigsindex)
         prefs.rigsindex = min(len(prefs.rigs) - 1, prefs.rigsindex)
-        enumRigs()
 
         return {'FINISHED'}
 
-class PREF_OT_pathhelp(Operator):
-    bl_idname = 'trifecta.pathhelp'
-    bl_label = 'Help Setup Paths'
-    bl_description = "If you're having issues setting up your entries, this operator should help you"
-
-    def invoke(self, context, event):
-        return context.window_manager.invoke_props_dialog(self, width=800)
-    
-    def draw(self, context):
-        mercs = ['scout', 'soldier', 'pyro', 'demo', 'heavy', 'engineer', 'medic', 'sniper', 'spy']
-        misc = ['allclass', 'allclass2', 'allclass3', 'weapons']
-
-        layout = self.layout
-        prefs = context.preferences.addons[__package__].preferences
-        if len(prefs.hisanim_paths) == 0:
-            layout.label(text='Add an asset to get started!')
-            return
-        asset = prefs.hisanim_paths[prefs.hisanim_pathsindex]
-        if asset.this_is == 'BLEND':
-            path = Path(asset.path).parents[1]
-        elif asset.this_is == 'FOLDER':
-            path = Path(asset.path).parent
-        else:
-            layout.label(text='The path to active asset does not exist!')
-            return
-        
-        path = os.path.normpath(path)
-        layout.label(text='Based on the active asset, your paths should be set up like this:')
-        for merc in mercs:
-            t_path = os.path.normpath(os.path.join(path, f'{merc}/{merc}cosmetics.blend'))
-            layout.row().label(text=f'"{merc}" : {t_path}')
-        
-        for m in misc:
-            t_path = os.path.normpath(os.path.join(path, f'{m}/{m}.blend'))
-            layout.row().label(text=f'"{m}" : {t_path}')
-
-    def execute(self, context):
-        return {'FINISHED'}
-
-
-classes = [HISANIM_UL_ASSETS,
+classes = [
+        assets,
+        blends,
+        HISANIM_UL_ASSETS,
         HISANIM_UL_RIGS,
+        HISANIM_UL_BLENDS,
         AssetPaths,
         rigs,
         ridOf,
         hisanimFilePaths,
-        HISANIM_OT_ADDPATH,
-        HISANIM_OT_REMOVEPATH,
         HISANIM_OT_ADDRIG_1,
         HISANIM_OT_ADDRIG_2,
         HISANIM_OT_REMOVERIG,
-        HISANIM_OT_DETECTPATH,
-        HISANIM_OT_PULLPATH,
-        PREF_OT_pathhelp,
-        HISANIM_OT_BATCHADD,
+        HISANIM_OT_SCAN
         ]
 
-
+#@bpy.app.handlers.persistent
+#def test(a=None,b=None):
+#    print('hello!')
+#    print(bpy.context.scene)
 
 def register():
+    #bpy.app.handlers.load_post.append(test)
+    #bpy.app.handlers.load_factory_preferences_post.append(test)
+    #bpy.app.handlers.
     for i in classes:
         bpy.utils.register_class(i)
     prefs = bpy.context.preferences.addons[__package__].preferences
-    if (p := prefs.hisanim_paths.get('TF2-V3')) != None:
-        p.name = 'rigs'
-    if (p := prefs.hisanim_paths.get('rigs')) != None:
-        new = prefs.rigs.add()
-        new.name = p.name
-        new.path = p.path
-        prefs.hisanim_paths.remove(prefs.hisanim_paths.find('rigs'))
-        prefs.hisanim_pathsindex = min(len(prefs.hisanim_paths) - 1, prefs.hisanim_pathsindex)
-    enumRigs()
+    #bpy.types.Scene.trifecta_assets = CollectionProperty(type=assets)
+
+    #bpy.context.scene.trifecta_assets.add()
+
+    #for blend in prefs.blends:
+    #    for asset in blend.assets:
+    #        bpy.
     
 def unregister():
     for i in classes:

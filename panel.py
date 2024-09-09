@@ -1,5 +1,5 @@
 import bpy
-from . import newuilist
+from .newuilist import paints
 from bpy.types import (UIList)
 from bpy.props import *
 from . import faceposer, icons
@@ -163,6 +163,22 @@ class HISANIM_UL_LOCKSLIDER(bpy.types.UIList):
             layout.label(text='')
 
 class HISANIM_UL_RESULTS(bpy.types.UIList):
+
+    def filter_items(self, context, data, propname):
+        prefs = context.preferences.addons[__package__].preferences
+        items = getattr(data, propname)
+        filtered = [self.bitflag_filter_item] * len(items)
+        for i, item in enumerate(items):
+            blend = prefs.blends[item.blend_reference]
+            #print(blend)
+            if self.filter_name.lower() not in item.name.lower():
+                filtered[i] &= ~self.bitflag_filter_item
+            
+            if self.filter_name.lower() in blend.name.lower():
+                filtered[i] |= self.bitflag_filter_item
+
+        return filtered, []
+
     def draw_item(self, context,
             layout, data,
             item, icon,
@@ -172,17 +188,16 @@ class HISANIM_UL_RESULTS(bpy.types.UIList):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             name = item.name
             split = layout.split(factor=0.2)
-            if props.stage == 'SELECT':
-                split.prop(item, 'use', text='')
-            else:
-                split.label(text=item.name.split('_-_')[1].title())
+            split.label(text=item.tag)
             
-            op = split.operator('hisanim.loadcosmetic', text=item.name.split('_-_')[0])
-            op.LOAD = item.name
+            op = split.operator('hisanim.loadcosmetic', text=item.name)
+            op.asset_reference = item.asset_reference
+            op.blend_reference = item.blend_reference
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
             layout.label(text='')
+        
 
 class HISANIM_UL_USESLIDERS(bpy.types.UIList):
 
@@ -301,22 +316,29 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
         obj = context.object
         layout = self.layout
         
-        if prefs.quickswitch:
-            row = layout.row()
-            row.label(text=f'Tool: {props.tools.title()}')
-            row.operator('trifecta.setwdrb', icon='MOD_CLOTH', text='', depress=props.tools == 'WARDROBE')
-            row.operator('trifecta.setmd', icon='FORCE_DRAG', text='', depress=props.tools == 'MERC DEPLOYER')
-            row.operator('trifecta.setbm', icon='GROUP_BONE', text='', depress=props.tools == 'BONEMERGE')
-            row.operator('trifecta.setfp', icon='RESTRICT_SELECT_OFF', text='', depress=props.tools == 'FACE POSER')
-        else:
-            layout.row().prop(props, 'tools')
+        row = layout.row()
+        row.label(text=f'Tool: {props.tools.title()}')
+        row.operator('trifecta.setwdrb', icon='MOD_CLOTH', text='', depress=props.tools == 'WARDROBE')
+        row.operator('trifecta.setmd', icon='FORCE_DRAG', text='', depress=props.tools == 'MERC DEPLOYER')
+        row.operator('trifecta.setbm', icon='GROUP_BONE', text='', depress=props.tools == 'BONEMERGE')
+        row.operator('trifecta.setfp', icon='RESTRICT_SELECT_OFF', text='', depress=props.tools == 'FACE POSER')
         
-        if prefs.missing == True:
+        if not prefs.items_path:
             row = layout.row()
             row.alert = True
-            row.label(text='Assets missing. Check preferences for info.', icon='ERROR')
+            row.label(text='Your TF2 Items path has not been set. Check preferences for info.', icon='ERROR')
             op = row.operator('trifecta.textbox', text='', icon='QUESTION')
-            op.text = "You have assets missing in the TF2-Trifecta. Resolve this issue by going to the addon preferences and setting the paths to the missing assets."
+            op.text = "You have not set your TF2 Items path in preferences. In 3.0+, all cosmetics and weapons will now be stored in a single folder. Please dedicate an empty folder to your TF2 Items Path."
+            op.icons = 'ERROR'
+            op.size = '60'
+            op.width=350
+
+        elif len(prefs.blends) < 1:
+            row = layout.row()
+            row.alert = True
+            row.label(text='Add .blend files to your TF2 Items folder!', icon='ERROR')
+            op = row.operator('trifecta.textbox', text='', icon='QUESTION')
+            op.text = "You have set your TF2 Items path. All that is left is to download .blend files for cosmetics & weapons. In the scene properties, either open the TF2 Items Folder link, or download all the assets through the \"Install TF2 Items\" box."
             op.icons = 'ERROR'
             op.size = '60'
             op.width=350
@@ -363,7 +385,6 @@ When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure t
                 layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
                 layout.row().prop(props, 'hisanimrimpower', slider=True)
             
-                    
             else:
                 layout.row().label(text='A set of rigs have not been added!')
             return
@@ -385,8 +406,36 @@ When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure t
             op.width=325
             op.url=''
 
-            box.row().operator('hisanim.attachto', icon="LINKED")
-            box.row().operator('hisanim.detachfrom', icon="UNLINKED")
+            
+
+            op = box.row().operator('hisanim.attachto', icon="LINKED")
+            box.row().prop(props, 'hierarchal_influence')
+            bbox = box.box()
+            bbox.label(text='Detachments', icon='UNLINKED')
+            if not hasattr(context, 'selected_objects'):
+                bbox.row().label(text='No selected objects!')
+            elif len(context.selected_objects) < 1:
+                bbox.row().label(text='No selected objects!')
+            else:
+                obj = context.object
+
+                targets = [(con, getattr(con, 'target', None)) for con in obj.constraints if con.name.startswith('bm_target') and hasattr(con, 'target')]
+
+                if targets:
+                    for con, target in targets:
+                        row = bbox.row(align=True)
+                        row.alignment = 'RIGHT'
+                        row.label(text=target.name, icon='OBJECT_DATA')
+                        row = row.row(align=True)
+                        row.alignment = 'RIGHT'
+                        row.prop(con, 'influence', text='')
+                        op = row.operator('hisanim.detachfrom', text='', icon='UNLINKED')
+                        op.target = target.name
+                        row.prop_decorator(con, 'influence')
+                    
+                else:
+                    bbox.row().label(text='Object is not bound to anything!')
+
             box.row().prop(context.scene.hisanimvars, 'hisanimscale')
             box = layout.row().box()
             row = box.row()
@@ -455,9 +504,6 @@ class WARDROBE_PT_SEARCH(bpy.types.Panel):
         layout = self.layout
         box = layout.box()
         box.row().prop(props, 'query', text="", icon="VIEWZOOM")
-        box.row().prop(context.scene.hisanimvars, 'hisanimweapons')
-        if props.hisanimweapons:
-            box.row().prop(props, 'autobind')
         box.row().operator('hisanim.search', icon='VIEWZOOM')
         box.row().operator('hisanim.clearsearch', icon='X')
 
@@ -478,13 +524,13 @@ class WARDROBE_PT_MATERIAL(bpy.types.Panel):
         l = self.layout
         l.separator()
         l.label(icon='MATERIAL', text='Material Settings')
-        op = self.layout.operator('trifecta.textbox', icon='QUESTION', text='')
-        op.text = "When using EEVEE, Enabling TF2 style on all spawned items will make them appear closer in appearance to the mercenaries, fixing any contrast issues. When using Cycles, this should be set to default.\nRimlight Strength determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default."
-        op.icons = 'SHADING_RENDERED,SHADING_RENDERED'
-        op.size = '76,78'
-        op.width = 460
-        op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#material-settings'
-        l.separator()
+        #op = self.layout.operator('trifecta.textbox', icon='QUESTION', text='')
+        #op.text = "When using EEVEE, Enabling TF2 style on all spawned items will make them appear closer in appearance to the mercenaries, fixing any contrast issues. When using Cycles, this should be set to default.\nRimlight Strength determines the intensity of rim-lights on characters. Because TF2-shading can't be translated 1:1, this is left at 0.4 by default."
+        #op.icons = 'SHADING_RENDERED,SHADING_RENDERED'
+        #op.size = '76,78'
+        #op.width = 460
+        #op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#material-settings'
+        #l.separator()
     
     def draw(self, context):
         prefs = context.preferences.addons[__package__].preferences
@@ -494,8 +540,8 @@ class WARDROBE_PT_MATERIAL(bpy.types.Panel):
         layout = self.layout
         box = layout.box()
         
-        if props.toggle_mat: box.row().operator('hisanim.removelightwarps')
-        else: box.row().operator('hisanim.lightwarps')
+        #if props.toggle_mat: box.row().operator('hisanim.removelightwarps')
+        #else: box.row().operator('hisanim.lightwarps')
         box.row().prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
         row = box.row()
         row.prop(context.scene.hisanimvars, 'wrdbbluteam', text='BLU Team')
@@ -521,12 +567,12 @@ class WARDROBE_PT_PAINTS(bpy.types.Panel):
         l.alignment = 'EXPAND'
         l.separator()
         l.label(icon='BRUSH_DATA', text='Paints')
-        op = l.operator('trifecta.textbox', icon='QUESTION', text='')
-        op.text = 'If a cosmetic seems to be painted incorrectly, selecting one of the materials and executing "Fix Material" may help.'
-        op.icons = 'SHADING_RENDERED'
-        op.size = '56'
-        op.width = 290
-        op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#paints'
+        #op = l.operator('trifecta.textbox', icon='QUESTION', text='')
+        #op.text = 'If a cosmetic seems to be painted incorrectly, selecting one of the materials and executing "Fix Material" may help.'
+        #op.icons = 'SHADING_RENDERED'
+        #op.size = '56'
+        #op.width = 290
+        #op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#paints'
         l.separator()
 
     def draw(self, context):
@@ -537,18 +583,32 @@ class WARDROBE_PT_PAINTS(bpy.types.Panel):
         layout = self.layout
         box = layout.box()
         row = box.row()
-        row.label(text='Attempt to fix material')
-        
         ob = context.object
         box.row().template_list("MATERIAL_UL_matslots", "", ob, "material_slots", ob, "active_material_index")
+        MAT = ob.active_material
+        
+        if (MAT == None) or (MAT.node_tree == None):
+            box.row().label(text='Unsupported material for paints!')
+            return
+        TF2D = MAT.node_tree.nodes.get('TF2 Diffuse')
+        if TF2D == None:
+            box.row().label(text='Unsupported material for paints!')
+            return
+        
         row = box.row(align=True)
-        row.operator('hisanim.materialfix')
-        row.operator('hisanim.revertfix')
         box.row().label(text='Add Paint')
-        box.row().template_icon_view(context.window_manager, 'hisanim_paints', show_labels=True, scale=4, scale_popup=4)
+        row = box.row(align=True)
+        #col = box.column()
+        row.template_icon_view(context.window_manager, 'hisanim_paints', show_labels=True, scale=4, scale_popup=4)
+        row.scale_y = 1
+        row = row.row(align=True)
+        row.template_color_picker(TF2D.inputs['$color2'], 'default_value', value_slider=True, cubic=True)
+        box.row().prop(TF2D.inputs['$color2'], 'default_value')
+        box.row().prop(TF2D.inputs['$blendtintbybasealpha'], 'default_value', text='Blend Color by Alpha', slider=True)
+        box.row().prop(TF2D.inputs['$blendtintcoloroverbase'], 'default_value', text='Multiply or Mix Color', slider=True)
         row=box.row(align=True)
         oper = row.operator('hisanim.paint', text = 'Add Paint')
-        oper.PAINT = newuilist.paints[context.window_manager.hisanim_paints]
+        oper.PAINT = paints[context.window_manager.hisanim_paints]
         row.operator('hisanim.paintclear')
 
 class WARDROBE_PT_LOADOUT(bpy.types.Panel):
@@ -613,7 +673,7 @@ class WARDROBE_PT_RESULTS(bpy.types.Panel):
     bl_label = ''
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_parent_id = "TRIFECTA_PT_PANEL"
+    bl_parent_id = "WARDROBE_PT_SEARCH"
     bl_category = 'TF2-Trifecta'
     bl_options = {'HEADER_LAYOUT_EXPAND', 'DEFAULT_CLOSED'}
 
@@ -918,10 +978,16 @@ class TRIFECTA_OT_genericText(bpy.types.Operator):
     url: StringProperty(default='')
 
     def invoke(self, context, event):
+        if not getattr(self, 'prompt', True):
+            return self.execute(context)
         if event.shift and self.url != '':
             bpy.ops.wm.url_open(url=self.url)
             return self.execute(context)
+        self.invoke_extra(context, event)
         return context.window_manager.invoke_props_dialog(self, width=self.width)
+    
+    def invoke_extra(self, context, event):
+        pass
     
     def draw(self, context):
         sentences = self.text.split('\n')
@@ -929,6 +995,10 @@ class TRIFECTA_OT_genericText(bpy.types.Operator):
         sizes = self.size.split(',')
         for sentence, icon, size in zip(sentences, icons, sizes):
             textBox(self.layout, sentence, icon, int(size))
+        self.draw_extra(context)
+
+    def draw_extra(self, context):
+        pass
 
     def execute(self, context):
         return {'FINISHED'}

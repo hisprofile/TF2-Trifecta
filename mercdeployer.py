@@ -1,5 +1,9 @@
 import bpy
 import os
+
+from typing import Dict, Set
+from bpy.types import ID
+
 from . import icons, panel
 
 global path
@@ -9,6 +13,8 @@ cln = ["IK", "FK"]
 mercs = ['scout', 'soldier', 'pyro', 'demo',
             'heavy', 'engineer', 'medic', 'sniper', 'spy']
 
+map_to_do = dict()
+
 def MAP(x,a,b,c,d, clamp=None):
     y=(x-a)/(b-a)*(d-c)+c
     
@@ -16,29 +22,6 @@ def MAP(x,a,b,c,d, clamp=None):
         return min(max(y, c), d)
     else:
         return y
-
-# iterate through every node and node group by using the "tree" method and removing said nodes
-def RemoveNodeGroups(a):
-    for i in a.nodes:
-        if i.type == 'GROUP':
-            RemoveNodeGroups(i.node_tree)
-            i.node_tree.user_clear()
-            a.nodes.remove(i)
-        else:
-            a.nodes.remove(i)
-
-
-def NoUserNodeGroup(a):  # remove fake users from node groups
-    for i in a.nodes:
-        if i.type == 'GROUP':
-            NoUserNodeGroup(i.node_tree)
-            i.node_tree.use_fake_user = False
-        else:
-            try:
-                i.use_fake_user = False
-            except:
-                pass
-
 
 def SetActiveCol(a=None):  # set the active collection
     VL = bpy.context.view_layer
@@ -50,72 +33,54 @@ def SetActiveCol(a=None):  # set the active collection
 def GetActiveCol():  # get the active collection
     return bpy.context.view_layer.active_layer_collection
 
+def link(path, name, type):
+    with bpy.data.libraries.load(path, link=True, relative=True) as (From, To):
+        setattr(To, type, [name])
 
-def Collapse(a, b):  # merge TF2 BVLG groups
-    if a.type == 'GROUP' and b in a.node_tree.name:
-        c = b + "-MD"
+def recursive(d_block):
+        if map_to_do.get(d_block): return
+        user_map = bpy.data.user_map(subset=[d_block])
+        IDs = user_map[d_block]
+        map_to_do[d_block] = d_block.make_local()
+        for ID in IDs:
+            if map_to_do.get(ID): continue
+            recursive(ID)
+        return d_block
 
-        if a.node_tree.name == c:
-            return "continue"
-        if bpy.data.node_groups.get(c) != None:
-            bpy.data.node_groups[c]
-            # recursively remove the old nodegroup
-            RemoveNodeGroups(a.node_tree)
-            a.node_tree = bpy.data.node_groups[c]
-        else:
-            a.node_tree.name = c
-            NoUserNodeGroup(a.node_tree)
-    return {'FINISHED'}
-
-
-def link(a, b, c):  # get a class from TF2-V3
-    blendfile = a
-    section = f"/{c}/"
-    object = b
-
-    directory = blendfile + section
-
-    bpy.ops.wm.link(filename=object, directory=directory)
+def get_id_reference_map() -> Dict[ID, Set[ID]]:
+    """Return a dictionary of direct datablock references for every datablock in the blend file."""
+    inv_map = {}
+    for key, values in bpy.data.user_map().items():
+        for value in values:
+            if value == key:
+                # So an object is not considered to be referencing itself.
+                continue
+            inv_map.setdefault(value, set()).add(key)
+    return inv_map
 
 
-def ReuseImage(a, path):
-    if bpy.context.scene.hisanimvars.savespace:
-        bak = a.image.name
-        a.image.name = a.image.name.upper()
-        # if the image already exists, use it.
-        if (newimg := bpy.data.images.get(bak)) != None:
-            # bpy.data.images.remove(a.image)
-            a.image = newimg
-            return None
-        link(path, bak, 'Image')  # link an image
+def recursive_get_referenced_ids(
+    ref_map: Dict[ID, Set[ID]], id: ID, referenced_ids: Set, visited: Set
+):
+    """Recursively populate referenced_ids with IDs referenced by id."""
+    if id in visited:
+        # Avoid infinite recursion from circular references.
+        return
+    visited.add(id)
+    for ref in ref_map.get(id, []):
+        referenced_ids.add(ref)
+        recursive_get_referenced_ids(
+            ref_map=ref_map, id=ref, referenced_ids=referenced_ids, visited=visited
+        )
 
-        # if the linked image was truly linked, replace the old image with the linked image and stop the function.
-        if (newimg := bpy.data.images.get(bak)) != None:
-            # bpy.data.images.remove(a.image)
-            a.image = newimg
-            return None
-        # if the function was not stopped, then revert the image name
-        del newimg
-        a.image.name = bak.lower()
-    # if .0 is in the name, then it is most likely a duplicate. it will try to search for the original and use that instead.
-    if ".0" in a.image.name:
-        lookfor = a.image.name[:a.image.name.rindex(".")]
-        print(f'looking for {lookfor}...')
-        if (lookfor := bpy.data.images.get(lookfor)) != None:
-            a.image = lookfor
-            print("found!")
-            a.image.use_fake_user = False
-            return None
-        else:  # the image is the first despite it having .0 in its name, then rename it.
-            del lookfor
-            print(f"no original match found for {a.image.name}! Renaming...")
-            old = a.image.name
-            new = a.image.name[:a.image.name.rindex(".")]
-            print(f'{old} --> {new}')
-            a.image.name = new
-            a.image.use_fake_user = False
-            return None
 
+def get_all_referenced_ids(id: ID, ref_map: Dict[ID, Set[ID]]) -> Set[ID]:
+    """Return a set of IDs directly or indirectly referenced by id."""
+    referenced_ids = set()
+    recursive_get_referenced_ids(
+        ref_map=ref_map, id=id, referenced_ids=referenced_ids, visited=set()
+    )
+    return referenced_ids
 
 class HISANIM_OT_LOADMERC(bpy.types.Operator):
     merc: bpy.props.StringProperty(default='')
@@ -143,88 +108,70 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
 
         SetActiveCol()
 
-        if not os.path.exists(os.path.join(PATH, f'{self.merc}.blend')):
-            self.report({'ERROR'}, f'Entry for rigs exists, but "{self.merc}.blend" could not be found inside!')
-            return {'CANCELLED'}
-        
-        
         merc_blend = os.path.join(PATH, f'{self.merc}.blend')
 
-        if context.scene.hisanimvars.savespace:  # if linking is enabled
+        if not os.path.exists(merc_blend):
+            #self.report({'ERROR'}, f'Your selected rig-set, {context.scene.hisanimvars.rigs}, does not contain ')
+            self.report({'ERROR'}, f'{merc_blend} does not exist!')
+            return {'CANCELLED'}
+        
+        try:
             with bpy.data.libraries.load(merc_blend, link=True) as (data_from, data_to):
                 data_to.collections = [self.merc+self.type]
+        except:
+            self.report({'ERROR'}, f'An error occured when trying to open {merc_blend}. The file is corrupted.')
+            self.report({'ERROR'}, f'.blend file for "{self.merc}" is corrupt! Check INFO for more information.')
+
+        if data_to.collections[0] == None:
+            self.report({'WARNING'}, f'{merc_blend} is missing a collection named {self.merc+self.type}. Were the rigs setup correctly?')
+            self.report({'ERROR'}, f'.blend file is missing collection "{self.merc+self.type}". Check INFO for more information.')
+            return {'CANCELLED'}
+
+        name = self.merc + self.type
+
+        col: bpy.types.Collection = data_to.collections[0]
+        col = col.make_local()
+
+        context.scene.collection.children.link(col)
+
+        for colChild in col.children_recursive:
+            recursive(colChild)
+
+        for obj in col.objects:
+            recursive(obj)
+
+        for colChild in col.children_recursive:
+            for obj in colChild.objects:
+                recursive(obj)
+
+
+        for linked, local in list(map_to_do.items()):
+            linked.user_remap(local)
+
+        map_to_do.clear()
+
+        for obj in col.all_objects:
+            if obj.data == None:
+                continue
+            map_to_do[obj.data] = obj.data.make_local()
             
-            if data_to.collections[0] == None:
-                self.report({'CANCELLED'}, f'.blend file for "{self.merc}" in rigs is corrupt! Redownload!')
-                return {'CANCELLED'}
+        for linked, local in list(map_to_do.items()):
+            linked.user_remap(local)
 
-            if (script := bpy.data.texts.get(f'{self.merc}.py')) != None:
-                script.as_module()
-            else:
-                if self.merc != 'pyro':
-                    self.report({'WARNING'}, "Unless you spawned Pyro, something went wrong. The face script failed to import, which is weird...")
+        for obj in col.all_objects:
+            if not isinstance(obj.data, bpy.types.Mesh):
+                continue
+            mesh = obj.data
+            for material in mesh.materials:
+                map_to_do[material] = material.make_local()
 
-            name = self.merc + self.type
+            for modifier in obj.modifiers:
+                if modifier.type != 'NODES': continue
+                modifier.node_group.make_local()
 
-            context.scene.collection.children.link(data_to.collections[0].make_local())
-            
-            '''
-            This is to make everything but images and node groups localized. Everything must be localized in order,
-            or duplicates will form. The order is
-            Objects > Meshes > Materials > Armatures
-            
-            If you make one mesh local that a linked object is still using but another localized object is also using it, then the localized object will receive a localized version of the mesh
-            where the linked object will keep using the linked mesh.
-
-            If all users of a data block attempting to be localized are ALL localized, then the linked data block will be deleted upon all localized users receiving their localized version of the data block.
-            '''
-
-            for i in data_to.collections[0].objects:
-                if i.type != 'MESH':
-                    continue
-                NEW = i.make_local()
-
-                for mod in NEW.modifiers:
-                    if mod.type == 'NODES':
-                        mod.node_group.make_local()
-                NEW.data.make_local()
-
-            for i in data_to.collections[0].objects:
-                if i.type != 'MESH':
-                    continue
-                for m in i.material_slots:
-                    if m.material.library != None:
-                        m.material.make_local()
-
-            for i in data_to.collections[0].objects:
-                if i.type != 'EMPTY':
-                    continue
-                i.make_local()
-
-            armature = data_to.collections[0].objects[0]
-            while armature.parent != None:  # get the absolute root of the objects
-                armature = armature.parent
-            for i in armature.children_recursive:
-                if i.type != 'ARMATURE':
-                    continue
-                i.make_local().data.make_local()
-            armature.make_local().data.make_local()
-        else:
-            with bpy.data.libraries.load(merc_blend) as (data_from, data_to):
-                data_to.collections = [self.merc+self.type]
-            
-            if data_to.collections[0] == None:
-                self.report({'CANCELLED'}, f'.blend file for "{self.merc}" in rigs is corrupt! Redownload!')
-                return {'CANCELLED'}
-
-            if (script := bpy.data.texts.get(f'{self.merc}.py')) != None:
-                script.as_module()
-            else:
-                if self.merc != 'pyro':
-                    self.report({'WARNING'}, "Unless you spawned Pyro, something went wrong. The face script failed to import, which is weird...")
+        map_to_do.clear()
 
         # make a variable targeting the added collection of the character
-        justadded = str(self.merc + self.type)
         # this mostly pertains to blu switching. any material added has been switched to BLU and will therefore be skipped.
         matblacklist = []
         # iterate through collection of objects
@@ -234,7 +181,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             context.scene.collection.children.link(context.scene['MERC_COL'])
             goto = context.scene.get('MERC_COL')
 
-        for obj in data_to.collections[0].objects:
+        for obj in col.objects:
             # link the current object to 'Deployed Mercs'
             goto.objects.link(obj)
 
@@ -247,25 +194,17 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if not context.scene.hisanimvars.cosmeticcompatibility and obj['COSMETIC']:
                     bpy.data.objects.remove(obj)
                     continue
-        armature = data_to.collections[0].objects[0]
-        
-        while armature.parent != None:  # get the absolute root of the objects
-            armature = armature.parent
 
-        for i in armature.children_recursive:
-            if i.type != 'ARMATURE':
-                continue
-            i.make_local().data.make_local()
-        armature.make_local().data.make_local()
-
-        if (text := armature.get('rig_ui')) != None:
-            text.as_module()
-
-        armature.location = bpy.context.scene.cursor.location # set the character to 3d cursor location
         for obj in data_to.collections[0].objects: # go through the collection 
             for mat in obj.material_slots:
                 # if Save Space is enabled, this is useless as all material contents will be linked.
                 mat = mat.material
+                if mat == None:
+                    continue
+                if mat.node_tree == None:
+                    continue
+                if mat.node_tree.nodes == None:
+                    continue
                 if mat in matblacklist:
                     continue
                 if context.scene.hisanimvars.bluteam:
@@ -274,87 +213,34 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                         mat.node_tree.links.new(
                             blu.outputs[0], getconnect.inputs[0])
                         matblacklist.append(mat)
-                        #break
                 
                 for NODE in mat.node_tree.nodes:
-                    # use existing nodegroups
 
                     if NODE.type == 'GROUP':
                         if NODE.node_tree.name == 'TF2 BVLG':
-                            print(NODE.name, mat.name)
                             NODE.inputs['Rim boost'].default_value = NODE.inputs['Rim boost'].default_value * props.hisanimrimpower     
 
-                    if context.scene.hisanimvars.savespace: continue
-
-                    if Collapse(NODE, 'TF2 BVLG') == "continue": continue
-
-                    if Collapse(NODE, 'TF2 Diffuse') == "continue": continue
-
-                    if Collapse(NODE, 'TF2 Eye') == "continue": continue
-                    # use existing images
-                    if NODE.type == 'TEX_IMAGE':
-                        ReuseImage(NODE, PATH + f'/{self.merc}.blend')
                 matblacklist.append(mat)
 
-                 # relevant towards BLU. if the material has already been swapped to BLU, continue.
-        armature = data_to.collections[0].objects[0]
-        while armature.parent != None:  # get the absolute root of the objects
-            armature = armature.parent
-        try:
-            for driver in armature.data.animation_data.drivers:
-                driver = driver.driver
-                for var in driver.variables:
-                    var.targets[0].id = armature
-        except:
-            pass
-        
-        armature.location = bpy.context.scene.cursor.location
-        # remove the newly added collection.
-        bpy.data.collections.remove(bpy.data.collections[justadded])
-        pending = []
+        for obj in col.all_objects:
+            if obj.parent: continue
+            obj.location = context.scene.cursor.location
 
-        # use an invisible collection reserved for bone shapes.
-        if bpy.data.collections.get('MDSHAPES') == None:
-            bpy.data.collections.new('MDSHAPES').use_fake_user = True
+        context.scene['new_spawn'] = col
 
-        for i in armature.pose.bones:
-            # use existing bone shapes
-            if i.custom_shape == None:
-                continue
-            for col in i.custom_shape.users_collection:
-                col.objects.unlink(i.custom_shape)
-            bpy.data.collections['MDSHAPES'].objects.link(i.custom_shape)
-            shape = i.custom_shape.name
-            shape = shape.rsplit('.', maxsplit=2)[0]
-            shape_obj = bpy.data.objects.get(shape)
-            if shape_obj != i.custom_shape:
-                pending.append(i.custom_shape)
-                i.custom_shape = shape_obj
+        refmap = get_id_reference_map()
+        refmap = get_all_referenced_ids(col, refmap)
 
-            '''if ".0" in shape: # if .0 is in the name, it's most likely a duplicate. search for the original.
-                try:
-                    DELETE = shape
-                    if DELETE not in pending:
-                        pending.append(DELETE)
-                    lookfor = shape[:shape.index(".0")]
-                    i.custom_shape = bpy.data.objects[lookfor]
-                except:
-                    bpy.data.objects[shape].name = shape[:shape.index(".0")]'''
-            
+        for ID in refmap:
+            if not isinstance(ID, bpy.types.Text): continue
+            ID.as_module()
 
-        if len(pending) > 0:
-            for i in pending:
-                try:
-                    DATA = i.data
-                    bpy.data.objects.remove(i)
-                    bpy.data.meshes.remove(DATA)
-                except:
-                    continue
+        del context.scene['new_spawn']
 
-        print("DELETING")
+        bpy.data.collections.remove(col)
+
         # delete  unused images and nodegroups.
         bpy.context.view_layer.active_layer_collection = bak
-        bpy.ops.outliner.orphans_purge(do_recursive=True)
         return {'FINISHED'}
     
 class MD_OT_hint(bpy.types.Operator):
@@ -393,31 +279,6 @@ class MD_PT_spawnmenu(bpy.types.Panel):
         layout = self.layout
         props = context.scene.hisanimvars
         prefs = context.preferences.addons[__package__].preferences
-
-        '''if len(prefs.rigs) > 0:
-            row = layout.row()
-            row.prop(context.scene.hisanimvars, 'rigs')
-            if context.scene.hisanimvars.rigs == '': return
-            for i in mercs:
-                row = layout.box().row(align=True)
-                row.label(text=i.title(), icon_value=icons.id(i))
-                for ii in cln:
-                    if ii == 'FK':
-                        row.alert=True
-                    MERC = row.operator('hisanim.loadmerc', text='New' if ii == 'IK' else 'Legacy')
-                    MERC.merc = i
-                    MERC.type = ii
-
-            row = layout.row()
-            row.prop(context.scene.hisanimvars, "bluteam", text='BLU Team')
-            row.operator('md.hint', text='', icon='QUESTION')
-            layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
-            layout.row().prop(props, 'hisanimrimpower', slider=True)
-        
-                
-        else:
-            layout.row().label(text='A set of rigs have not been added!')
-        return'''
 
         if len(prefs.rigs) < 1:
             layout.row().label(text='No rigs added!')

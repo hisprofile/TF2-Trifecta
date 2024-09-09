@@ -4,6 +4,7 @@ from bpy.props import *
 from bpy.types import Context
 from mathutils import *
 from . import bonemerge, mercdeployer, faceposer
+from .preferences import ids
 
 def RemoveNodeGroups(a): # iterate through every node and node group by using the "tree" method and removing said nodes
     for i in a.nodes:
@@ -90,46 +91,10 @@ def link(a, b, c): # get a class from TF2-V3
 
 def getRigs(self, context):
     prefs = context.preferences.addons[__package__].preferences
-    paths = prefs.hisanim_paths
     rigs = prefs.rigs
 
     rig_list = [(rig.name, rig.name, '', '', n) for n, rig in enumerate(rigs)]
     return rig_list
-
-class HISANIM_OT_AddLightwarps(bpy.types.Operator): # switch to lightwarps with a button
-    bl_idname = 'hisanim.lightwarps'
-    bl_label = 'Use Lightwarps (TF2 Style)'
-    bl_description = 'Make use of the lightwarps to achieve a better TF2 look'
-    bl_options = {'UNDO'}
-    
-    def execute(self, context):
-        props = bpy.context.scene.hisanimvars
-        if (NT := bpy.data.node_groups.get('VertexLitGeneric-WDRB')) == None: 
-            self.report({'INFO'}, 'Cosmetic and class needed to proceed!')
-            return {'CANCELLED'}
-        
-        NT.nodes['Group'].node_tree.use_fake_user = True
-        NT.nodes['Group'].node_tree = bpy.data.node_groups['tf2combined-eevee']
-        if NT.nodes.get('Lightwarp') == None:
-            NT.nodes.new(type="ShaderNodeTexImage").name = "Lightwarp"
-        if (IMG := bpy.data.images.get('pyro_lightwarp.png')) == None:
-            for i in range(100):
-                num = f'{"0"*(3-len(str(i)))}{str(i)}'
-                if (IMG := bpy.data.images.get(f'pyro_lightwarp.png.{num}')) != None:
-                    NT.nodes['Lightwarp'].image = IMG
-                    break
-            else:
-                self.report({'INFO'}, 'Add a class first!')
-                return {'CANCELLED'}
-        else:
-            NT.nodes['Lightwarp'].image = IMG
-        
-        NT.nodes['Lightwarp'].location[0] = 960
-        NT.nodes['Lightwarp'].location[1] = -440
-        NT.links.new(NT.nodes['Group'].outputs['lightwarp vector'], NT.nodes['Lightwarp'].inputs['Vector'])
-        NT.links.new(NT.nodes['Lightwarp'].outputs['Color'], NT.nodes['Group'].inputs['Lightwarp'])
-        props.toggle_mat = True
-        return {'FINISHED'}
 
 class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
     bl_idname = 'hisanim.removelightwarps'
@@ -147,23 +112,11 @@ class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
         return {'FINISHED'}
         
 class searchHits(bpy.types.PropertyGroup):
-    scn = bpy.types.Scene
-    def gett(self):
-        scn = bpy.types.Scene
-        try:
-            return self.name in scn.loadout_temp
-        except:
-            return False
-        
-    def sett(self, value):
-        scn = bpy.types.Scene
-        if value == True:
-            if self.name not in scn.loadout_temp: scn.loadout_temp.append(self.name)
-        if value == False:
-            if self.name in scn.loadout_temp: scn.loadout_temp.remove(self.name)
-
     name: StringProperty()
-    use: BoolProperty(name='Use', default=False, get=gett, set=sett)
+    tag: StringProperty()
+    asset_reference: IntProperty()
+    blend_reference: IntProperty()
+    #use: BoolProperty(name='Use', default=False, get=gett, set=sett)
 
 def fart(a = None, b = None, c = None):
     return str(time.time())
@@ -208,14 +161,11 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         name="Blu Team",
         description="Swap classes",
         default = False, options=set())
-    hisanimweapons: BoolProperty(name='Search For Weapons', options=set())
     hisanimrimpower: FloatProperty(name='Rimlight Strength',
                                 description='Multiply the overall rim boost by this number',
                                 default=0.400, min=0.0, max=1.0, options=set())
     hisanimscale: BoolProperty(default=False, name='Scale With', description='Scales cosmetics with targets bones. Disabled by default', options=set())
     hisanimtarget: PointerProperty(type=bpy.types.Object, poll=bonemerge.IsArmature)
-    savespace: BoolProperty(default=True, name='Save Space', description='When enabled, The TF2-Trifecta will link textures from source files', options=set())
-    autobind: BoolProperty(default=False, name='Auto BoneMerge', description='When enabled, weapons will automatically bind to mercs', options=set())
     results: CollectionProperty(type=searchHits)
     resultindex: IntProperty(options=set())
     searched: BoolProperty(options=set())
@@ -240,8 +190,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     activeslider: StringProperty()
     activeface: PointerProperty(type=bpy.types.Object)
     lastactiveface: PointerProperty(type=bpy.types.Object)
-    #loadout_data: CollectionProperty(type=loadout.funny_funnygroup)
-    #loadout_index:IntProperty(default=0)
+    hierarchal_influence: BoolProperty(default=False, name='Hierarchal Influence', description='Activate the influence going down from the bone tree')
     sliders: CollectionProperty(type=faceposer.faceslider)
     sliderindex: IntProperty(options=set())
     dragging: BoolProperty(default=False, options=set())
@@ -277,7 +226,6 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     needs_override: BoolProperty()
     enable_faceposer: BoolProperty(default = False)
     noKeyStatus: BoolProperty(default=False, name='Hide Keyframe Status', description='May improve performance')
-
 
 class WDRB_OT_Select(bpy.types.Operator):
     bl_idname = 'wdrb.select'
@@ -345,127 +293,113 @@ class WDRB_OT_Confirm(bpy.types.Operator):
 
 
 class HISANIM_OT_LOAD(bpy.types.Operator):
-    LOAD: StringProperty(default='')
     bl_idname = 'hisanim.loadcosmetic'
     bl_label = 'Cosmetic'
     bl_description = f'Load this cosmetic into your scene'
     bl_options = {'UNDO'}
 
+    asset_reference: IntProperty()
+    blend_reference: IntProperty()
+
+    autobind: BoolProperty()
+
+    def invoke(self, context, event):
+        self.autobind = event.shift
+        return self.execute(context)
+
     def execute(self, context):
         D = bpy.data
-        CLASS = self.LOAD.split("_-_")[1]
-        COSMETIC = self.LOAD.split("_-_")[0]
-
-        nothing = True if len(bpy.context.selected_objects) == 0 else False
-
         prefs = context.preferences.addons[__package__].preferences
-        paths = prefs.hisanim_paths
-        if (p := paths.get(CLASS)) == None: # no entry
-            self.report({'ERROR'}, f'Directory for "{CLASS}" not found! Make sure an entry for it exists in the addon preferences!')
+        
+        blend = prefs.blends[self.blend_reference]
+        asset = blend.assets[self.asset_reference]
+        obj_reference = asset.reference
+
+        if not os.path.exists(blend.path):
+            self.report({'ERROR'}, f'{blend.path} does not exist!')
             return {'CANCELLED'}
         
-        if p.this_is != 'BLEND': # bad file extension type
-            self.report({'ERROR'}, f'Path for "{CLASS}" entry does not end in a .blend file!')
+        try:
+            with bpy.data.libraries.load(blend.path, assets_only=True, link=True) as (From, To):
+                To.objects = [obj_reference]
+        except:
+            self.report({'ERROR'}, f'{blend.path} is corrupt! Try to redownload!')
             return {'CANCELLED'}
-        p = p.path
-        if not os.path.exists(p): # doesn't exist
-            self.report({'ERROR'}, f'Entry for "{CLASS}" exists, but the path is invalid!')
-            return {'CANCELLED'}
-        cos = COSMETIC
-        with bpy.data.libraries.load(p, assets_only=True) as (file_contents, data_to):
-            data_to.objects = [cos]
-            
-        list = [i.name for i in D.objects if not "_ARM" in i.name and cos in i.name]
-
-        justadded = data_to.objects[0]
+        
+        justadded: bpy.types.Object = To.objects[0]
 
         if justadded == None:    
-            self.report({'ERROR'}, f'.blend file for "{CLASS}" entry is corrupt/unable to be opened! Redownload!')
+            self.report({'ERROR'}, f'"{obj_reference}" does not exist in {os.path.basename(blend.path)}')
             return {'CANCELLED'}
+        
+        justadded = justadded.make_local()
+        justadded.data.make_local()
+        for mat in justadded.data.materials:
+            mat: bpy.types.Material
+            mat.make_local()
+        if justadded.parent:
+            justadded.parent.make_local()
+            justadded.parent.data.make_local()
+
         skins = justadded.get('skin_groups')
-        count = 0
+
         # updates the skin_groups dictionary on the object with its materials
         # previously it would iterate through the skin_groups dictionary, but this would not work if there were more entries than
         # material slots. it will now only iterate through the minimum between how many material slots there are and how many entries there are.
-        for num in range(min(len(justadded.material_slots)//max(len(skins['0']), 1), len(skins))):
-            Range = count + len(skins[str(num)]) # make a range between the last range (0 if first iteration) and the last range + how many entries are in this skin group
-            newmatlist = []
-            for i in range(count, Range):
-                newmatlist.append(justadded.material_slots[i].material.name)
-            skins[str(num)] = newmatlist
-            count = Range
-        justadded['skin_groups'] = skins
-        del newmatlist, Range, count, skins, list
-
+        
         if (wardcol := context.scene.collection.children.get('Wardrobe')) == None:
             wardcol = bpy.data.collections.new('Wardrobe')
             context.scene.collection.children.link(wardcol)
         
-        if justadded.parent != None:
-
-            justaddedParent = justadded.parent
-            wardcol.objects.link(justaddedParent) # link everything and its children to the 'Wardrobe' collection for better management.
-            justaddedParent.use_fake_user = False
-
-            for child in justaddedParent.children:
-                wardcol.objects.link(child)
-                child.use_fake_user = False
-
-            justaddedParent.location = context.scene.cursor.location
-        
+        wardcol.objects.link(justadded)
+        if justadded.parent:
+            wardcol.objects.link(justadded.parent) # link everything and its children to the 'Wardrobe' collection for better management.
+            justadded.parent.location = context.scene.cursor.location
         else:
-            wardcol.objects.link(justadded)
             justadded.location = context.scene.cursor.location
 
         for mat in justadded.material_slots:
             for NODE in mat.material.node_tree.nodes:
                 if NODE.name == 'VertexLitGeneric':
-                    NODE.inputs['rim * ambient'].default_value = 1 # for better colors
-                    NODE.inputs['$rimlightboost [value]'].default_value = NODE.inputs['$rimlightboost [value]'].default_value* context.scene.hisanimvars.hisanimrimpower
-                if Collapse(NODE, 'VertexLitGeneric') == 'continue': # use VertexLitGeneric-WDRB, recursively remove nodes and node groups from VertexLitGeneric
-                    continue
-                if NODE.type == 'TEX_IMAGE':
-                    if ReuseImage(NODE, p) == 'continue': # use existing images
-                        continue
+                    #NODE.inputs['rim * ambient'].default_value = 1 # for better colors
+                    NODE.inputs['$rimlightboost [value]'].default_value = NODE.inputs['$rimlightboost [value]'].default_value * context.scene.hisanimvars.hisanimrimpower
+
         if bpy.context.scene.hisanimvars.wrdbbluteam: # this one speaks for itself
-            var = False
-            print("BLU")
-            try:
-                SKIN = justadded['skin_groups']
-                OBJMAT = justadded.material_slots
-                for i in SKIN: # return where blu materials are found as BLU
-                    for ii in SKIN[i]:
-                        if "blu" in ii:
-                            BLU = i
-                            print(BLU)
-                            var = True
+            found = False
+            mat_str = False
+            if skins:
+                skins = dict(skins)
+                for index, group in skins.items():
+                    for material in group:
+                        if not isinstance(material, bpy.types.Material):
+                            mat_str = True
                             break
-                    if var: break
-                else: raise
-                print(SKIN[BLU])
-                for i in enumerate(SKIN[BLU]): # set the materials as BLU
-                    print(i)
-                    OBJMAT[i[0]].material = bpy.data.materials[i[1]]
-                del SKIN, OBJMAT
-            except:
-                pass
-        if (bpy.context.object == None) or nothing or (justadded.parent == None): return {'FINISHED'}
+                        if 'blu' in material.name:
+                            found = True
+                            break
+                    if mat_str: break
+                    if found: break
+            if found:
+                for n, material in enumerate(group):
+                    justadded.material_slots[n].material = material
+
+        if (bpy.context.object == None) or (justadded.parent == None): return {'FINISHED'}
 
         select = bpy.context.object
         # if a Bonemerge compatible rig or mesh parented to one is selected, automatically bind the cosmetic
         # to the rig.
+        if not select.select_get() or self.autobind:
+            return {'FINISHED'}
 
-        if select.parent != None:
-            select.select_set(False)
+        if select.parent:
+            #select.select_set(False)
             select = select.parent
-        
         if select.get('BMBCOMPATIBLE') != None and (context.scene.hisanimvars.autobind if context.scene.hisanimvars.hisanimweapons else True): # if the selected armature is bonemerge compatible, bind to it.
-            bak = context.scene.hisanimvars.hisanimtarget
-            context.scene.hisanimvars.hisanimtarget = select
-            justadded.parent.select_set(True)
+            bpy.types.Scene.host = select
+            bpy.types.Scene.parasite = justadded.parent
             bpy.ops.hisanim.attachto()
-            context.scene.hisanimvars.hisanimtarget = bak
-            del bak
+            delattr(bpy.types.Scene, 'host')
+            delattr(bpy.types.Scene, 'parasite')
         
         #mercdeployer.PurgeNodeGroups()
         #mercdeployer.PurgeImages()
@@ -477,15 +411,28 @@ class HISANIM_OT_Search(bpy.types.Operator):
     bl_description = "Go ahead, search"
     
     def execute(self, context):
+        from .preferences import order
+        prefs = context.preferences.addons[__package__].preferences
         context.scene.hisanimvars.results.clear()
         context.scene.hisanimvars.searched = True
-        lookfor = bpy.context.scene.hisanimvars.query
+        lookfor: str = bpy.context.scene.hisanimvars.query
         lookfor = lookfor.split("|")
         lookfor.sort()
-        hits = returnsearch(lookfor)
-        for hit in hits:
-            new = context.scene.hisanimvars.results.add()
-            new.name = hit
+        for request in lookfor:
+            for nb, blend in sorted(filter(lambda a: a[1].no_search == False, enumerate(prefs.blends)), key=lambda a: order.get(a[1].tag, -1)):
+                #print(blend)
+                for na, asset in filter(lambda a: request.lower() in a[1].name.lower(), enumerate(blend.assets)):
+                    #print(asset)
+                    new = context.scene.hisanimvars.results.add()
+                    new.name = asset.name
+                    new.asset_reference = na
+                    new.blend_reference = nb
+                    new.tag = blend.tag
+        
+        #hits = returnsearch(lookfor)
+        #for hit in hits:
+        #    new = context.scene.hisanimvars.results.add()
+        #    new.name = hit
         return {'FINISHED'}
 
 class HISANIM_OT_ClearSearch(bpy.types.Operator): # clear the search
@@ -498,51 +445,6 @@ class HISANIM_OT_ClearSearch(bpy.types.Operator): # clear the search
         context.scene.hisanimvars.results.clear()
         context.scene.hisanimvars.searched = False
         return {'FINISHED'}
-
-class HISANIM_OT_MATFIX(bpy.types.Operator):
-    bl_idname = 'hisanim.materialfix'
-    bl_label = 'Fix Material'
-    bl_description = 'Fix Material'
-    
-    def execute(self, context):
-        MAT = context.object.active_material
-
-        if MAT.node_tree.nodes.get('WRDB-MIX') != None:
-            return {'CANCELLED'}
-
-        NODEMIX = MAT.node_tree.nodes.new('ShaderNodeMixRGB')
-        NODEMIX.name = 'WRDB-MIX'
-        NODEMIX.location = Vector((-400, 210))
-        NODEGAMMA = MAT.node_tree.nodes.new('ShaderNodeGamma')
-        NODEGAMMA.name = 'WRDB-GAMMA'
-        NODEGAMMA.location = Vector((-780, 110))
-        NODEGAMMA.inputs[0].default_value = list(MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value)
-        MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = [1, 1, 1, 1]
-        NODEGAMMA.inputs[1].default_value = 2.2
-        MATLINK = MAT.node_tree.links
-        MATLINK.new(MAT.node_tree.nodes['$basetexture'].outputs['Alpha'], NODEMIX.inputs[0])
-        MATLINK.new(MAT.node_tree.nodes['$basetexture'].outputs['Color'], NODEMIX.inputs[1])
-        MATLINK.new(NODEGAMMA.outputs[0], NODEMIX.inputs[2])
-        MATLINK.new(NODEMIX.outputs[0], MAT.node_tree.nodes['VertexLitGeneric'].inputs['$basetexture [texture]'])
-        return {'FINISHED'}
-
-class HISANIM_OT_REVERTFIX(bpy.types.Operator):
-    bl_idname = 'hisanim.revertfix'
-    bl_label = 'Revert Fix'
-    bl_description = 'Revert a material fix done on a material'
-
-    def execute(self, context):
-        MAT = context.object.active_material
-        MATLINK = MAT.node_tree.links
-        if MAT.node_tree.nodes.get('WRDB-MIX') != None:
-            MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = list(MAT.node_tree.nodes['WRDB-GAMMA'].inputs[0].default_value)
-
-            MAT.node_tree.nodes.remove(MAT.node_tree.nodes['WRDB-MIX'])
-            MAT.node_tree.nodes.remove(MAT.node_tree.nodes['WRDB-GAMMA'])
-            MATLINK.new(MAT.node_tree.nodes['$basetexture'].outputs[0], MAT.node_tree.nodes['VertexLitGeneric'].inputs[0])
-            return {'FINISHED'}
-        else:
-            return {'CANCELLED'}
 
 class HISANIM_OT_PAINTS(bpy.types.Operator):
     bl_idname = 'hisanim.paint'
@@ -557,19 +459,18 @@ class HISANIM_OT_PAINTS(bpy.types.Operator):
         paintlist = [int(i)/255 for i in paintvalue]
         paintlist.append(1.0)
         MAT = context.object.active_material
-        if MAT.node_tree.nodes.get('DEFAULTPAINT') == None: # check if the default paint rgb node exists. if not, create the backup.
-            RGBBAK = MAT.node_tree.nodes.new(type='ShaderNodeRGB')
-            RGBBAK.name = 'DEFAULTPAINT'
-            RGBBAK.location = Vector((-650, -550))
-            RGBBAK.label = 'DEFAULTPAINT'
-            if not MAT.node_tree.nodes.get('WRDB-GAMMA') == None: # set the backup color.
-                RGBBAK.outputs[0].default_value = list(MAT.node_tree.nodes['WRDB-GAMMA'].inputs[0].default_value)
-            else:
-                RGBBAK.outputs[0].default_value = list(MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value)
-        try: # set the selected paint.
-            MAT.node_tree.nodes['WRDB-GAMMA'].inputs[0].default_value = paintlist
-        except:
-            MAT.node_tree.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = paintlist
+        if MAT.node_tree == None:
+            return {'CANCELLED'}
+        TF2D = MAT.node_tree.nodes.get('TF2 Diffuse')
+        if TF2D == None:
+            self.report({'ERROR'}, 'Could not find TF2 Diffuse in material!')
+            return {'CANCELLED'}
+        color2 = TF2D.inputs['$color2']
+        if MAT.get('$colortint_base') == None: # check if the default paint rgb node exists. if not, create the backup.
+            MAT['$colortint_base'] = color2.default_value
+
+        color2.default_value = paintlist
+
         return {'FINISHED'}
 
 class HISANIM_OT_PAINTCLEAR(bpy.types.Operator):
@@ -579,14 +480,15 @@ class HISANIM_OT_PAINTCLEAR(bpy.types.Operator):
     bl_options = {'UNDO'}
 
     def execute(self, context):
-        MAT = context.object.active_material.node_tree
-        if MAT.nodes.get('DEFAULTPAINT') == None: # check if the default paint color exists. if not, assume no paint is applied.
+        MAT = context.object.active_material
+        if MAT.node_tree == None:
             return {'CANCELLED'}
-        if not MAT.nodes.get('WRDB-GAMMA') == None: # set the default color.
-            MAT.nodes['WRDB-GAMMA'].inputs[0].default_value = list(MAT.nodes['DEFAULTPAINT'].outputs[0].default_value)
-        else:
-            MAT.nodes['VertexLitGeneric'].inputs['$color2 [RGB field]'].default_value = list(MAT.nodes['DEFAULTPAINT'].outputs[0].default_value)
-        MAT.nodes.remove(MAT.nodes['DEFAULTPAINT'])
+        TF2D = MAT.node_tree.nodes.get('TF2 Diffuse')
+        if TF2D == None:
+            self.report({'ERROR'}, 'Could not find TF2 Diffuse in material!')
+            return {'CANCELLED'}
+        color2 = TF2D.inputs['$color2']
+        color2.default_value = MAT.get('$colortint_base', [1, 1, 1, 1])
         return {'FINISHED'}
     
 class HISANIM_OT_relocatePaths(bpy.types.Operator):
@@ -596,16 +498,17 @@ class HISANIM_OT_relocatePaths(bpy.types.Operator):
 
     def execute(self, context):
         prefs = context.preferences.addons[__package__].preferences
-        paths = prefs.hisanim_paths
-        files = list(map(lambda a: a +'cosmetics.blend', mercdeployer.mercs)) + ['allclass.blend', 'allclass2.blend', 'allclass3.blend']
-        filesDict = {key: key.replace('cosmetics', '').replace('.blend', '') for key in files}
+        blends = prefs.blends
+        items_path = prefs.items_path
+        if not os.path.exists(items_path):
+            self.report({'ERROR'}, 'Your TF2 Items path does not exist!')
+        files = list(map(lambda a: a +'cosmetics.blend', ids.keys()))
         TF2_V3 = list(map(lambda a: a + '.blend', mercdeployer.mercs))
-        for lib in bpy.data.libraries:
-            lib.name = os.path.basename(lib.filepath)
+        #for lib in bpy.data.libraries:
+        #    lib.name = os.path.basename(lib.filepath)
         for file in files:
             if (lib := bpy.data.libraries.get(file)) != None:
-                if paths.get(filesDict[file]) == None: continue
-                lib.filepath = paths[filesDict[file]].path
+                lib.filepath = os.path.join(items_path, file)
                 lib.reload()
         if (path := prefs.rigs.get(context.scene.hisanimvars.rigs)) == None: return {'FINISHED'}
         for merc in TF2_V3:
@@ -656,12 +559,9 @@ classes = [
             HISANIM_OT_PAINTCLEAR,
             HISANIM_OT_LOAD,
             HISANIM_OT_PAINTS,
-            HISANIM_OT_AddLightwarps,
             HISANIM_OT_RemoveLightwarps,
             HISANIM_OT_Search,
             HISANIM_OT_ClearSearch,
-            HISANIM_OT_REVERTFIX,
-            HISANIM_OT_MATFIX,
             HISANIM_OT_relocatePaths,
             WDRB_OT_Select,
             WDRB_OT_Cancel,

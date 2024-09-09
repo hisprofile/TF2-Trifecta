@@ -1,10 +1,23 @@
 import bpy
+import collections
+import uuid
+
+from bpy.props import *
+#collections.defaultdict
+
 #from . import poselib
 #from .poselib import textBox
 
-loc = "BONEMERGE-ATTACH-LOC"
-rot = "BONEMERGE-ATTACH-ROT"
-scale = "BONEMERGE-ATTACH-SCALE"
+from typing import List, Set
+
+#loc = "BONEMERGE-ATTACH-LOC"
+#rot = "BONEMERGE-ATTACH-ROT"
+#scale = "BONEMERGE-ATTACH-SCALE"
+
+loc = "BONEMERGE-LOC"
+rot = "BONEMERGE-ROT"
+scale = "BONEMERGE-SCALE"
+
 def IsArmature(scene, obj):
     if obj.type=='ARMATURE':
         return True
@@ -28,87 +41,154 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
         return True
     
     def execute(self, context):
-        if context.scene.hisanimvars.hisanimtarget == None:
-            if (obj := bpy.context.object) == None:
+
+        def recursive(bone: bpy.types.PoseBone, depth: int):
+            if target_bones.get(bone.name) == None: # check if the target bone exists. if not, continue.
+                for child in bone.children:
+                    recursive(child, depth)
+                return
+            expr = 'var'
+
+            constraints_loc = [con for con in bone.constraints if con.name.startswith(loc) and (getattr(con, 'target', None) == target)]
+            constraints_rot = [con for con in bone.constraints if con.name.startswith(rot) and (getattr(con, 'target', None) == target)]
+            constraints_sca = [con for con in bone.constraints if con.name.startswith(scale) and (getattr(con, 'target', None) == target)]
+            drivers = []
+
+            if not constraints_loc:
+                CON = bone.constraints.new('COPY_LOCATION')
+                CON.name = loc
+                CON.target = target
+                CON.subtarget = bone.name
+            else:
+                if len(constraints_loc) > 1:
+                    self.report({'INFO'}, f'Removed extra loc constraints on {bone.name}')
+                    [bone.constraints.remove(con) for con in constraints_loc[1:]]
+                CON = constraints_loc[0]
+            driv = CON.driver_add('influence')
+            drivers.append(driv)
+            driv.driver.expression = expr
+            var = driv.driver.variables.new()
+            var.targets[0].id = obj
+            var.targets[0].data_path = data_path
+
+            if not constraints_rot:
+                CON = bone.constraints.new('COPY_ROTATION')
+                CON.name = rot
+                CON.target = target
+                CON.subtarget = bone.name
+            else:
+                if len(constraints_rot) > 1:
+                    self.report({'INFO'}, f'Removed extra rot constraints on {bone.name}')
+                    [bone.constraints.remove(con) for con in constraints_rot[1:]]
+                CON = constraints_rot[0]
+            driv = CON.driver_add('influence')
+            drivers.append(driv)
+            driv.driver.expression = expr
+            var = driv.driver.variables.new()
+            var.targets[0].id = obj
+            var.targets[0].data_path = data_path
+
+            if context.scene.hisanimvars.hisanimscale:
+                if not constraints_sca:
+                    CON = bone.constraints.new('COPY_SCALE')
+                    CON.name = scale
+                    CON.target = target
+                    CON.subtarget = bone.name
+                else:
+                    if len(constraints_sca) > 1:
+                        self.report({'INFO'}, f'Removed extra scale constraints on {bone.name}')
+                        [bone.constraints.remove(con) for con in constraints_sca[1:]]
+                    CON = constraints_sca[0]
+                driv = CON.driver_add('influence')
+                drivers.append(driv)
+                driv.driver.expression = expr
+                var = driv.driver.variables.new()
+                var.targets[0].id = obj
+                var.targets[0].data_path = data_path
+
+            bone['depth'] = depth
+
+            bone_drivers.append((bone, drivers))
+
+            max_depth[0] = max(depth, max_depth[0])
+
+            for bone in bone.children:
+                recursive(bone, depth+1)
+
+        if (target := getattr(bpy.types.Scene, 'host', None)):
+            #self.report({'INFO'}, 'No armature selected!')
+            pass
+
+        elif context.scene.hisanimvars.hisanimtarget == None:
+            if not hasattr(bpy.context, 'object'):
                 self.report({'INFO'}, 'No armature selected!')
                 return {'CANCELLED'}
-            if obj.type != 'ARMATURE':
+            if (target := getattr(bpy.types.Scene, 'host', None)) == None:
+                self.report({'INFO'}, 'No armature selected!')
+            if (target := bpy.context.object) == None:
+                self.report({'INFO'}, 'No armature selected!')
+                return {'CANCELLED'}
+            if target.type != 'ARMATURE':
                 self.report({'INFO'}, 'No armature selected!')
                 return {'CANCELLED'}
         else:
-            obj = context.scene.hisanimvars.hisanimtarget
-        doOnce = True
-        
-        for i in bpy.context.selected_objects:
-            if i == None:
+            target = context.scene.hisanimvars.hisanimtarget
+
+        if target == 'None':
+            self.report({'INFO'}, 'No armature selected!')
+            return {'CANCELLED'}
+
+        if (host := getattr(bpy.types.Scene, 'host', None)) and (parasite := getattr(bpy.types.Scene, 'parasite', None)):
+            target = host
+            objs = [parasite]
+        else:
+            objs = context.selected_objects
+        objs: Set[bpy.types.Object] = set(obj if obj.type == 'ARMATURE' else obj.parent for obj in objs)
+
+        for obj in objs:
+            if obj == None:
                 continue
-            if not (i.type == 'ARMATURE' or i.type == 'MESH'):
+            if not (obj.type == 'ARMATURE' or obj.type == 'MESH'):
                 continue # if the iteration is neither armature nor mesh, continue.
-            if i.name == obj:
+            if obj == target:
                 continue # if the target is selected while cycling through selected objects, it will be skipped.
-            if i.type == 'MESH':
-                i = i.parent # if the mesh is selected instead of the parent armature, swap the iteration with its parent
-            i["influence"] = 1.0
-            x = i.id_properties_ui('influence')
-            x.update(min=0.0, max=1.0)
-            for ii in i.pose.bones:
-                if obj.pose.bones.get(ii.name) != None: # check if the target bone exists. if not, continue.
-                    if doOnce: # this will parent the cosmetic to the target if at least
-                        doOnce = False
-                        # one bone from the cosmetic exists in the target
-                        if context.scene.hisanimvars.hisanimscale:
-                            i.parent = obj # make the cosmetic's armature's parent the merc
-                            if i.get('BAKLOC') == None:
-                                i['BAKLOC'] = i.location # save previous location
-                            i.location = [0, 0, 0]
-                        else:
-                            if i.constraints.get('COPLOC') == None: # always copy merc's location
-                                LOC = i.constraints.new('COPY_LOCATION')
-                                LOC.name = 'COPLOC'
-                                LOC.target = obj
-                                driv = LOC.driver_add('influence')
-                                driv.driver.expression = 'var'
-                                var = driv.driver.variables.new()
-                                var.targets[0].id = i
-                                var.targets[0].data_path = '["influence"]'
+            if obj.type == 'MESH':
+                obj = obj.parent # if the mesh is selected instead of the parent armature, swap the iteration with its parent
 
-                    if ii.constraints.get(loc) == None: # check if constraints already exist. if so, swap targets. if not, create constraints.
-                        if context.scene.hisanimvars.hisanimscale:
-                            ii.constraints.new('COPY_SCALE').name = scale
-                        ii.constraints.new('COPY_LOCATION').name = loc
-                        ii.constraints.new('COPY_ROTATION').name = rot
-                else:
-                    continue
-                LOC = ii.constraints[loc]
-                ROT = ii.constraints[rot]
+            targets = [con for con in obj.constraints if con.name.startswith('bm_target') and (getattr(con, 'target', None) == target)]
 
-                LOC.target = obj
-                LOC.subtarget = ii.name
-                driv = LOC.driver_add('influence')
-                driv.driver.expression = 'var'
-                var = driv.driver.variables.new()
-                var.targets[0].id = i
-                var.targets[0].data_path = '["influence"]'
+            if not targets:
+                new_target: bpy.types.CopyLocationConstraint = obj.constraints.new('COPY_LOCATION')
+                new_target.target = target
+                new_target.name = 'bm_target'
+                new_target.enabled = False
+                new_target.influence = 1.0
+            else:
+                if len(targets) > 1:
+                    [obj.constraints.remove(con) for con in targets[1:]]
+                new_target = targets[0]
 
-                ROT.target = obj
-                ROT.subtarget = ii.name
-                driv = ROT.driver_add('influence')
-                driv.driver.expression = 'var'
-                var = driv.driver.variables.new()
-                var.targets[0].id = i
-                var.targets[0].data_path = '["influence"]'
-                if context.scene.hisanimvars.hisanimscale:
-                    if ii.constraints.get(scale) == None:
-                        ii.constraints.new('COPY_SCALE').name = scale
-                    SCALE = ii.constraints[scale]
-                    SCALE.target = obj
-                    SCALE.subtarget = ii.name
-                    driv = SCALE.driver_add('influence')
-                    driv.driver.expression = 'var'
-                    var = driv.driver.variables.new()
-                    var.targets[0].id = i
-                    var.targets[0].data_path = '["influence"]'
-        
+            data_path = new_target.path_from_id('influence')
+
+            target_bones = target.pose.bones
+            bone_drivers = []
+            max_depth = [0]
+            
+            
+            
+            for bone in obj.pose.bones:
+                if bone.parent != None: continue
+                recursive(bone, 1)
+
+            if context.scene.hisanimvars.hierarchal_influence:
+                max_depth = max_depth[0]
+                for bone, drivers in bone_drivers:
+                    depth = bone.get('depth')
+                    
+                    for driver in drivers:
+                        driver: bpy.types.FCurve
+                        driver.driver.expression = f'var*{max_depth}-{depth-1}'
+
         return {'FINISHED'}
     
 class HISANIM_OT_DETACH(bpy.types.Operator):
@@ -117,36 +197,76 @@ class HISANIM_OT_DETACH(bpy.types.Operator):
     bl_description = "Detach from a class"
     bl_options = {'UNDO'}
 
+    detach_similar: BoolProperty(default=False)
+    target: StringProperty(default='')
+
     @classmethod
     def poll(cls, context):
         if len(context.selected_objects) == 0: return False
         return True
     
+    def invoke(self, context, event):
+        print(event.shift)
+        if event.shift:
+            self.detach_similar = True
+        else:
+            self.detach_similar = False
+        return self.execute(context)
+    
     def execute(self, context):
-        doOnce = True
-        for i in bpy.context.selected_objects:
-            if i == None:
-                continue
-            if not (i.type == 'ARMATURE' or i.type == 'MESH'):
-                continue
-            if i.type == 'MESH':
-                i = i.parent
-            if doOnce == True:
-                i.parent = None
-                if i.get('BAKLOC') != None:
-                    i.location = [*i.get('BAKLOC')]
-                    del i['BAKLOC']
-                doOnce = False
-                if i.constraints.get('COPLOC') != None:
-                    i.constraints.remove(i.constraints.get('COPLOC'))
-            for ii in i.pose.bones:
-                try:
-                    ii.constraints.remove(ii.constraints[loc])
-                    ii.constraints.remove(ii.constraints[rot])
-                    ii.constraints.remove(ii.constraints[scale])
-                except:
-                    continue
+
+        obj = context.object
+
+        if self.detach_similar:
+            objs = context.selected_objects
+        else:
+            objs = [obj]
+
+        objs: Set[bpy.types.Object] = set(object if object.type == 'ARMATURE' else object.parent for object in objs)
+
+        target = bpy.data.objects.get(self.target)
         
+
+        for obj in objs:
+            
+            if obj == None:
+                continue
+            if not obj.type == 'ARMATURE':
+                continue
+            con_targets = [con for con in obj.constraints if getattr(con, 'target', None) == target]     
+            for bone in obj.pose.bones:
+                
+                constraints_loc = [con for con in bone.constraints if (con.name.startswith(loc)) and (getattr(con, 'target', None) == target)]
+                constraints_rot = [con for con in bone.constraints if (con.name.startswith(rot)) and (getattr(con, 'target', None) == target)]
+                constraints_sca = [con for con in bone.constraints if (con.name.startswith(scale)) and (getattr(con, 'target', None) == target)]
+
+                if obj.animation_data:
+                    for con in constraints_loc:
+                        data_path = con.path_from_id('influence')
+                        driver = obj.animation_data.drivers.find(data_path)
+                        if driver:
+                            obj.animation_data.drivers.remove(driver)
+                    for con in constraints_rot:
+                        data_path = con.path_from_id('influence')
+                        driver = obj.animation_data.drivers.find(data_path)
+                        if driver:
+                            obj.animation_data.drivers.remove(driver)
+                    for con in constraints_sca:
+                        data_path = con.path_from_id('influence')
+                        driver = obj.animation_data.drivers.find(data_path)
+                        if driver:
+                            obj.animation_data.drivers.remove(driver)
+
+                for con in constraints_loc:
+                    bone.constraints.remove(con)
+                for con in constraints_rot:
+                    bone.constraints.remove(con)
+                for con in constraints_sca:
+                    bone.constraints.remove(con)
+
+            for con in con_targets:
+                obj.constraints.remove(con)
+
         return {'FINISHED'}
     
 class HISANIM_OT_BINDFACE(bpy.types.Operator):
@@ -254,14 +374,20 @@ class HISANIM_OT_ATTEMPTFIX(bpy.types.Operator):
         if not SELECT.type == 'ARMATURE':
             SELECT = SELECT.parent
         skipbone = SELECT.data.bones[0]
-        for i in SELECT.pose.bones:
-            if i.name == skipbone.name:
-                continue
-            try:
-                i.constraints[loc].enabled = False
-                i.constraints[rot].enabled = False
-            except:
-                pass
+        for bone in SELECT.pose.bones:
+            if not bone.parent: continue
+
+            constraints_loc = [con for con in bone.constraints if con.name.startswith(loc)]
+            constraints_rot = [con for con in bone.constraints if con.name.startswith(rot)]
+            constraints_sca = [con for con in bone.constraints if con.name.startswith(scale)]
+
+            for constraint in constraints_loc:
+                constraint.enabled = False
+            for constraint in constraints_rot:
+                constraint.enabled = False
+            for constraint in constraints_sca:
+                constraint.enabled = False
+
         return {'FINISHED'}
     
 classes = [

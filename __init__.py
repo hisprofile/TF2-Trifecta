@@ -2,7 +2,7 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A tool dedicated towards the creation of TF2 Content in Blender",
     "author" : "hisanimations",
-    "version" : (2, 10, 0),
+    "version" : (3, 0, 0),
     "blender" : (3, 5, 0),
     "location" : "View3d > TF2-Trifecta",
     "support" : "COMMUNITY",
@@ -36,6 +36,7 @@ def register():
     updater.register()
     newuilist.register()
     preferences.register()
+    
     bonemerge.register()
     panel.register()
     poselib.register()
@@ -43,12 +44,13 @@ def register():
 
 def unregister():
     faceposer.unregister()
-    wardrobe.unregister()
+    
     mercdeployer.unregister()
     icons.unregister()
     updater.unregister()
     newuilist.unregister()
     preferences.unregister()
+    wardrobe.unregister()
     bonemerge.unregister()
     panel.unregister()
     poselib.unregister()
