@@ -747,7 +747,7 @@ class TRIFECTA_OT_DOWNLOAD_ALL(TRIFECTA_OT_genericText):
             queue.append(('standard_rigs', rigs_ids['hisanimations'], 'ZIP', ''))
 
         Queue = (iter(enumerate(queue)), len(queue))
-        #bpy.ops.trifecta.download_queue('EXEC_DEFAULT')
+        bpy.ops.trifecta.download_queue('EXEC_DEFAULT')
         return {'FINISHED'}
 
     def draw_extra(self, context):
