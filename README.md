@@ -6,10 +6,11 @@ The TF2-Trifecta is a Blender addon to spawn and manipulate my mercenaries, cosm
 - Paint cosmetics
 ## Merc Deployer
 - Allows you to spawn two types of pre-prepared rigs, Rigify rigs and in-game rigs (taunt compatible). They are aptly named `New` and `Legacy`
-- Can choose between sets of rigs (At this moment, only three exist. Mine, Eccentric's and ThatLazyArtist's.)
+- Can choose between sets of rigs (At this moment, only four exist. Mine, Eccentric's and ThatLazyArtist's, and the Ragdoll rigs.)
 ## Bonemerge
 - Allows you to attach cosmetics and weapons to a mercenary with ease
 - Allows you to attach facial cosmetics to rigs that support it
+- Has a multi-layered attachment system
 ## Face Poser
 - Allows you to pose the face on my rigs as you would in SFM and Garry's Mod
 - Allows you to apply preset faces for quick emotions/visemes
@@ -24,43 +25,34 @@ Download the lastest release of the [TF2-Trifecta](https://github.com/hisprofile
 
 Find `TF2-Trifecta.zip` and install the `.zip` file.
 
-Once installed, go to the <img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/68579230-c715-48fb-b158-446323efbf61' width=30> Scene Properties and locate the `TF2-Trifecta` tab and expand the panel. At the bottom, you'll find a box where you can install the `TF2 Collection`. <img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/cdb9f995-190d-477e-837f-441bce7b2e54' width=350>
+Once installed, go to the <img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/68579230-c715-48fb-b158-446323efbf61' width=30> Scene Properties and locate the `TF2-Trifecta` tab and expand the panel. At the bottom, you'll find a box where you can install the `TF2 Collection`. <img src='https://github.com/user-attachments/assets/35471e44-6eb8-4183-9c2f-adbdacbc6b87' width=375>
 
 After setting the path to an empty folder, you should be able to install the `TF2 Collection` just by pressing the install button. Enable `Include Rigs` if you wish. Wait a few minutes for everything to install and you should be good to go!
 
 # Location
 You can find each tool in the side panel of the viewport.
 
-<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/3cd4f866-561e-47ee-baf5-5614715d94bc'>
+<img src='https://github.com/user-attachments/assets/1ad007b1-6066-4466-bf19-ffe45606731a' width=300>
 
 # Wardrobe
-Wardrobe is like the world's largest closet known for how easy it is to search through it. To search for something, enter something into the search bar and click `Search for cosmetics`.
+Wardrobe is an expansive tool used for searching for TF2 Items in the downloaded ports. To search for something, enter something into the search bar and click `Search for cosmetics`.
 
-<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/c06851c9-ae59-4914-b7a1-5efd6fc602ef' width='200'>
+<img src='https://github.com/user-attachments/assets/84522845-a705-4abe-afcb-2b0e6c0118da' width='235'>
 
 Click on a cosmetic button to spawn one in. Having a class selected while spawning a cosmetic will automatically bind the cosmetic to said class.
 
+You can disable this "Auto-bind" function by holding `SHIFT` while spawning the cosmetic.
+
 <img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/cc3ec1dc-0f4c-4c26-bfb4-f5d2813831db' height='400'>
 
-To match the colors of a class, click `Use Lightwarps (TF2 Style)` in the `Material Settings`. However, if you plan to use cycles for a render, do not click anything.
-
-<img src='https://user-images.githubusercontent.com/41131633/204817163-86c2edf2-23ac-4496-9d10-b788708396fe.png' width='400'><img src='https://user-images.githubusercontent.com/41131633/204817257-3cd14e83-bb35-4766-b373-fa78b6ecc243.png' width='400'>
-
-To closely match the TF2 look, use the Standard color transform instead of the Filmic color transform.
-
-<img src='https://user-images.githubusercontent.com/41131633/204817569-82245061-f2e4-407e-8ff9-c723033ae5fe.png' width='400'>
-
-If paintable regions of a cosmetic appear solid black, go to `Material Fixer/Selector` and attempt to fix the material that is causing issues.
-
-<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/9f847e65-cb0d-41d9-a1b5-d801b234833a' width='400'><img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/5daf1dfd-4770-47cb-aecd-0aeb41ecdf19' width='400'>
 
 You can paint the active material using the `Paints` window.
 
-<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/26d909bc-e4e2-43dc-bbfa-2240cf6f340c' width='400'>
-
-Not all cosmetics are named correctly yet! Please report a cosmetic you wish to be renamed.
+<img src='https://github.com/user-attachments/assets/c47260f3-55ca-4e4f-859d-6c51910de147' width='550'>
 
 # Merc Deployer
+
+Here are a list of rigs to download from: https://drive.google.com/drive/u/1/folders/1DF6S3lmqA8xtIMflWhzV242OrUnP62ws
 
 Deploy any of the nine mercs into your scene. You can choose between an advanced rigify (New) rig or a taunt compatible (Legacy) rig. You can read on how to import animations onto a rig in the [Source2Blender](https://source2blender.readthedocs.io/en/latest/TF2Vanilla/Animations.html) docs.
 
@@ -69,7 +61,11 @@ Deploy any of the nine mercs into your scene. You can choose between an advanced
 # Bonemerge
 Attach cosmetics to a class by choosing a target armature and and selecting the cosmetics to attach.
 
-<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/a0c09a69-b839-462c-ab70-c8370f8fa28b' width='400'>
+<img src='https://github.com/user-attachments/assets/d3293c75-f805-4515-88f3-4f0536744b89' width='400'>
+
+You can adjust the influence with the value slider. Influence is added in the order the cosmetics were attached.
+
+Enabling `Hierarchal Influence` will activate the influence of the attachements going down the bone tree.
 
 # Face Poser
 (Only supported for my rigs!)
@@ -103,7 +99,7 @@ ThatLazyArtist's use a face panel with sliders and switches off to the side. Alt
 # Updating Files
 You can easily update The TF2 Collection and rigs by going to `Scene Properties > TF2 Trifecta Updater`
 
-<img src='https://github.com/hisprofile/TF2-Trifecta/assets/41131633/c6f18f9d-bf78-4c5e-8b69-3089c6603dd7' height=500>
+<img src='https://github.com/user-attachments/assets/6541352b-2374-45d0-b6f4-2abe53a1e4fc' height=775>
 
 # End
 
