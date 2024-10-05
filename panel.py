@@ -410,6 +410,7 @@ When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure t
 
             op = box.row().operator('hisanim.attachto', icon="LINKED")
             box.row().prop(props, 'hierarchal_influence')
+            box.row().prop(context.scene.hisanimvars, 'hisanimscale')
             bbox = box.box()
             bbox.label(text='Detachments', icon='UNLINKED')
             if not hasattr(context, 'selected_objects'):
@@ -437,8 +438,6 @@ When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure t
                     
                 else:
                     bbox.row().label(text='Object is not bound to anything!')
-
-            box.row().prop(context.scene.hisanimvars, 'hisanimscale')
             box = layout.row().box()
             row = box.row()
             row.label(text='Bind facial cosmetics')

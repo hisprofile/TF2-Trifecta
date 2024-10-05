@@ -2,13 +2,17 @@ import bpy, os, shutil, shutil, glob, json, zipfile, threading, time, requests
 from pathlib import Path
 from . import icons, mercdeployer
 from .preferences import ids, rigs_ids
-from .panel import TRIFECTA_OT_genericText
+from .panel import TRIFECTA_OT_genericText, textBox
+from . import bl_info
 from urllib import request
 from math import sin
-from bpy.types import Operator, PropertyGroup
+from bpy.types import Context, Operator, PropertyGroup
 from bpy.props import *
 from datetime import datetime
 import uuid
+import requests
+import ast
+
 global blend_files
 global files
 #bpy
@@ -46,6 +50,14 @@ misc = [
     'taunts_items',
     '_resources'
 ]
+
+runonce = True
+
+release_notes = dict()
+new_version = False
+
+#assets = mercs + all_class + weapons + misc
+assets = set(map(lambda a: a+'.blend', ids.keys()))
 
 textchars = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
 is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
@@ -113,7 +125,6 @@ def getRigs(self, context):
     for n, data in enumerate(rigs_ids.items()):
         key, value = data
         rig_list.append((value[0], key, value[1], '', n))
-
     return rig_list
 
 class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Updater
@@ -198,6 +209,25 @@ Downloading {item}.blend. Continue?'''
             op.item_name = item
             op.item_id = ids[item]
 
+        extra_assets = set(map(lambda a: a.name, prefs.blends)) - assets
+        extra_assets = filter(lambda a: bool(a[1]), map(lambda a: (a, getattr(prefs.blends.get(a), 'drive_id', None)), extra_assets))
+        extra_assets = list(extra_assets)
+
+        if extra_assets != []:
+            box = layout.box()
+            box.label(text='Update Extra')
+            col = box.column()
+            for name, drive_id in extra_assets:
+                name: str
+                op = col.row().operator('trifecta.get_blend', text=f'Download {name.title()}', icon_value=icons.id('tfupdater'))
+                op.text = f'''Blender will momentarily pause after downloading the file to validate it.
+    Downloading {name}. Continue?'''
+                op.size = '56,56'
+                op.icons = 'ERROR,QUESTION'
+                op.width = 350
+                op.item_name = name.rsplit('.blend', maxsplit=1)[0]
+                op.item_id = drive_id
+
         box = layout.box()
         box.label(text='Download Rigs')
         op = box.row().operator('trifecta.get_rig', text='Download Rigs', icon_value=icons.id('tfupdater'))
@@ -205,9 +235,10 @@ Downloading {item}.blend. Continue?'''
 hisanimations' rigs have faces that can be posed through the Face Poser tool, and have a control scheme similar to that of SFM/Garry's Mod. Therefore, it is recommended to people who have used said control scheme.
 Eccentric's rigs have control points overlayed on the face, resembling a control scheme akin to the industrial standard.
 ThatLazyArtist's rigs have a panel above the head with sliders to pose the face.
+The MvM Robots rigs are complete with Rigify and FK rigs.
 The Ragdoll rigs are what they say they are. They come with a tool panel in the Items tab to help users use them. Legacy rigs should be bonemerged onto these rigs.'''
-        op.size='56,58,56,56,56'
-        op.icons='BLANK1,BLANK1,BLANK1,BLANK1,BLANK1'
+        op.size='56,58,56,56,56,56'
+        op.icons='BLANK1,BLANK1,BLANK1,BLANK1,BLANK1,BLANK1'
         op.width = 350
 
         box = layout.box()
@@ -224,13 +255,180 @@ It's recommended to not do anything intensive while the TF2-Trifecta is download
         row.alignment = 'EXPAND'
         row.label(text='TF2 Items Path:')
         row.prop(prefs, 'items_path', text='')
-        #box.row().prop(props, 'tf2ColRig')
-
 
         row = layout.row()
-        row.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
+        box = layout.box()
+        box.label(text='Update Addon')
+        if new_version:
+            box.label(text=f'New version: {".".join(map(str, release_notes["version"]))}')
+            text = release_notes['text'].split('\n')
+            col = box.column()
+            for sentence, icon, size in zip(text, ['REC']*len(text), [60]*len(text)):
+                textBox(col, sentence, icon, size)
+
+        box.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
         layout.row().operator('hisanim.relocatepaths', text='Redefine Library Paths', icon='FILE_REFRESH')
         row = layout.row()
+
+def startup():
+    global runonce
+    if runonce == False:
+        return None
+    runonce = False
+    bpy.ops.hisanim.check_update('EXEC_DEFAULT')
+    bpy.ops.hisanim.startup_msg('EXEC_DEFAULT')
+    bpy.app.timers.unregister(startup)
+    return None
+
+def notify_update():
+    bpy.ops.hisanim.notify_user('INVOKE_DEFAULT')
+    bpy.app.timers.unregister(notify_update)
+    return None
+
+class HISANIM_OT_notify_user(Operator):
+    bl_idname = 'hisanim.notify_user'
+    bl_label = 'Notify User'
+    _timer = None
+
+    def modal(self, context, event):
+        if event.type == 'TIMER':
+            self.report({'INFO'}, 'New TF2-Trifecta update available! Scene Properties > TF2-Trifecta')
+            return {'FINISHED'}
+        return {'RUNNING_MODAL'}
+    
+    def execute(self, context):
+        wm = context.window_manager
+        self._timer = wm.event_timer_add(0.1, window=context.window)
+        wm.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+        
+
+class HISANIM_OT_check_update(Operator):
+    bl_idname = 'hisanim.check_update'
+    bl_label = 'Check for Update'
+    _timer = None
+
+    def cancel(self, context: Context):
+        prefs = context.preferences.addons[__package__].preferences
+        if prefs.update_notice:
+            print('TF2-Trifecta failed to check for updates')
+        super().cancel(context)
+        return None
+    
+    def execute(self, context):
+        global release_notes
+        global new_version
+        prefs = context.preferences.addons[__package__].preferences
+        if not prefs.update_notice: return {'CANCELLED'}
+        try:
+            data = requests.get('https://api.github.com/repos/hisprofile/TF2-Trifecta/releases')
+            release_notes = requests.get('https://raw.githubusercontent.com/hisprofile/blenderstuff/refs/heads/main/online/release_notes.json')
+        except:
+            return {'CANCELLED'}
+        data = data.content.decode()
+        release_notes = release_notes.content.decode()
+
+        try:
+            data_json = json.loads(data)
+            notes_json = ast.literal_eval(release_notes)
+        except Exception as e:
+            print(e)
+            return {'CANCELLED'}
+        if not isinstance(data_json, list):
+            return {'CANCELLED'}
+        if not isinstance(notes_json, dict):
+            return {'CANCELLED'}
+        release_notes = dict(notes_json)
+
+        online_vers = data_json[0]['tag_name']
+        online_vers = online_vers.strip('v')
+        online_vers = tuple(map(int, online_vers.split('.')))
+        release_notes['version'] = online_vers
+        vers = bl_info['version']
+        if online_vers > vers and (tuple(notes_json['version']) == online_vers):
+            new_version = True
+            bpy.app.timers.register(notify_update, first_interval=2)
+        return {'FINISHED'}
+        
+
+
+class HISANIM_OT_PROMPT(TRIFECTA_OT_genericText):
+    bl_idname = 'hisanim.prompt'
+    bl_label = 'TF2-Trifecta Message Notice'
+
+    def draw_extra(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        layout = self.layout
+        layout.prop(prefs, 'hide_update_msg', text='Hide Future Prompts')
+
+class HISANIM_OT_STARTUP_UPDATE(Operator):
+    bl_idname = 'hisanim.startup_msg'
+    bl_label = 'Startup Update'
+
+    def execute(self, context):
+        prefs = context.preferences.addons[__package__].preferences
+        if prefs.hide_update_msg: return {'CANCELLED'}
+        PATH = Path(__file__).parent
+        update_msg = os.path.join(PATH, 'update_msg.json')
+        try:
+            data = requests.get('https://raw.githubusercontent.com/hisprofile/blenderstuff/refs/heads/main/online/trifecta_update_message.json')
+        except:
+            return {'CANCELLED'}
+        
+        data = data.content.decode()
+
+        try:
+            data_json = ast.literal_eval(data)
+        except:
+            return {'CANCELLED'}
+        
+        if not isinstance(data_json, dict):
+            return {'CANCELLED'}
+        
+        if not os.path.exists(update_msg):
+            with open(update_msg, 'w+') as file:
+                file.write(json.dumps(data_json))
+            return {'FINISHED'}
+        else:
+            with open(update_msg, 'r') as file:
+                data_json_exists = json.loads(file.read())
+        
+        new_id = data_json.get('id', -1)
+        old_id = data_json_exists.get('id', -1)
+
+        if new_id == old_id: return {'CANCELLED'}
+
+        with open(update_msg, 'w+') as file:
+            file.write(json.dumps(data_json))
+
+        text = data_json.get('text')
+        icons = data_json.get('icons')
+        size = data_json.get('size')
+
+        if not text:
+            return {'CANCELLED'}
+
+        text_lines = text.split('\n')
+        if icons == None:
+            icons = ','.join(['NONE']*len(text_lines))
+        else:
+            icons_split = icons.split(',')
+        
+            if len(icons_split) != len(text_lines):
+                fill = len(text_lines) - len(icons_split)
+                icons += ',' + ','.join(['BLANK1']*fill)
+
+        if size == None:
+            size = ','.join(['56']*len(text_lines))
+        else:
+            size_split = size.split(',')
+        
+            if len(size_split) != len(text_lines):
+                fill = len(text_lines) - len(size_split)
+                size += ',' + ','.join(['56']*fill)
+        
+        bpy.ops.hisanim.prompt('INVOKE_DEFAULT', text=text, icons=icons, size=size)
+        return {'FINISHED'}
 
 class HISANIM_OT_ADDONUPDATER(Operator):
     bl_idname = 'hisanim.addonupdate'
@@ -764,13 +962,18 @@ bpyClasses = [HISANIM_PT_UPDATER,
               TRIFECTA_OT_DOWNLOAD_ALL,
               TRIFECTA_OT_GET_RIG,
               TRIFECTA_OT_GET_BLEND,
-              TRIFECTA_OT_DOWNLOAD_QUEUE
+              TRIFECTA_OT_DOWNLOAD_QUEUE,
+              HISANIM_OT_PROMPT,
+              HISANIM_OT_STARTUP_UPDATE,
+              HISANIM_OT_check_update,
+              HISANIM_OT_notify_user
               ]
 
 def register():
     for operator in bpyClasses:
         bpy.utils.register_class(operator)
     bpy.types.Scene.trifecta_updateprops = PointerProperty(type=updateProps)
+    bpy.app.timers.register(startup)
 def unregister():
     for operator in bpyClasses:
         bpy.utils.unregister_class(operator)

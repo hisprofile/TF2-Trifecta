@@ -37,7 +37,8 @@ rigs_ids = {
         'hisanimations': ('1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj', 'The standard set of rigs, and most supported by the TF2-Trifecta'),
         'Eccentric': ('1-MboVZ3PZ471AmXYHnYegoXozKd8OmVU', 'Includes control points overlayed on the face to pose'),
         'ThatLazyArtist': ('1-MVdFejB1wtO4v2zcurCMIK6MPxNvRTs', 'Includes a panel of sliders to pose the face'),
-        'Ragdoll Rigs': ('1NDj-JbGnxQSCVuDyhklC7TPNGeovskR5', 'A set of ragdoll rigs for funny stuff')
+        'MvM Robots': ('11dZ5KiVHPB0QQSNES5GRFwVGJjB1O_iO', 'The robots from MvM with Rigify rigs'),
+        'Ragdoll Rigs': ('1NDj-JbGnxQSCVuDyhklC7TPNGeovskR5', 'A set of ragdoll rigs for funny stuff'),
     }
 
 order = {
@@ -62,6 +63,10 @@ def set_abspath(self, value):
 
 def get_selfpath(self):
     return self['items_path']
+
+def on_start():
+    bpy.app.timers.unregister(on_start)
+    return None
 
 class AssetPaths(PropertyGroup):
     def get_path(self):
@@ -228,6 +233,8 @@ class hisanimFilePaths(AddonPreferences):
                                set=set_abspath,
                                get=get_selfpath)
     missing: bpy.props.BoolProperty(default=True, options=set())
+    hide_update_msg: BoolProperty(default=False, name='Hide Future Prompts')
+    update_notice: BoolProperty(default=True, name='Notify for Future Updates')
     
     def draw(self, context):
         prefs = context.preferences.addons[__package__].preferences
@@ -239,7 +246,7 @@ class hisanimFilePaths(AddonPreferences):
             box = layout.box()
             row = box.row()
             row.alert = True
-            row.label(text='"Auto Execute Python Scripts" is currently turned off.')
+            row.label(text='"Auto Run Python Scripts" is currently turned off.')
             box.row().label(text='Having this option enabled ensures full articulation of faces when opening the file.')
             box.row().label(text='It is possible to enable full facial expressions later with the REFRESH button in the face poser.')
             box.row().label(text='With this option enabled, ALWAYS be aware of what .blend files you open.')
@@ -288,7 +295,6 @@ If you are a past user of the TF2-Trifecta, please note that all of the old asse
                 layout.row().label(text=f'Google Drive ID: {blend.drive_id}')
                 layout.row().label(text=f'Tag: {blend.tag}')
                 layout.row().label(text=f'Resource Only: {blend.no_search}')
-                #layout.row().prop(blend, 'validated')
 
         layout = self.layout
         norigs = len(prefs.rigs) < 1
@@ -312,6 +318,8 @@ If you are a past user of the TF2-Trifecta, please note that all of the old asse
         layout.row().label(text='Install all of the required assets through the Scene Properties!', icon='SCENE_DATA')
         op = layout.row().operator('wm.url_open', text='More from me!', icon='URL')
         op.url = 'https://github.com/hisprofile/blenderstuff/tree/main'
+        layout.row().prop(self, 'hide_update_msg')
+        layout.row().prop(self, 'update_notice')
 
 class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
     bl_idname = 'trifecta.scan'
@@ -323,7 +331,7 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
     scan_all: BoolProperty()
     revalidate: BoolProperty(default=False, name='Revalidate Existing .blends', description='When enabled, this will go through all files regardless if they have been validated.')
 
-    def execute(self, context):
+    def execute(self, context: bpy.types.Context):
         prefs = context.preferences.addons[__package__].preferences
         blends = prefs.blends
         if not os.path.exists(prefs.items_path):
@@ -417,22 +425,24 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
         fail_count = 0
 
         if self.scan_all:
-            blend_files = set(map(lambda a: os.path.join(prefs.items_path, a), glob.glob('*.blend', root_dir=prefs.items_path)))
-            #print(blend_files)
-            if not self.revalidate:
+            blend_files = list(map(lambda a: os.path.join(prefs.items_path, a), glob.glob('*.blend', root_dir=prefs.items_path)))
+            if self.revalidate:
+                for n, b in enumerate(blends):
+                    blends.remove(0)
+            else:
                 existing_paths = tuple(blend.path for blend in blends)
-                blend_files = set(filter(lambda a: not a in existing_paths, blend_files))
+                blend_files = list(filter(lambda a: not a in existing_paths, blend_files))
                 for blend in prefs.blends:
-                    if blend.validated == False: blend_files.add(blend.path)
+                    if blend.validated == False: blend_files.append(blend.path)
             if len(list(blend_files)) == 0:
                 self.report({'INFO'}, 'No new .blend files were validated')
-            #print(existing_paths)
-            for blend in blend_files:
+            context.window_manager.progress_begin(0, 9999)
+            for n, blend in enumerate(blend_files):
+                context.window_manager.progress_update((n+1)*100+len(blend_files))
                 blend_obj = blends.get(os.path.basename(blend))
                 print(f'Opening {blend}...')
                 scan(blend, blend_obj)
             
-
         else:
             blend_obj = blends[self.blend]
             blend = blend_obj.path
@@ -444,6 +454,7 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
             self.report({'WARNING'}, f'{fail_count} .blend file{"" if fail_count == 1 else "s"} failed to validate. Open INFO to read more.')
         else:
             self.report({'INFO'}, 'All files validated and scanned!')
+        context.window_manager.progress_end()
         return {'FINISHED'}
     
     def draw_extra(self, context):
@@ -520,6 +531,7 @@ classes = [
 def register():
     for i in classes:
         bpy.utils.register_class(i)
+    bpy.app.timers.register(on_start)
     prefs = bpy.context.preferences.addons[__package__].preferences
 
 def unregister():

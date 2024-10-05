@@ -8876,8 +8876,8 @@ class POSELIB_OT_remove(Operator):
         return len(bpy.context.scene.poselibVars.visemesCol) != 0
 
     def invoke(self, context, event):
-        if not self.poll(context):
-            return {'CANCELLED'}
+        #if not self.poll(context):
+        #    return {'CANCELLED'}
         context.window_manager.invoke_confirm(self, event)
         return {'FINISHED'}
 

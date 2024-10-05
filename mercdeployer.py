@@ -207,9 +207,9 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                     continue
                 if context.scene.hisanimvars.bluteam:
                     if (red := mat.node_tree.nodes.get('REDTEX')) != None and (blu := mat.node_tree.nodes.get('BLUTEX')) != None:
-                        getconnect = red.outputs[0].links[0].to_node
-                        mat.node_tree.links.new(
-                            blu.outputs[0], getconnect.inputs[0])
+                        for link in red.outputs[0].links:
+                            mat.node_tree.links.new(
+                                blu.outputs[0], link.to_socket)
                         matblacklist.append(mat)
                 
                 for NODE in mat.node_tree.nodes:
