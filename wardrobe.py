@@ -6,15 +6,6 @@ from mathutils import *
 from . import bonemerge, mercdeployer, faceposer
 from .preferences import ids
 
-def RemoveNodeGroups(a): # iterate through every node and node group by using the "tree" method and removing said nodes
-    for i in a.nodes:
-        if i.type == 'GROUP':
-            RemoveNodeGroups(i.node_tree)
-            i.node_tree.user_clear()
-            a.nodes.remove(i)
-        else:
-            a.nodes.remove(i)
-
 def returnsearch(a):
     path = str(Path(__file__).parent)
     path = path + "/master.json"
@@ -35,59 +26,6 @@ def returnsearch(a):
                         hits.append(f'{v}_-_{i}')
                     
     return hits
-
-def ReuseImage(a, path):
-    if bpy.context.scene.hisanimvars.savespace:
-        bak = a.image.name
-        a.image.name = a.image.name.upper()
-        link(path, bak, 'Image') # link an image
-
-        if (newimg := bpy.data.images.get(bak)) != None: # if the linked image was truly linked, replace the old image with the linked image and stop the function.
-            a.image = newimg
-            return None
-        # if the function was not stopped, then revert the image name
-        del newimg
-        a.image.name = bak
-    if ".0" in a.image.name: # if .0 is in the name, then it is most likely a duplicate. it will try to search for the original. and use that instead.
-        lookfor = a.image.name[:a.image.name.rindex(".")]
-        print(f'looking for {lookfor}...')
-        if (lookfor := bpy.data.images.get(lookfor)) != None:
-            a.image = lookfor
-            print("found!")
-            a.image.use_fake_user = False
-            return None
-        else: # the image is the first despite it having .0 in its name, then rename it.
-            del lookfor
-            print(f"no original match found for {a.image.name}! Renaming...")
-            old = a.image.name
-            new = a.image.name[:a.image.name.rindex(".")]
-            print(f'{old} --> {new}')
-            a.image.name = new
-            a.image.use_fake_user = False
-            return None
-    print(f'No match for {a.image.name}! How odd...')
-    return
-
-def Collapse(a, b): # merge TF2 BVLG groups
-    if a.type == 'GROUP' and b in a.node_tree.name:
-        c = b + "-WDRB"
-        if a.node_tree.name == c:
-            return "continue"
-        if bpy.data.node_groups.get(c) != None:
-            RemoveNodeGroups(a.node_tree)
-            a.node_tree = bpy.data.node_groups[c]
-        else:
-            a.node_tree.name = c
-            mercdeployer.NoUserNodeGroup(a.node_tree)
-
-def link(a, b, c): # get a class from TF2-V3
-    blendfile = a
-    section = f"/{c}/"
-    object = b
-    
-    directory = blendfile + section
-    
-    bpy.ops.wm.link(filename=object, directory=directory)
 
 def getRigs(self, context):
     prefs = context.preferences.addons[__package__].preferences
@@ -117,9 +55,6 @@ class searchHits(bpy.types.PropertyGroup):
     asset_reference: IntProperty()
     blend_reference: IntProperty()
     #use: BoolProperty(name='Use', default=False, get=gett, set=sett)
-
-def fart(a = None, b = None, c = None):
-    return str(time.time())
 
 class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs. Less to write for registering and unregistering
     def sW(self, val):
@@ -157,10 +92,6 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         name="In-Game Models",
         description="Use cosmetic compatible bodygroups that don't intersect with cosmetics. Disabling will use SFM bodygroups",
         default = True, options=set())
-    wrdbbluteam: BoolProperty(
-        name="Blu Team",
-        description="Swap classes",
-        default = False, options=set())
     hisanimrimpower: FloatProperty(name='Rimlight Strength',
                                 description='Multiply the overall rim boost by this number',
                                 default=0.400, min=0.0, max=1.0, options=set())
@@ -343,10 +274,6 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
 
         skins = justadded.get('skin_groups')
 
-        # updates the skin_groups dictionary on the object with its materials
-        # previously it would iterate through the skin_groups dictionary, but this would not work if there were more entries than
-        # material slots. it will now only iterate through the minimum between how many material slots there are and how many entries there are.
-        
         if (wardcol := context.scene.collection.children.get('Wardrobe')) == None:
             wardcol = bpy.data.collections.new('Wardrobe')
             context.scene.collection.children.link(wardcol)
@@ -364,7 +291,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                     #NODE.inputs['rim * ambient'].default_value = 1 # for better colors
                     NODE.inputs['$rimlightboost [value]'].default_value = NODE.inputs['$rimlightboost [value]'].default_value * context.scene.hisanimvars.hisanimrimpower
 
-        if bpy.context.scene.hisanimvars.wrdbbluteam: # this one speaks for itself
+        if bpy.context.scene.hisanimvars.bluteam: # this one speaks for itself
             found = False
             mat_str = False
             if skins:

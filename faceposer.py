@@ -483,39 +483,56 @@ class HISANIM_OT_optimize(Operator):
         return context.window_manager.invoke_props_dialog(self, width=390)
 
     def execute(self, context):
+        driv_props = bpy.types.Driver.bl_rna.properties
+        var_props = bpy.types.DriverVariable.bl_rna.properties
+        targ_props = bpy.types.DriverTarget.bl_rna.properties
+
         mod_tally = 0
         for obj in bpy.context.selected_objects:
             D = obj.data
             if D.get('skdata') != None: continue
+            if obj.type != 'MESH':
+                continue
             shapekey = {}
-            skdata = obj.data.shape_keys
-            if skdata == None: continue
-            for num, key in enumerate(obj.data.shape_keys.key_blocks):
-                if key.name == 'basis shape key': continue
-                if (driver := skdata.animation_data.drivers.find(f'key_blocks["{key.name}"].value')) == None: continue
-                template = {}
-                drivers = {}
-                drivers['expression'] = driver.driver.expression
-                vars = []
-                for var in driver.driver.variables:
-                    var = var
-                    vdat = {}
-                    vdat['name'] = var.name
-                    vdat['data_path'] = var.targets[0].data_path
+            skdata: bpy.types.Key = obj.data.shape_keys
+            drivers = getattr(skdata.animation_data, 'drivers', None)
+            if drivers == None: continue
+            drivers_list = []
 
-                    if var.targets[0].id_type == 'OBJECT':
-                        vdat['arm'] = True
-                        vdat['obj'] = var.targets[0].id.name
+            for n, key in enumerate(skdata.key_blocks[1:]):
+                if (driver := drivers.find(key.path_from_id('value'))) == None: continue
+                driver.data_path += 'HA!'
 
-                    vars.append(vdat)
-                drivers['variables'] = vars
-                template['drivers'] = drivers
-                
-                shapekey[key.name] = drivers
-            obj.data['skdata'] = pickle.dumps(shapekey)
+            '''
+            for n, key in enumerate(skdata.key_blocks[1:]):
+                if (driver := drivers.find(key.path_from_id('value'))) == None: continue
+                driv_template = dict()
+                driv: bpy.types.Driver = driver.driver
+                for prop in driv_props:
+                    if prop.is_readonly: continue
+                    driv_template[prop.identifier] = getattr(driv, prop.identifier)
+                variables = list()
 
-            for driv in skdata.animation_data.drivers:
-                skdata.animation_data.drivers.remove(driv)
+                for var in driv.variables:
+                    variable = dict()
+                    for prop in var_props:
+                        if prop.is_readonly: continue
+                        variable[prop.identifier] = getattr(var, prop.identifier)
+                    targets = list()
+                    for targ in var.targets:
+                        target = dict()
+                        for prop in targ_props:
+                            if prop.is_readonly: continue
+                            target[prop.identifier] = getattr(targ, prop.identifier)
+                        targets.append(target)
+                    variable['targets'] = targets
+                    variables.append(variable)
+                driv_template['variables'] = variables
+                drivers_list.append((key.path_from_id('value'), driv_template))
+                drivers.remove(driver)
+            skdata['drivers'] = drivers_list
+            '''
+                    
             if (mod := obj.modifiers.get('wrinkle')) == None:
                 mod_tally += 1
                 self.report({'WARNING'}, f'Failed to disable wrinkle node group on "{obj.name}"!')
@@ -540,9 +557,45 @@ class HISANIM_OT_restore(Operator):
 
     def execute(self, context):
         mod_tally = 0
-        for obj in bpy.context.selected_objects:
+        def apply_values(item, data: dict):
+            for key, value in sorted(data.items(), key=lambda a: 0 if a[0] == 'id_type' else 1):
+                if isinstance(value, (list, dict, tuple, set)): continue
+                #input((item, key, value))
+                setattr(item, key, value)
+        for obj in context.selected_objects:
+            if obj.type != 'MESH': continue
             D = obj.data
-            if D.get('skdata') == None: continue
+            skdata: bpy.types.Key = D.shape_keys
+            drivers: list[bpy.types.FCurve] = getattr(skdata.animation_data, 'drivers', None)
+            if drivers == None: continue
+
+            for driv in drivers:
+                if driv.data_path.endswith('HA!'):
+                    driv.data_path = driv.data_path[:-3]
+                    driv.driver.expression = driv.driver.expression
+
+            '''if (drivers_list := skdata.get('drivers')) == None: continue
+
+            for path, driver in drivers_list:
+                if (existing := drivers.find(path)):
+                    drivers.remove(existing)
+                driver = driver.to_dict()
+                #input(driver)
+                new_driver: bpy.types.FCurve = drivers.new(path)
+                new_driver: bpy.types.Driver = new_driver.driver
+                apply_values(new_driver, driver)
+                variables = driver['variables']
+                for var in variables:
+                    new_var = new_driver.variables.new()
+                    apply_values(new_var, var)
+                    targets = var['targets']
+                    for n, targ in enumerate(targets):
+                        apply_values(new_var.targets[n], targ)
+
+            del skdata['drivers']'''
+
+
+            '''if D.get('skdata') == None: continue
             if D.shape_keys == None: continue
             kb = D.shape_keys.key_blocks
             data = pickle.loads(obj.data['skdata'])
@@ -563,7 +616,7 @@ class HISANIM_OT_restore(Operator):
                         var.targets[0].id_type = 'OBJECT'
                         var.targets[0].id = bpy.data.objects[v['obj']]
 
-            del obj.data['skdata']
+            del obj.data['skdata']'''
 
             if (mod := obj.modifiers.get('wrinkle')) == None:
                 mod_tally += 1

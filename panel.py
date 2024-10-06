@@ -390,8 +390,6 @@ When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure t
             return
 
         if props.tools == 'BONEMERGE':
-            #row = layout.row()
-            #row.label(text='Attach TF2 cosmetics.', icon='DECORATE_LINKED')
             ob = context.object
             row = layout.row()
             self.layout.prop_search(context.scene.hisanimvars, "hisanimtarget", bpy.data, "objects", text="Link to", icon='ARMATURE_DATA')
@@ -405,8 +403,6 @@ When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure t
             op.icons='GROUP_BONE'
             op.width=325
             op.url=''
-
-            
 
             op = box.row().operator('hisanim.attachto', icon="LINKED")
             box.row().prop(props, 'hierarchal_influence')
@@ -545,7 +541,7 @@ class WARDROBE_PT_MATERIAL(bpy.types.Panel):
         #else: box.row().operator('hisanim.lightwarps')
         box.row().prop(context.scene.hisanimvars, 'hisanimrimpower', slider=True)
         row = box.row()
-        row.prop(context.scene.hisanimvars, 'wrdbbluteam', text='BLU Team')
+        row.prop(context.scene.hisanimvars, 'bluteam', text='BLU Team')
                   
 class WARDROBE_PT_PAINTS(bpy.types.Panel):
     bl_label = ''
@@ -943,8 +939,15 @@ class FACEPOSER_PT_LOCKLIST(bpy.types.Panel):
         data = context.object.data
         box.row().template_list('HISANIM_UL_LOCKSLIDER', 'Lock Sliders', props, 'sliders', props, 'sliderindex')
 
-def textBox(self, sentence, icon='NONE', line=56):
+def textBox(self, sentence: str, icon='NONE', line=56):
     layout = self.box().column()
+    if sentence.startswith('LINK:'):
+        url, name = sentence.split('|')
+        url = url.split('LINK:', maxsplit=1)[1]
+        name = name.split('NAME:', maxsplit=1)[1]
+        #print(url, name)
+        layout.row().operator('wm.url_open', text=name, icon='URL').url = url
+        return None
     sentence = sentence.split(' ')
     mix = sentence[0]
     sentence.pop(0)
