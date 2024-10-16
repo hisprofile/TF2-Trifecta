@@ -90,12 +90,24 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
     bl_description = 'Deploy a mercenary with a specified rig into your scene'
     bl_options = {'UNDO'}
 
+    _shift = None
+
     @classmethod
     def poll(cls, context):
         prefs = context.preferences.addons[__package__].preferences
         return prefs.rigs.get(context.scene.hisanimvars.rigs) != None
+    
+    def invoke(self, context, event):
+        self._shift = event.shift
+        context.scene['key_ctrl'] = event.ctrl
+        context.scene['key_alt'] = event.alt
+        return_val = self.execute(context)
+        del context.scene['key_ctrl']
+        del context.scene['key_alt']
+        return return_val
 
     def execute(self, context):
+        map_to_do.clear()
         prefs = bpy.context.preferences.addons[__package__].preferences
         props = bpy.context.scene.hisanimvars
         PATH = prefs.rigs[context.scene.hisanimvars.rigs].path
@@ -121,6 +133,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         except:
             self.report({'ERROR'}, f'An error occured when trying to open {merc_blend}. The file is corrupted.')
             self.report({'ERROR'}, f'.blend file for "{self.merc}" is corrupt! Check INFO for more information.')
+            return {'CANCELLED'}
 
         if data_to.collections[0] == None:
             self.report({'WARNING'}, f'{merc_blend} is missing a collection named {self.merc+self.type}. Were the rigs setup correctly?')
@@ -145,7 +158,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         for obj in col.all_objects:
             if obj.data == None:
                 continue
-            #recursive(obj.data)
             map_to_do[obj.data] = obj.data.make_local()
 
         for obj in col.all_objects:
@@ -157,22 +169,12 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
 
             for modifier in obj.modifiers:
                 if modifier.type != 'NODES': continue
-                modifier.node_group.make_local()
+                map_to_do[modifier.node_group] = modifier.node_group.make_local()
 
 
         for linked, local in list(map_to_do.items()):
             #print(linked, linked.library)
             linked.user_remap(local)
-            #print(linked, linked.library)
-        #for ID in map_to_do.keys():
-        #    print(ID)
-            #bpy.data.batch_remove({ID})
-
-
-        # make a variable targeting the added collection of the character
-        # this mostly pertains to blu switching. any material added has been switched to BLU and will therefore be skipped.
-        matblacklist = []
-        # iterate through collection of objects
 
         if ((goto := context.scene.get('MERC_COL')) == None) or (context.scene.get('MERC_COL') not in context.scene.collection.children_recursive):
             context.scene['MERC_COL'] = bpy.data.collections.new('Deployed Mercs')
@@ -192,6 +194,41 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if not context.scene.hisanimvars.cosmeticcompatibility and obj['COSMETIC']:
                     bpy.data.objects.remove(obj)
                     continue
+
+        for obj in col.all_objects:
+            if obj.parent: continue
+            obj.location = context.scene.cursor.location
+
+        context.scene['new_spawn'] = col
+
+        refmap = get_id_reference_map()
+        refmap = get_all_referenced_ids(col, refmap)
+
+        for ID in refmap:
+            if not isinstance(ID, bpy.types.Text): continue
+            ID.as_module()
+
+        del context.scene['new_spawn']
+
+        if self._shift:
+            gatherings = set()
+            for obj in col.all_objects:
+                if obj.type == 'ARMATURE': continue
+                gatherings.add(obj)
+                if obj.data == None: continue
+                gatherings.add(obj.data)
+                if getattr(obj.data, 'materials'):
+                    gatherings.update(set(obj.data.materials))
+            bpy.data.batch_remove(gatherings)
+            bpy.data.orphans_purge(True, True, True)
+            map_to_do.clear()
+            bpy.data.collections.remove(col)
+            return {'FINISHED'}
+
+        # make a variable targeting the added collection of the character
+        # this mostly pertains to blu switching. any material added has been switched to BLU and will therefore be skipped.
+        matblacklist = []
+        # iterate through collection of objects
 
         for obj in data_to.collections[0].objects: # go through the collection 
             for mat in obj.material_slots:
@@ -219,21 +256,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                             NODE.inputs['Rim boost'].default_value = NODE.inputs['Rim boost'].default_value * props.hisanimrimpower     
 
                 matblacklist.append(mat)
-
-        for obj in col.all_objects:
-            if obj.parent: continue
-            obj.location = context.scene.cursor.location
-
-        context.scene['new_spawn'] = col
-
-        refmap = get_id_reference_map()
-        refmap = get_all_referenced_ids(col, refmap)
-
-        for ID in refmap:
-            if not isinstance(ID, bpy.types.Text): continue
-            ID.as_module()
-
-        del context.scene['new_spawn']
 
         bpy.data.collections.remove(col)
         map_to_do.clear()

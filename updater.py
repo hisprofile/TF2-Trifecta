@@ -55,6 +55,7 @@ runonce = True
 
 release_notes = dict()
 new_version = False
+online_vers = None
 
 #assets = mercs + all_class + weapons + misc
 assets = set(map(lambda a: a+'.blend', ids.keys()))
@@ -260,11 +261,17 @@ It's recommended to not do anything intensive while the TF2-Trifecta is download
         box = layout.box()
         box.label(text='Update Addon')
         if new_version:
-            box.label(text=f'New version: {".".join(map(str, release_notes["version"]))}')
-            text = release_notes['text'].split('\n')
-            col = box.column()
-            for sentence, icon, size in zip(text, ['REC']*len(text), [60]*len(text)):
-                textBox(col, sentence, icon, size)
+            if tuple(release_notes['version']) == online_vers:
+                box.label(text=f'New version: {".".join(map(str, release_notes["version"]))}')
+                text = release_notes['text'].split('\n')
+                col = box.column()
+                for sentence, icon, size in zip(text, ['REC']*len(text), [60]*len(text)):
+                    textBox(col, sentence, icon, size)
+            else:
+                box.label(text=f'New version: {".".join(map(str, online_vers))}')
+                box.label(text=f'Read the release notes here:')
+                bbox = box.box()
+                bbox.operator('wm.url_open', text='GitHub Releases').url = 'https://github.com/hisprofile/TF2-Trifecta/releases'
 
         box.operator('hisanim.addonupdate', icon_value=icons.id('tfupdater'))
         layout.row().operator('hisanim.relocatepaths', text='Redefine Library Paths', icon='FILE_REFRESH')
@@ -318,6 +325,8 @@ class HISANIM_OT_check_update(Operator):
     def execute(self, context):
         global release_notes
         global new_version
+        global online_vers
+
         prefs = context.preferences.addons[__package__].preferences
         if not prefs.update_notice: return {'CANCELLED'}
         try:
@@ -343,9 +352,9 @@ class HISANIM_OT_check_update(Operator):
         online_vers = data_json[0]['tag_name']
         online_vers = online_vers.strip('v')
         online_vers = tuple(map(int, online_vers.split('.')))
-        release_notes['version'] = online_vers
+        #release_notes['version'] = online_vers
         vers = bl_info['version']
-        if online_vers > vers and (tuple(notes_json['version']) == online_vers):
+        if online_vers > vers:# and (tuple(notes_json['version']) == online_vers):
             new_version = True
             bpy.app.timers.register(notify_update, first_interval=2)
         return {'FINISHED'}

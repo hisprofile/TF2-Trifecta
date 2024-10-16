@@ -343,7 +343,7 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
             op.size = '60'
             op.width=350
 
-        if not context.preferences.filepaths.use_scripts_auto_execute:
+        if not context.preferences.filepaths.use_scripts_auto_execute and prefs.hide_auto_exc_warning == False:
             row = layout.row()
             row.alert = True
             row.label(text='Auto-Execute Scripts is off.', icon='ERROR')
