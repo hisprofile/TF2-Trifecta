@@ -351,7 +351,7 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
                 with bpy.data.libraries.load(path, link=True) as (F, T):
                     T.scenes = ['tag_data']
             except:
-                self.report({'ERROR', f'Failed to open {path}'})
+                self.report({'ERROR'}, f'Failed to open {path}')
                 fail_count +=1
                 remove_lib(path)
                 return
