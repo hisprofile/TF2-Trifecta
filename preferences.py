@@ -30,7 +30,7 @@ ids = {
     'weapons1':             '1Kw8SbHJCg7hBqVmBpphAQ32pex6NJrVb',
     'weapons2':             '1L-lq8q22hzakOKYR-BknZ75zJh29HJhk',
     'weapons3':             '1KbtVukiZ_xhFtbJf7P8ZW6VgfTEs5Fjx',
-    '_resources':           '1Jc8nLnU0muO-kKrqbA0qcPui_Xx9wzWb',
+    '_resources':           '1-CWfEMCgrr-qQD8ifn9sA2qXk_YgdSzd',
 }
 
 rigs_ids = {
