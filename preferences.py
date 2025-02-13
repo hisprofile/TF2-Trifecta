@@ -34,7 +34,7 @@ ids = {
 }
 
 rigs_ids = {
-        'hisanimations': ('1-Npd2KupzpzmoMvXfl1-KWwPnoADODVj', 'The standard set of rigs, and most supported by the TF2-Trifecta'),
+        'hisanimations': ('1lm48_APPInSeW8A1M8wOfCi14XgMlaBd', 'The standard set of rigs, and most supported by the TF2-Trifecta'),
         'Eccentric': ('1-MboVZ3PZ471AmXYHnYegoXozKd8OmVU', 'Includes control points overlayed on the face to pose'),
         'ThatLazyArtist': ('1-MVdFejB1wtO4v2zcurCMIK6MPxNvRTs', 'Includes a panel of sliders to pose the face'),
         'MvM Robots': ('11dZ5KiVHPB0QQSNES5GRFwVGJjB1O_iO', 'The robots from MvM with Rigify rigs'),
