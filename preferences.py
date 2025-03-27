@@ -332,6 +332,8 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
     revalidate: BoolProperty(default=False, name='Revalidate Existing .blends', description='When enabled, this will go through all files regardless if they have been validated.')
 
     def execute(self, context: bpy.types.Context):
+        local_vars = {} #for function to access outside local variables with dict
+
         prefs = context.preferences.addons[__package__].preferences
         blends = prefs.blends
         if not os.path.exists(prefs.items_path):
@@ -344,7 +346,7 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
                     bpy.data.libraries.remove(library, do_unlink=True)
                     return
                 
-        def scan(path, blend_obj = None):
+        def scan(local_vars, path, blend_obj = None):
             if blend_obj:
                 blend_obj.validated = False
             try:
@@ -352,7 +354,8 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
                     T.scenes = ['tag_data']
             except:
                 self.report({'ERROR'}, f'Failed to open {path}')
-                fail_count +=1
+                local_vars['fail_count'] +=1
+                fail_count += 1
                 remove_lib(path)
                 return
             if T.scenes[0] == None:
@@ -422,7 +425,7 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
             remove_lib(path)
             return
 
-        fail_count = 0
+        local_vars['fail_count'] = 0
 
         if self.scan_all:
             blend_files = list(map(lambda a: os.path.join(prefs.items_path, a), glob.glob('*.blend', root_dir=prefs.items_path)))
@@ -441,17 +444,17 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
                 context.window_manager.progress_update((n+1)*100+len(blend_files))
                 blend_obj = blends.get(os.path.basename(blend))
                 print(f'Opening {blend}...')
-                scan(blend, blend_obj)
+                scan(local_vars, blend, blend_obj)
             
         else:
             blend_obj = blends[self.blend]
             blend = blend_obj.path
             print(f'Opening {blend}...')
-            scan(blend, blend_obj)
+            scan(local_vars, blend, blend_obj)
 
-        if fail_count > 0:
+        if local_vars['fail_count'] > 0:
             self.report({'WARNING'}, 'Is it possible the files were extracted wrong?')
-            self.report({'WARNING'}, f'{fail_count} .blend file{"" if fail_count == 1 else "s"} failed to validate. Open INFO to read more.')
+            self.report({'WARNING'}, f'{local_vars['fail_count']} .blend file{"" if local_vars['fail_count'] == 1 else "s"} failed to validate. Open INFO to read more.')
         else:
             self.report({'INFO'}, 'All files validated and scanned!')
         context.window_manager.progress_end()
