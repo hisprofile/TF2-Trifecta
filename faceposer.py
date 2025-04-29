@@ -686,7 +686,7 @@ class HISANIM_OT_refresh_face(Operator):
         return {'FINISHED'}
 
 classes = [
-    faceslider,
+    #faceslider,
     HISANIM_OT_SLIDERESET,
     HISANIM_OT_FIXFACEPOSER,
     HISANIM_OT_SLIDEKEYFRAME,

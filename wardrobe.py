@@ -4,6 +4,7 @@ from bpy.props import *
 from bpy.types import Context
 from mathutils import *
 from . import bonemerge, mercdeployer, faceposer
+from .faceposer import faceslider
 from .preferences import ids
 
 def returnsearch(a):
@@ -486,23 +487,24 @@ class TRIFECTA_OT_setFP(bpy.types.Operator):
         return {'FINISHED'}
 
 classes = [
-            searchHits,
-            hisanimvars,
-            HISANIM_OT_PAINTCLEAR,
-            HISANIM_OT_LOAD,
-            HISANIM_OT_PAINTS,
-            HISANIM_OT_RemoveLightwarps,
-            HISANIM_OT_Search,
-            HISANIM_OT_ClearSearch,
-            HISANIM_OT_relocatePaths,
-            WDRB_OT_Select,
-            WDRB_OT_Cancel,
-            WDRB_OT_Confirm,
-            TRIFECTA_OT_setWdrb,
-            TRIFECTA_OT_setMD,
-            TRIFECTA_OT_setBM,
-            TRIFECTA_OT_setFP
-            ]
+    faceslider,
+    searchHits,
+    hisanimvars,
+    HISANIM_OT_PAINTCLEAR,
+    HISANIM_OT_LOAD,
+    HISANIM_OT_PAINTS,
+    HISANIM_OT_RemoveLightwarps,
+    HISANIM_OT_Search,
+    HISANIM_OT_ClearSearch,
+    HISANIM_OT_relocatePaths,
+    WDRB_OT_Select,
+    WDRB_OT_Cancel,
+    WDRB_OT_Confirm,
+    TRIFECTA_OT_setWdrb,
+    TRIFECTA_OT_setMD,
+    TRIFECTA_OT_setBM,
+    TRIFECTA_OT_setFP
+    ]
 def register():
     for cls in classes:
         bpy.utils.register_class(cls)
