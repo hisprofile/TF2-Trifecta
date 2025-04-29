@@ -382,7 +382,7 @@ When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure t
                 op.icons='ARMATURE_DATA,OUTLINER_OB_ARMATURE,SHADING_RENDERED'
                 op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#merc-deployer'
 
-                layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility")
+                layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility", text='Simple Models', invert_checkbox=False)
                 layout.row().prop(props, 'hisanimrimpower', slider=True)
             
             else:

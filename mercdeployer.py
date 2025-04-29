@@ -158,7 +158,10 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         for obj in col.all_objects:
             if obj.data == None:
                 continue
+            linked = obj.data
             map_to_do[obj.data] = obj.data.make_local()
+            #if not isinstance(obj.data, bpy.types.Mesh): continue
+            #if obj.data.shape_keys: map_to_do[linked.shape_keys] = obj.data.shape_keys
 
         for obj in col.all_objects:
             if not isinstance(obj.data, bpy.types.Mesh):
@@ -174,7 +177,11 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
 
         for linked, local in list(map_to_do.items()):
             #print(linked, linked.library)
+            #print(linked, local)
             linked.user_remap(local)
+            if isinstance(linked, bpy.types.Mesh):
+                if not linked.shape_keys: continue
+                linked.shape_keys.user_remap(local.shape_keys)
 
         if ((goto := context.scene.get('MERC_COL')) == None) or (context.scene.get('MERC_COL') not in context.scene.collection.children_recursive):
             context.scene['MERC_COL'] = bpy.data.collections.new('Deployed Mercs')
