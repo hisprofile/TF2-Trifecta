@@ -123,7 +123,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         merc_blend = os.path.join(PATH, f'{self.merc}.blend')
 
         if not os.path.exists(merc_blend):
-            #self.report({'ERROR'}, f'Your selected rig-set, {context.scene.hisanimvars.rigs}, does not contain ')
             self.report({'ERROR'}, f'{merc_blend} does not exist!')
             return {'CANCELLED'}
         
@@ -159,9 +158,14 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
             if obj.data == None:
                 continue
             linked = obj.data
-            map_to_do[obj.data] = obj.data.make_local()
-            #if not isinstance(obj.data, bpy.types.Mesh): continue
-            #if obj.data.shape_keys: map_to_do[linked.shape_keys] = obj.data.shape_keys
+
+            # We need to explicitly/directly mention the linked mesh instead of referencing it through the object.
+            # If we save the result of obj.data.make_local by using obj.data as the key, both the key and the value
+            # will be the same. This is because we just localized obj.data. Therefore, saving the linked mesh
+            # in a variable is required.
+
+            #        [obj.data] was the mistake i made last time
+            map_to_do[linked] = obj.data.make_local()
 
         for obj in col.all_objects:
             if not isinstance(obj.data, bpy.types.Mesh):
@@ -176,12 +180,12 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
 
 
         for linked, local in list(map_to_do.items()):
-            #print(linked, linked.library)
-            #print(linked, local)
-            linked.user_remap(local)
+            if getattr(linked, 'library', None) == None:
+                continue
             if isinstance(linked, bpy.types.Mesh):
                 if not linked.shape_keys: continue
                 linked.shape_keys.user_remap(local.shape_keys)
+            linked.user_remap(local)
 
         if ((goto := context.scene.get('MERC_COL')) == None) or (context.scene.get('MERC_COL') not in context.scene.collection.children_recursive):
             context.scene['MERC_COL'] = bpy.data.collections.new('Deployed Mercs')
