@@ -779,9 +779,6 @@ class FACEPOSER_PT_POSELIBRARY(bpy.types.Panel):
     bl_category = 'TF2-Trifecta'
     bl_options = {'HEADER_LAYOUT_EXPAND'}
 
-    def __init__(self):
-        self.x = False
-
     @classmethod
     def poll(cls, context):
         props = context.scene.hisanimvars
@@ -802,7 +799,6 @@ class FACEPOSER_PT_POSELIBRARY(bpy.types.Panel):
         l.separator()
 
     def draw(self, context):
-        self.x = True
         props = context.scene.hisanimvars
         poselib = context.scene.poselibVars
         obj = context.object

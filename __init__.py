@@ -2,7 +2,7 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A tool dedicated towards the creation of TF2 Content in Blender",
     "author" : "hisanimations",
-    "version" : (3, 1, 7),
+    "version" : (3, 2, 0),
     "blender" : (3, 5, 0),
     "location" : "View3d > TF2-Trifecta",
     "support" : "COMMUNITY",
@@ -19,7 +19,7 @@ import importlib, sys
 from . import (bonemerge, mercdeployer, icons,
                 updater, newuilist, preferences,
                 wardrobe, panel, faceposer,
-                poselib, loadout)
+                poselib, loadout, easy_message_board)
 pack_path = os.path.dirname(__file__)
 for filename in [*glob.glob('**.py', root_dir=pack_path), *glob.glob('**/*.py', root_dir=pack_path)]:
     #print(filename)
@@ -40,6 +40,7 @@ def register():
     bonemerge.register()
     panel.register()
     poselib.register()
+    easy_message_board.register()
 
 
 def unregister():
@@ -54,6 +55,7 @@ def unregister():
     bonemerge.unregister()
     panel.unregister()
     poselib.unregister()
+    easy_message_board.unregister()
     #loadout.unregister()
 
 

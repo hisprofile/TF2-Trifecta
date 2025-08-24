@@ -277,167 +277,162 @@ It's recommended to not do anything intensive while the TF2-Trifecta is download
         layout.row().operator('hisanim.relocatepaths', text='Redefine Library Paths', icon='FILE_REFRESH')
         row = layout.row()
 
-def startup():
-    global runonce
-    if runonce == False:
-        return None
-    runonce = False
-    bpy.ops.hisanim.check_update('EXEC_DEFAULT')
-    bpy.ops.hisanim.startup_msg('EXEC_DEFAULT')
-    bpy.app.timers.unregister(startup)
-    return None
+#def startup():
+#    global runonce
+#    if runonce == False:
+#        return None
+#    runonce = False
+#    bpy.ops.hisanim.check_update('EXEC_DEFAULT')
+#    bpy.ops.hisanim.startup_msg('EXEC_DEFAULT')
+#    bpy.app.timers.unregister(startup)
+#    return None
 
-def notify_update():
-    bpy.ops.hisanim.notify_user('INVOKE_DEFAULT')
-    bpy.app.timers.unregister(notify_update)
-    return None
+#def notify_update():
+#    bpy.ops.hisanim.notify_user('INVOKE_DEFAULT')
+#    bpy.app.timers.unregister(notify_update)
+#    return None
 
-class HISANIM_OT_notify_user(Operator):
-    bl_idname = 'hisanim.notify_user'
-    bl_label = 'Notify User'
-    _timer = None
-
-    def modal(self, context, event):
-        if event.type == 'TIMER':
-            self.report({'INFO'}, 'New TF2-Trifecta update available! Scene Properties > TF2-Trifecta')
-            return {'FINISHED'}
-        return {'RUNNING_MODAL'}
-    
-    def execute(self, context):
-        wm = context.window_manager
-        self._timer = wm.event_timer_add(0.1, window=context.window)
-        wm.modal_handler_add(self)
-        return {'RUNNING_MODAL'}
+#class HISANIM_OT_notify_user(Operator):
+#    bl_idname = 'hisanim.notify_user'
+#    bl_label = 'Notify User'
+#    _timer = None
+#
+#    def modal(self, context, event):
+#        if event.type == 'TIMER':
+#            self.report({'INFO'}, 'New TF2-Trifecta update available! Scene Properties > TF2-Trifecta')
+#            return {'FINISHED'}
+#        return {'RUNNING_MODAL'}
+#    
+#    def execute(self, context):
+#        wm = context.window_manager
+#        self._timer = wm.event_timer_add(0.1, window=context.window)
+#        wm.modal_handler_add(self)
+#        return {'RUNNING_MODAL'}
         
 
-class HISANIM_OT_check_update(Operator):
-    bl_idname = 'hisanim.check_update'
-    bl_label = 'Check for Update'
-    _timer = None
-
-    def cancel(self, context: Context):
-        prefs = context.preferences.addons[__package__].preferences
-        if prefs.update_notice:
-            print('TF2-Trifecta failed to check for updates')
-        super().cancel(context)
-        return None
-    
-    def execute(self, context):
-        global release_notes
-        global new_version
-        global online_vers
-
-        prefs = context.preferences.addons[__package__].preferences
-        if not prefs.update_notice: return {'CANCELLED'}
-        try:
-            data = requests.get('https://api.github.com/repos/hisprofile/TF2-Trifecta/releases')
-            release_notes = requests.get('https://raw.githubusercontent.com/hisprofile/blenderstuff/refs/heads/main/online/release_notes.json')
-        except:
-            return {'CANCELLED'}
-        data = data.content.decode()
-        release_notes = release_notes.content.decode()
-
-        try:
-            data_json = json.loads(data)
-            notes_json = ast.literal_eval(release_notes)
-        except Exception as e:
-            print(e)
-            return {'CANCELLED'}
-        if not isinstance(data_json, list):
-            return {'CANCELLED'}
-        if not isinstance(notes_json, dict):
-            return {'CANCELLED'}
-        release_notes = dict(notes_json)
-
-        online_vers = data_json[0]['tag_name']
-        online_vers = online_vers.strip('v')
-        online_vers = tuple(map(int, online_vers.split('.')))
-        #release_notes['version'] = online_vers
-        vers = bl_info['version']
-        if online_vers > vers:# and (tuple(notes_json['version']) == online_vers):
-            new_version = True
-            bpy.app.timers.register(notify_update, first_interval=2)
-        return {'FINISHED'}
+#class HISANIM_OT_check_update(Operator):
+#    bl_idname = 'hisanim.check_update'
+#    bl_label = 'Check for Update'
+#    _timer = None
+#
+#    def cancel(self, context: Context):
+#    
+#    def execute(self, context):
+#        global release_notes
+#        global new_version
+#        global online_vers
+#
+#        prefs = context.preferences.addons[__package__].preferences
+#        if not prefs.update_notice: return {'CANCELLED'}
+#        try:
+#            data = requests.get('https://api.github.com/repos/hisprofile/TF2-Trifecta/releases')
+#            release_notes = requests.get('https://raw.githubusercontent.com/hisprofile/blenderstuff/refs/heads/main/online/release_notes.json')
+#        except:
+#            return {'CANCELLED'}
+#        data = data.content.decode()
+#        release_notes = release_notes.content.decode()
+#
+#        try:
+#            data_json = json.loads(data)
+#            notes_json = ast.literal_eval(release_notes)
+#        except Exception as e:
+#            print(e)
+#            return {'CANCELLED'}
+#        if not isinstance(data_json, list):
+#            return {'CANCELLED'}
+#        if not isinstance(notes_json, dict):
+#            return {'CANCELLED'}
+#        release_notes = dict(notes_json)
+#
+#        online_vers = data_json[0]['tag_name']
+#        online_vers = online_vers.strip('v')
+#        online_vers = tuple(map(int, online_vers.split('.')))
+#        #release_notes['version'] = online_vers
+#        vers = bl_info['version']
+#        if online_vers > vers:# and (tuple(notes_json['version']) == online_vers):
+#            new_version = True
+#            bpy.app.timers.register(notify_update, first_interval=2)
+#        return {'FINISHED'}
         
 
 
-class HISANIM_OT_PROMPT(TRIFECTA_OT_genericText):
-    bl_idname = 'hisanim.prompt'
-    bl_label = 'TF2-Trifecta Message Notice'
+#class HISANIM_OT_PROMPT(TRIFECTA_OT_genericText):
+#    bl_idname = 'hisanim.prompt'
+#    bl_label = 'TF2-Trifecta Message Notice'
+#
+#    def draw_extra(self, context):
+#        prefs = context.preferences.addons[__package__].preferences
+#        layout = self.layout
+#        layout.prop(prefs, 'hide_update_msg', text='Hide Future Prompts')
 
-    def draw_extra(self, context):
-        prefs = context.preferences.addons[__package__].preferences
-        layout = self.layout
-        layout.prop(prefs, 'hide_update_msg', text='Hide Future Prompts')
-
-class HISANIM_OT_STARTUP_UPDATE(Operator):
-    bl_idname = 'hisanim.startup_msg'
-    bl_label = 'Startup Update'
-
-    def execute(self, context):
-        prefs = context.preferences.addons[__package__].preferences
-        if prefs.hide_update_msg: return {'CANCELLED'}
-        PATH = Path(__file__).parent
-        update_msg = os.path.join(PATH, 'update_msg.json')
-        try:
-            data = requests.get('https://raw.githubusercontent.com/hisprofile/blenderstuff/refs/heads/main/online/trifecta_update_message.json')
-        except:
-            return {'CANCELLED'}
-        
-        data = data.content.decode()
-
-        try:
-            data_json = ast.literal_eval(data)
-        except:
-            return {'CANCELLED'}
-        
-        if not isinstance(data_json, dict):
-            return {'CANCELLED'}
-        
-        if not os.path.exists(update_msg):
-            with open(update_msg, 'w+') as file:
-                file.write(json.dumps(data_json))
-            return {'FINISHED'}
-        else:
-            with open(update_msg, 'r') as file:
-                data_json_exists = json.loads(file.read())
-        
-        new_id = data_json.get('id', -1)
-        old_id = data_json_exists.get('id', -1)
-
-        if new_id == old_id: return {'CANCELLED'}
-
-        with open(update_msg, 'w+') as file:
-            file.write(json.dumps(data_json))
-
-        text = data_json.get('text')
-        icons = data_json.get('icons')
-        size = data_json.get('size')
-
-        if not text:
-            return {'CANCELLED'}
-
-        text_lines = text.split('\n')
-        if icons == None:
-            icons = ','.join(['NONE']*len(text_lines))
-        else:
-            icons_split = icons.split(',')
-        
-            if len(icons_split) != len(text_lines):
-                fill = len(text_lines) - len(icons_split)
-                icons += ',' + ','.join(['BLANK1']*fill)
-
-        if size == None:
-            size = ','.join(['56']*len(text_lines))
-        else:
-            size_split = size.split(',')
-        
-            if len(size_split) != len(text_lines):
-                fill = len(text_lines) - len(size_split)
-                size += ',' + ','.join(['56']*fill)
-        
-        bpy.ops.hisanim.prompt('INVOKE_DEFAULT', text=text, icons=icons, size=size)
-        return {'FINISHED'}
+#class HISANIM_OT_STARTUP_UPDATE(Operator):
+#    bl_idname = 'hisanim.startup_msg'
+#    bl_label = 'Startup Update'
+#
+#    def execute(self, context):
+#        prefs = context.preferences.addons[__package__].preferences
+#        if prefs.hide_update_msg: return {'CANCELLED'}
+#        PATH = Path(__file__).parent
+#        update_msg = os.path.join(PATH, 'update_msg.json')
+#        try:
+#            data = requests.get('https://raw.githubusercontent.com/hisprofile/blenderstuff/refs/heads/main/online/trifecta_update_message.json')
+#        except:
+#            return {'CANCELLED'}
+#        
+#        data = data.content.decode()
+#
+#        try:
+#            data_json = ast.literal_eval(data)
+#        except:
+#            return {'CANCELLED'}
+#        
+#        if not isinstance(data_json, dict):
+#            return {'CANCELLED'}
+#        
+#        if not os.path.exists(update_msg):
+#            with open(update_msg, 'w+') as file:
+#                file.write(json.dumps(data_json))
+#            return {'FINISHED'}
+#        else:
+#            with open(update_msg, 'r') as file:
+#                data_json_exists = json.loads(file.read())
+#        
+#        new_id = data_json.get('id', -1)
+#        old_id = data_json_exists.get('id', -1)
+#
+#        if new_id == old_id: return {'CANCELLED'}
+#
+#        with open(update_msg, 'w+') as file:
+#            file.write(json.dumps(data_json))
+#
+#        text = data_json.get('text')
+#        icons = data_json.get('icons')
+#        size = data_json.get('size')
+#
+#        if not text:
+#            return {'CANCELLED'}
+#
+#        text_lines = text.split('\n')
+#        if icons == None:
+#            icons = ','.join(['NONE']*len(text_lines))
+#        else:
+#            icons_split = icons.split(',')
+#        
+#            if len(icons_split) != len(text_lines):
+#                fill = len(text_lines) - len(icons_split)
+#                icons += ',' + ','.join(['BLANK1']*fill)
+#
+#        if size == None:
+#            size = ','.join(['56']*len(text_lines))
+#        else:
+#            size_split = size.split(',')
+#        
+#            if len(size_split) != len(text_lines):
+#                fill = len(text_lines) - len(size_split)
+#                size += ',' + ','.join(['56']*fill)
+#        
+#        bpy.ops.hisanim.prompt('INVOKE_DEFAULT', text=text, icons=icons, size=size)
+#        return {'FINISHED'}
 
 class HISANIM_OT_ADDONUPDATER(Operator):
     bl_idname = 'hisanim.addonupdate'
@@ -972,17 +967,17 @@ bpyClasses = [HISANIM_PT_UPDATER,
               TRIFECTA_OT_GET_RIG,
               TRIFECTA_OT_GET_BLEND,
               TRIFECTA_OT_DOWNLOAD_QUEUE,
-              HISANIM_OT_PROMPT,
-              HISANIM_OT_STARTUP_UPDATE,
-              HISANIM_OT_check_update,
-              HISANIM_OT_notify_user
+              #HISANIM_OT_PROMPT,
+              #HISANIM_OT_STARTUP_UPDATE,
+              #HISANIM_OT_check_update,
+              #HISANIM_OT_notify_user
               ]
 
 def register():
     for operator in bpyClasses:
         bpy.utils.register_class(operator)
     bpy.types.Scene.trifecta_updateprops = PointerProperty(type=updateProps)
-    bpy.app.timers.register(startup)
+    #bpy.app.timers.register(startup)
 def unregister():
     for operator in bpyClasses:
         bpy.utils.unregister_class(operator)
