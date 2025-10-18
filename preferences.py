@@ -344,6 +344,8 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
                     bpy.data.libraries.remove(library, do_unlink=True)
                     return
                 
+        fail_count = 0
+
         def scan(path, blend_obj = None):
             if blend_obj:
                 blend_obj.validated = False
@@ -422,8 +424,6 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
                 #bpy.data.batch_remove(T.objects)
                 #remove_lib(path)
                 return
-
-        fail_count = 0
 
         if self.scan_all:
             blend_files = list(map(lambda a: os.path.join(prefs.items_path, a), glob.glob('*.blend', root_dir=prefs.items_path)))
