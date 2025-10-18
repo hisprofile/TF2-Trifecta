@@ -10,7 +10,7 @@ from bpy.props import (StringProperty, CollectionProperty,
 from bpy.types import (UIList, PropertyGroup,
                         AddonPreferences, Operator)
 
-from .panel import TRIFECTA_OT_genericText, textBox
+from .panel import TRIFECTA_OT_genericText
 
 ids = {
     'allclass1' :           '1JMHSJOHpCvZr_fYN9pZyXTCUZBTHq97m',
