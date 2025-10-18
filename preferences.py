@@ -347,80 +347,81 @@ class HISANIM_OT_SCAN(TRIFECTA_OT_genericText):
         def scan(path, blend_obj = None):
             if blend_obj:
                 blend_obj.validated = False
-            try:
-                with bpy.data.libraries.load(path, link=True) as (F, T):
-                    T.scenes = ['tag_data']
-            except:
-                self.report({'ERROR'}, f'Failed to open {path}')
-                fail_count +=1
-                remove_lib(path)
-                return
-            if T.scenes[0] == None:
-                self.report({'WARNING'}, f'{path} missing scene "tag_data"')
-                remove_lib(path)
-                return
-            scn = T.scenes[0]
-            if not (tag := scn.get('tag')):
-                self.report({'WARNING'}, f'{path} is not compatible with the TF2-Trifecta. Missing "tag" property on scene.')
-                remove_lib(path)
-                return
-            if blend_obj == None:
-                new_blend = blends.add()
-            else:
-                new_blend = blend_obj
-            new_blend.name = os.path.basename(path)
-            new_blend.path = path
-            new_blend.tag = tag
-            print(f'.blend is supported. Tag is {tag}.')
-            if not (drive_id := scn.get('drive_id')):
-                self.report({'WARNING'}, f'{path} has no "drive_id" property on scene! It cannot be updated!')
-            else:
-                print(f'.blend has drive ID {drive_id}')
-                new_blend.drive_id = drive_id
-
-            if scn.get('resource_only'):
-                print(f'.blend is resource only')
-                new_blend.no_search= True
-            bpy.data.batch_remove(T.scenes)
-            remove_lib(path)
-            if new_blend.no_search:
-                print('Finished with .blend')
-                new_blend.validated = True
-                return
-            print('Loading objects...')
-            with bpy.data.libraries.load(path, link=True, assets_only=True) as (F, T):
-                T.objects = F.objects
-            obj_count = 0
-            valid_objs = []
-            new_blend.assets.clear()
-            for obj in sorted(T.objects, key=lambda a: a.name.lower()):
-               
-                asset = new_blend.assets.add()
-                if obj.get('name_search_props') != None:
-                    name = obj['tf_name']
-                    if obj.get('style_name'):
-                        asset.style = obj['style_name']
-                        name += f', {obj["style_name"]}'
-                    if obj.get('style_index') and not obj.get('style_name'):
-                        asset.style = obj['style_index']
-                        name += f', {obj["style_index"]}'
-                    if obj.get('class'):
-                        asset.mercenary = obj['class']
-                        name += f', {obj["class"].title()}'
-                    asset.name = name
+            with bpy.data.temp_data() as temp_data:
+                try:
+                    with temp_data.libraries.load(path, link=True) as (F, T):
+                        T.scenes = ['tag_data']
+                except:
+                    self.report({'ERROR'}, f'Failed to open {path}')
+                    fail_count +=1
+                    #remove_lib(path)
+                    return
+                if T.scenes[0] == None:
+                    self.report({'WARNING'}, f'{path} missing scene "tag_data"')
+                    #remove_lib(path)
+                    return
+                scn = T.scenes[0]
+                if not (tag := scn.get('tag')):
+                    self.report({'WARNING'}, f'{path} is not compatible with the TF2-Trifecta. Missing "tag" property on scene.')
+                    #remove_lib(path)
+                    return
+                if blend_obj == None:
+                    new_blend = blends.add()
                 else:
-                    asset.name = obj.name
-                asset.reference = obj.name
-                obj_count += 1
-                valid_objs.append(obj)
-                print('\033[F\033[K', end='', flush=True)
-                print(f'Found {obj_count} object{"" if obj_count == 1 else "s"}')
-            new_blend.validated = True
-            print(f'.blend has {obj_count} spawnables.')
-            print('Finished with .blend')
-            bpy.data.batch_remove(T.objects)
-            remove_lib(path)
-            return
+                    new_blend = blend_obj
+                new_blend.name = os.path.basename(path)
+                new_blend.path = path
+                new_blend.tag = tag
+                print(f'.blend is supported. Tag is {tag}.')
+                if not (drive_id := scn.get('drive_id')):
+                    self.report({'WARNING'}, f'{path} has no "drive_id" property on scene! It cannot be updated!')
+                else:
+                    print(f'.blend has drive ID {drive_id}')
+                    new_blend.drive_id = drive_id
+
+                if scn.get('resource_only'):
+                    print(f'.blend is resource only')
+                    new_blend.no_search= True
+                #bpy.data.batch_remove(T.scenes)
+                #remove_lib(path)
+                if new_blend.no_search:
+                    print('Finished with .blend')
+                    new_blend.validated = True
+                    return
+                print('Loading objects...')
+                with temp_data.libraries.load(path, link=True, assets_only=True) as (F, T):
+                    T.objects = F.objects
+                obj_count = 0
+                valid_objs = []
+                new_blend.assets.clear()
+                for obj in sorted(T.objects, key=lambda a: a.name.lower()):
+                
+                    asset = new_blend.assets.add()
+                    if obj.get('name_search_props') != None:
+                        name = obj['tf_name']
+                        if obj.get('style_name'):
+                            asset.style = obj['style_name']
+                            name += f', {obj["style_name"]}'
+                        if obj.get('style_index') and not obj.get('style_name'):
+                            asset.style = obj['style_index']
+                            name += f', {obj["style_index"]}'
+                        if obj.get('class'):
+                            asset.mercenary = obj['class']
+                            name += f', {obj["class"].title()}'
+                        asset.name = name
+                    else:
+                        asset.name = obj.name
+                    asset.reference = obj.name
+                    obj_count += 1
+                    valid_objs.append(obj)
+                    print('\033[F\033[K', end='', flush=True)
+                    print(f'Found {obj_count} object{"" if obj_count == 1 else "s"}')
+                new_blend.validated = True
+                print(f'.blend has {obj_count} spawnables.')
+                print('Finished with .blend')
+                #bpy.data.batch_remove(T.objects)
+                #remove_lib(path)
+                return
 
         fail_count = 0
 
