@@ -176,6 +176,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
 
             for modifier in obj.modifiers:
                 if modifier.type != 'NODES': continue
+                if getattr(modifier.node_group, 'name', '') == 'Source Eye Props': continue
                 map_to_do[modifier.node_group] = modifier.node_group.make_local()
 
 
