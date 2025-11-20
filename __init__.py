@@ -2,7 +2,7 @@ bl_info = {
     "name" : "The TF2 Trifecta",
     "description" : "A tool dedicated towards the creation of TF2 Content in Blender",
     "author" : "hisanimations",
-    "version" : (3, 2, 1),
+    "version" : (3, 2, 2),
     "blender" : (3, 5, 0),
     "location" : "View3d > TF2-Trifecta",
     "support" : "COMMUNITY",

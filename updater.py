@@ -956,11 +956,20 @@ class TRIFECTA_OT_DOWNLOAD_ALL(TRIFECTA_OT_genericText):
         layout = self.layout
         layout.prop(self, 'download_rigs')
         
+@bpy.app.handlers.persistent
+def reset_props_on_load(a=None, b=None):
+    props = bpy.context.scene.trifecta_updateprops
+    props.fstop = False
+    props.stop = False
+    props.active = False
+    props.running = False
+    props.finished = False
+    props.updateAll = False
 
 #class TRIFECTA_OT_updateAll(Operator):
     #bl_idname
 
-bpyClasses = [HISANIM_PT_UPDATER,
+classes = [HISANIM_PT_UPDATER,
               HISANIM_OT_ADDONUPDATER, 
               updateProps,
               TRIFECTA_OT_DOWNLOAD_ALL,
@@ -974,11 +983,13 @@ bpyClasses = [HISANIM_PT_UPDATER,
               ]
 
 def register():
-    for operator in bpyClasses:
-        bpy.utils.register_class(operator)
+    bpy.app.handlers.load_post.append(reset_props_on_load)
+    for i in classes:
+        bpy.utils.register_class(i)
     bpy.types.Scene.trifecta_updateprops = PointerProperty(type=updateProps)
     #bpy.app.timers.register(startup)
 def unregister():
-    for operator in bpyClasses:
-        bpy.utils.unregister_class(operator)
+    bpy.app.handlers.load_post.remove(reset_props_on_load)
+    for i in classes:
+        bpy.utils.unregister_class(i)
     del bpy.types.Scene.trifecta_updateprops

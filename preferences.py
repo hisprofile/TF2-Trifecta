@@ -206,20 +206,19 @@ class blends(PropertyGroup):
     validated: BoolProperty(default=False, options=set())
     time_validated: IntProperty()
 
+# just in case ¯\_(ツ)_/¯
+update_block = False
+def ensure_absolute_path(self, context):
+    global update_block
+    if update_block:
+        return
+    update_block = True
+    self.items_path = bpy.path.abspath(self.items_path)
+    update_block = False
+
 class hisanimFilePaths(AddonPreferences):
     bl_idname = __package__
-    #prefs = bpy.context.preferences.addons[__package__].preferences
-
-    def set_abspath(self, value):
-        self['path_temp'] = bpy.path.abspath(value)
-
-    def get_selfpath(self):
-        #print(dir(self))
-        #import time
-        #time.sleep(0.5)
-        return self.path_temp#self.items_path#self['items_path']
-
-    path_temp: StringProperty() # have to offload the get/set to another property or else RECURSION ERROR!!! :DDDD
+    
     blends: CollectionProperty(type=blends)
     blends_index: IntProperty(min=0, options=set())
     blends_more_info: BoolProperty(default=False, name='More Info', description='Show more information about .blend files and the content they hold')
@@ -229,9 +228,9 @@ class hisanimFilePaths(AddonPreferences):
     hide_auto_exc_warning: BoolProperty(name='Hide Warning Anyways', default=False)
     is_executed: BoolProperty(default=False, options=set())
     runonce_removepaths: IntProperty(default=0, options=set())
-    items_path: StringProperty(default='', subtype='DIR_PATH', name='TF2 Items Folder', description='Folder containing all cosmetics and weapons .blend files.',
-                               set=set_abspath,
-                               get=get_selfpath)
+    items_path: StringProperty(default='', subtype='FILE_PATH', name='TF2 Items Folder', description='Folder containing all cosmetics and weapons .blend files.',
+                               update=ensure_absolute_path,
+                               )
     missing: bpy.props.BoolProperty(default=True, options=set())
     hide_update_msg: BoolProperty(default=False, name='Hide Future Prompts')
     update_notice: BoolProperty(default=True, name='Notify for Future Updates')
