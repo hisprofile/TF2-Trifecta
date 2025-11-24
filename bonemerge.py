@@ -1,13 +1,6 @@
 import bpy
-import collections
-import uuid
 
 from bpy.props import *
-#collections.defaultdict
-
-#from . import poselib
-#from .poselib import textBox
-
 from typing import List, Set
 
 #loc = "BONEMERGE-ATTACH-LOC"
@@ -120,12 +113,12 @@ class HISANIM_OT_ATTACH(bpy.types.Operator):
             pass
 
         elif context.scene.hisanimvars.hisanimtarget == None:
-            if not hasattr(bpy.context, 'object'):
+            if not hasattr(context, 'object'):
                 self.report({'INFO'}, 'No armature selected!')
                 return {'CANCELLED'}
             if (target := getattr(bpy.types.Scene, 'host', None)) == None:
                 self.report({'INFO'}, 'No armature selected!')
-            if (target := bpy.context.object) == None:
+            if (target := context.object) == None:
                 self.report({'INFO'}, 'No armature selected!')
                 return {'CANCELLED'}
             if target.type != 'ARMATURE':

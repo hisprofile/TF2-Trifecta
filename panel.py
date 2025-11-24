@@ -2,25 +2,8 @@ import bpy
 from .newuilist import paints
 from bpy.types import (UIList)
 from bpy.props import *
-from . import faceposer, icons
-
-def hasKey(obj, slider) -> bool:
-        if bpy.context.scene.hisanimvars.noKeyStatus: return False
-        data = obj.data
-        if data.animation_data == None:
-            return False
-        
-        scene = bpy.context.scene
-        action = data.animation_data.action
-        if action == None:
-            return False
-        
-        curv = action.fcurves.find(f'["{slider.name}"]')
-        if curv == None: return False
-        for point in curv.keyframe_points:
-            if faceposer.get_frame(bpy.context) == point.co.x:
-                return True
-        return False
+from . import icons
+from .faceposer import has_key
 
 class HISANIM_UL_SLIDERS(bpy.types.UIList):
 
@@ -57,7 +40,10 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
             active_data, active_propname,
             index):
         props = context.scene.hisanimvars
-        isKeyed = hasKey(bpy.context.object, item)
+        if context.scene.hisanimvars.noKeyStatus:
+            is_keyed_on_frame = False
+        else:    
+            is_keyed_on_frame = has_key(context, context.object, item.name)
         if context.scene.poselibVars.stage != 'SELECT':
             layout.row().label(text='Operation in progress.')
             return None
@@ -67,15 +53,15 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
                 Name = item.name.split('_')[-1]
 
                 if not item.realvalue:
-                    row.alert = isKeyed
+                    row.alert = is_keyed_on_frame
                     row.prop(item, 'value', slider=True, text=Name, expand=True)
                     row.alert = False
                 else:
                     row.prop(props.activeface.data, f'["{item.R}"]', text='R')
                     row.prop(props.activeface.data, f'["{item.L}"]', text='L')
                 
-                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed, emboss=False)
-                #op.delete = isKeyed
+                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if is_keyed_on_frame else 'DECORATE_ANIMATE', text='', depress=is_keyed_on_frame, emboss=False)
+                #op.delete = is_keyed_on_frame
                 op.slider = item.name
                 row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='', emboss = False)
 
@@ -83,14 +69,14 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
                 row = layout.row(align=True)
                 Name = item.name.split('_')[-1]
                 if not item.realvalue:
-                    row.alert = isKeyed
+                    row.alert = is_keyed_on_frame
                     row.prop(item, 'value', slider=True, text=Name)
                     row.alert = False
                     
                 else:
                     row.prop(props.activeface.data, f'["{item.name}"]', text='Flex Scale' if item.name[4:] == 'fs' else item.name[4:])
-                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if isKeyed else 'DECORATE_ANIMATE', text='', depress=isKeyed, emboss=False)
-                op.delete = isKeyed
+                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if is_keyed_on_frame else 'DECORATE_ANIMATE', text='', depress=is_keyed_on_frame, emboss=False)
+                op.delete = is_keyed_on_frame
                 op.slider = item.name
                 row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='', emboss=False)
 

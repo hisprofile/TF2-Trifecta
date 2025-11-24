@@ -29,26 +29,42 @@ def MAP(x,a,b,c,d, clamp=None):
         return min(max(y, c), d)
     else:
         return y
-    
-def hasKey(obj, slider) -> bool:
+
+if bpy.app.version >= (4, 4, 0):
+    def has_key(context, obj, slider) -> bool:
+        from bpy_extras import anim_utils
         data = obj.data
-        if data.animation_data == None:
+        if not (anim_data := getattr(data, 'animation_data', None)):
             return False
+        action = getattr(anim_data, 'action', None)
+        action_slot = getattr(anim_data, 'action_slot', None)
+        channelbag = anim_utils.action_get_channelbag_for_slot(action, action_slot)
         
-        scene = bpy.context.scene
-        action = data.animation_data.action
-        if action == None:
+        if not channelbag:
             return False
+
+        curv = channelbag.fcurves.find(f'["{slider}"]')
+        if curv == None: return False
+        for point in curv.keyframe_points:
+            if get_frame(context) == point.co.x:
+                return True
+        return False
+else:
+    def has_key(context, obj, slider) -> bool:
+        data = obj.data
+        if not (anim_data := getattr(data, 'animation_data', None)):
+            return False
+        if not (action := getattr(anim_data, 'action', None)):
+            return None
         
         curv = action.fcurves.find(f'["{slider}"]')
         if curv == None: return False
         for point in curv.keyframe_points:
-            if get_frame(bpy.context) == point.co.x:
+            if get_frame(context) == point.co.x:
                 return True
         return False
 
 def get_frame(context):
-    #if context.scene
     return context.scene.frame_float if context.scene.show_subframe else context.scene.frame_current
 
 @persistent
@@ -136,17 +152,17 @@ class HISANIM_OT_SLIDEKEYFRAME(Operator):
     def execute(self, context):
         props = context.scene.hisanimvars
         slider = props.sliders[self.slider]
-        isKeyed = hasKey(context.object, self.slider)
+        is_keyed_on_frame = has_key(context, context.object, self.slider)
         data = bpy.context.object.data
         if slider.split:
-            if isKeyed:
+            if is_keyed_on_frame:
                 data.keyframe_delete(data_path=f'["{slider.R}"]', frame=get_frame(context))
                 data.keyframe_delete(data_path=f'["{slider.L}"]', frame=get_frame(context))
             else:
                 data.keyframe_insert(data_path=f'["{slider.R}"]', frame=get_frame(context))
                 data.keyframe_insert(data_path=f'["{slider.L}"]', frame=get_frame(context))
         else:
-            if isKeyed:
+            if is_keyed_on_frame:
                 data.keyframe_delete(data_path=f'["{slider.name}"]', frame=get_frame(context))
             else:
                 data.keyframe_insert(data_path=f'["{slider.name}"]', frame=get_frame(context))
@@ -178,7 +194,7 @@ class HISANIM_OT_SLIDERESET(Operator):
 
     def modal(self, context, event):
         props = context.scene.hisanimvars
-        face = bpy.context.object
+        face = context.object
         scn = context.scene
         if self.stop:
             return {'FINISHED'}
@@ -212,7 +228,7 @@ class HISANIM_OT_SLIDERESET(Operator):
                 i.value = 0
                 i.changed = False
 
-            bpy.context.scene.activesliders.clear()
+            context.scene.activesliders.clear()
             props.updating = False
             props.callonce = False
         return {'PASS_THROUGH'}
