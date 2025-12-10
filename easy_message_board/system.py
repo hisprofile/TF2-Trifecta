@@ -22,7 +22,7 @@ from .main_vars import (
 )
 from bpy.props import PointerProperty
 
-EMB_VERSION = (1, 0, 0) # i mean it's no different from using a .toml file
+EMB_VERSION = (1, 0, 1) # i mean it's no different from using a .toml file
 
 global_id = None
 emb_id = None
@@ -119,24 +119,28 @@ def local_emb_settings() -> dict:
 
 
 def local_emb_data() -> AutoUpdateJson:
+	init_data = AutoUpdateJson(
+		{
+			'last_message_time': int(time.time()),
+			'new_messages': 0,
+			'update_ignore_this_version': [0, 0, 0],
+			'update_ignore_future_versions': False,
+		}
+	)
 	if not os.path.exists(emb_data_path):
-		init_data = AutoUpdateJson(
-			{
-				'last_message_time': int(time.time()),
-				'new_messages': 0,
-				'update_ignore_this_version': [0, 0, 0],
-				'update_ignore_future_versions': False,
-			}
-		)
 		init_data.json_path = emb_data_path
 		init_data.write()
 		return init_data
 	else:
-		with open(emb_data_path, 'r') as file:
-			emb_data = AutoUpdateJson(json.loads(file.read()))
-			emb_data.json_path = emb_data_path
-			return emb_data
-
+		try:
+			with open(emb_data_path, 'r') as file:
+				emb_data = AutoUpdateJson(json.loads(file.read()))
+				emb_data.json_path = emb_data_path
+				return emb_data
+		except:
+			init_data.json_path = emb_data_path
+			init_data.write()
+			return init_data
 
 def global_prefs_path_exists() -> bool:
 	return os.path.exists(global_prefs_path)
