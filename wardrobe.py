@@ -87,6 +87,11 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         name="Blu Team",
         description="Swap classes",
         default = False, options=set())
+    disable_wrinkle_in_viewport: BoolProperty(
+        name='Disable Wrinkle Maps in Viewport',
+        description='Can help with performance! This option automatically hides the "wrinkles" geometry node group in the viewport',
+        default=True, options=set()
+    )
     query: StringProperty(default="")
     loadout_name: StringProperty(default='Loadout Name')
     cosmeticcompatibility: BoolProperty(

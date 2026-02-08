@@ -157,6 +157,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
             layout.row().operator('wm.url_open', text='Installation Documentation', icon='URL').url = 'https://github.com/hisprofile/blenderstuff/blob/main/Guides/TF2%20Blender/!TF2-Trifecta%20Installation.md'
             layout.row().operator('wm.url_open', text='TF2 Items Folder', icon='URL').url = 'https://drive.google.com/open?id=1JFzUvfiiBF8ukpL50ewZDct98E96oNmL&usp=drive_fs'
             layout.row().operator('wm.url_open', text='Rigs', icon='URL').url = 'https://drive.google.com/open?id=1DF6S3lmqA8xtIMflWhzV242OrUnP62ws&usp=drive_fs'
+            layout.row().operator('wm.url_open', text='"Rigify Refresh" Documentation', icon='URL').url = 'https://github.com/hisprofile/blenderstuff/blob/main/Guides/TF2%20Blender/2026_02_08%20-%20Rigify%20Refresh%20Rigs.md'
         box = layout.box()
         box.label(text='Update Class Cosmetics')
         id_items = ids.items()

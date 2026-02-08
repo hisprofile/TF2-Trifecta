@@ -8,7 +8,7 @@ from bpy.props import *
 
 upperFace = ['BrowInV', 'BrowOutV', 'Frown', 'InnerSquint',
                 'OuterSquint', 'ScalpD', 'CloseLid',
-                'multi_CloseLid']
+                'multi_CloseLid', 'eyes_updown', 'eyes_LR']
 
 midFace = ['NoseV', 'NostrilFlare', 'CheekV', 'CheekH']
 
@@ -55,7 +55,7 @@ else:
         if not (anim_data := getattr(data, 'animation_data', None)):
             return False
         if not (action := getattr(anim_data, 'action', None)):
-            return None
+            return False
         
         curv = action.fcurves.find(f'["{slider}"]')
         if curv == None: return False
@@ -149,6 +149,9 @@ class HISANIM_OT_SLIDEKEYFRAME(Operator):
     bl_description = 'Keyframe this slider'
     delete: bpy.props.BoolProperty(default=False)
     slider: bpy.props.StringProperty()
+
+    bl_options = {'UNDO'}
+
     def execute(self, context):
         props = context.scene.hisanimvars
         slider = props.sliders[self.slider]

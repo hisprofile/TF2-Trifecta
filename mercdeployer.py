@@ -113,7 +113,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         PATH = prefs.rigs[context.scene.hisanimvars.rigs].path
 
         if not os.path.exists(PATH):
-            self.report({'ERROR'}, f'Entry for rigs exists, but the path does not exist!')
+            self.report({'ERROR'}, f'Rig folder has a non-existant path!')
             return {'CANCELLED'}
 
         bak = GetActiveCol()
@@ -123,7 +123,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         merc_blend = os.path.join(PATH, f'{self.merc}.blend')
 
         if not os.path.exists(merc_blend):
-            self.report({'ERROR'}, f'{merc_blend} does not exist!')
+            self.report({'ERROR'}, f'Path for {merc_blend} does not exist!')
             return {'CANCELLED'}
         
         try:
@@ -180,6 +180,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 map_to_do[modifier.node_group] = modifier.node_group.make_local()
 
 
+
         for linked, local in list(map_to_do.items()):
             if getattr(linked, 'library', None) == None:
                 continue
@@ -206,6 +207,10 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if not context.scene.hisanimvars.cosmeticcompatibility and obj['COSMETIC']:
                     bpy.data.objects.remove(obj)
                     continue
+
+            for mod in getattr(obj, 'modifiers', []):
+                if (mod.name == 'wrinkle') and context.scene.hisanimvars.disable_wrinkle_in_viewport:
+                    mod.show_viewport = False
 
         for obj in col.all_objects:
             if obj.parent: continue

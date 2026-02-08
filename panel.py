@@ -368,7 +368,16 @@ When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure t
                 op.icons='ARMATURE_DATA,OUTLINER_OB_ARMATURE,SHADING_RENDERED'
                 op.url = 'https://github.com/hisprofile/TF2-Trifecta?tab=readme-ov-file#merc-deployer'
 
-                layout.row().prop(context.scene.hisanimvars, "cosmeticcompatibility", text='Simple Models', invert_checkbox=False)
+                layout.row().prop(context.scene.hisanimvars, 'disable_wrinkle_in_viewport')
+
+                row = layout.row()
+                row.prop(context.scene.hisanimvars, "cosmeticcompatibility", text='Simple Models', invert_checkbox=False)
+                op = row.operator('trifecta.textbox', text='', icon='ERROR')
+                op.text = 'This option has no use for "Rigify Refresh" rigs and newer. Use on older rigs.'
+                op.width=325
+                op.size = '56'
+                op.icons = 'ERROR'
+                
                 layout.row().prop(props, 'hisanimrimpower', slider=True)
             
             else:
