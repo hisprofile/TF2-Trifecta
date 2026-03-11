@@ -43,42 +43,26 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
         if context.scene.hisanimvars.noKeyStatus:
             is_keyed_on_frame = False
         else:    
-            is_keyed_on_frame = has_key(context, context.object, item.name)
+            is_keyed_on_frame = has_key(context, props.activeface, item.name)
         if context.scene.poselibVars.stage != 'SELECT':
             layout.row().label(text='Operation in progress.')
             return None
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            if item.split:
-                row = layout.row(align=True)
-                Name = item.name.split('_')[-1]
-
-                if not item.realvalue:
-                    row.alert = is_keyed_on_frame
-                    row.prop(item, 'value', slider=True, text=Name, expand=True)
-                    row.alert = False
-                else:
+            row = layout.row(align=True)
+            if not item.realvalue:
+                row.alert = is_keyed_on_frame
+                row.prop(item, 'value', slider=True, text=item.display_name)
+                row.alert = False
+            else:
+                if item.split:
                     row.prop(props.activeface.data, f'["{item.R}"]', text='R')
                     row.prop(props.activeface.data, f'["{item.L}"]', text='L')
-                
-                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if is_keyed_on_frame else 'DECORATE_ANIMATE', text='', depress=is_keyed_on_frame, emboss=False)
-                #op.delete = is_keyed_on_frame
-                op.slider = item.name
-                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='', emboss = False)
-
-            else:
-                row = layout.row(align=True)
-                Name = item.name.split('_')[-1]
-                if not item.realvalue:
-                    row.alert = is_keyed_on_frame
-                    row.prop(item, 'value', slider=True, text=Name)
-                    row.alert = False
-                    
                 else:
-                    row.prop(props.activeface.data, f'["{item.name}"]', text='Flex Scale' if item.name[4:] == 'fs' else item.name[4:])
-                op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if is_keyed_on_frame else 'DECORATE_ANIMATE', text='', depress=is_keyed_on_frame, emboss=False)
-                op.delete = is_keyed_on_frame
-                op.slider = item.name
-                row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='', emboss=False)
+                    row.prop(props.activeface.data, f'["{item.name}"]', text='Flex Scale' if item.display_name == 'fs' else item.display_name)
+
+            op = row.operator('hisanim.keyslider', icon='DECORATE_KEYFRAME' if is_keyed_on_frame else 'DECORATE_ANIMATE', text='', depress=is_keyed_on_frame, emboss=False)
+            op.slider = item.name
+            row.prop(item, 'realvalue', icon='RESTRICT_VIEW_OFF' if item.realvalue else 'RESTRICT_VIEW_ON', text='', emboss = False)
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
@@ -95,7 +79,7 @@ class MESH_UL_skeys_nodriver(UIList):
                 filtered[i] &= ~self.bitflag_filter_item
             
             find = f'key_blocks["{item.name}"].value'
-            if context.object.data.shape_keys.animation_data.drivers.find(find) != None:
+            if props.activeface.data.shape_keys.animation_data.drivers.find(find) != None:
                 filtered[i] &= ~self.bitflag_filter_item
 
         return filtered, []
@@ -131,18 +115,13 @@ class HISANIM_UL_LOCKSLIDER(bpy.types.UIList):
             return None
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             if item.split:
-                split = layout.split(factor=0.2, align=True)
-                split.prop(item, 'locked', icon='LOCKED' if item.locked else 'UNLOCKED')
-                split.prop(DATA, f'["{item.R}"]', text=item.R[4:])
-                split = layout.split(factor=0.2, align=True)
-                split.prop(item, 'lockedL', icon='LOCKED' if item.lockedL else 'UNLOCKED')
-                split.prop(DATA, f'["{item.L}"]', text=item.L[4:])
+                row = layout.row()
+                row.prop(item, 'locked', icon='LOCKED' if item.locked else 'UNLOCKED', text=item.display_name + ' R')
+                row.prop(item, 'lockedL', icon='LOCKED' if item.locked else 'UNLOCKED', text=item.display_name + ' L')
                 pass
             else:
-                split = layout.split(factor=0.2, align=True)
-                split.prop(item, 'locked', icon='LOCKED' if item.locked else 'UNLOCKED')
-                DATA = bpy.context.object.data
-                split.prop(DATA, f'["{item.name}"]', text=item.name[4:])
+                row = layout.row()
+                row.prop(item, 'locked', icon='LOCKED' if item.locked else 'UNLOCKED', text=item.display_name)
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
@@ -225,9 +204,9 @@ class HISANIM_UL_USESLIDERS(bpy.types.UIList):
             row = layout.row(align=True)
             row.prop(item, 'use', text='')
             if item.split:
-                row.label(text="_".join(item.name.split('_')[2:]))
+                row.label(text=item.display_name)
             else:
-                row.label(text="_".join(item.name.split('_')[1:]))
+                row.label(text=item.display_name)
 
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
@@ -267,7 +246,8 @@ class POSELIB_UL_visemes(UIList):
         props = context.scene.poselibVars
         row = layout.row()
         row.prop(item, 'use', text='')
-        row.label(text="_".join(item.name.split("_")[1:]))
+        #row.label(text="_".join(item.name.split("_")[1:]))
+        row.label(text=item.name)
 
 class LOADOUT_UL_loadouts(UIList):
     def draw_item(self, context,
@@ -443,20 +423,24 @@ When "In-Game Models" is enabled, lower-poly bodygroups will be used to ensure t
             layout.row().operator('hisanim.attemptfix')
 
         if props.tools == 'FACE POSER':
-            if len(context.selected_objects) == 0:
+            obj = props.activeface
+            #if len(context.selected_objects) == 0:
+            #    layout.label(text='Select a face!')
+            #    return None
+            #if context.object == None:
+            #    layout.label(text='Select a face!')
+            #    return None
+            #if context.object.type != 'MESH':
+            #    layout.label(text='Select a face!')
+            #    return None
+            #if context.object.data.get('aaa_fs') == None:
+            #    layout.label(text='Select a face!')
+            #    return None
+            if props.enable_faceposer == False:
                 layout.label(text='Select a face!')
-                return None
-            if context.object == None:
-                layout.label(text='Select a face!')
-                return None
-            if context.object.type != 'MESH':
-                layout.label(text='Select a face!')
-                return None
-            if context.object.data.get('aaa_fs') == None:
-                layout.label(text='Select a face!')
-                return None
-            if context.object.data.animation_data != None:
-                if context.object.data.animation_data.drivers.find('["aaa_fs"]') != None:
+                return
+            if obj.data.animation_data != None:
+                if obj.data.animation_data.drivers.find('["aaa_fs"]') != None:
                     row = layout.row()
                     row.alert = True
                     row.label(text="ThatLazyArtist's and Eccentric's rigs are not supported.")
@@ -716,11 +700,15 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
     def draw_header(self, context):
         l = self.layout
         props = context.scene.hisanimvars
-        l.alignment = 'EXPAND'
-        l.separator()
-        l.label(icon='RESTRICT_SELECT_OFF', text='Face Poser')
-        l.prop(props, 'noKeyStatus', text='', icon='DECORATE_KEYFRAME' if not props.noKeyStatus else 'DECORATE_ANIMATE', invert_checkbox=True)
-        op = l.operator('trifecta.textbox', icon='QUESTION', text='')
+        row = l.row()
+        r = row.row()
+        r.alignment = 'EXPAND'
+        r.separator()
+        r.label(icon='RESTRICT_SELECT_OFF', text='Face Poser')
+        r = row.row()
+        r.alignment = 'RIGHT'
+        r.prop(props, 'noKeyStatus', text='Show Key Status', icon='DECORATE_KEYFRAME' if not props.noKeyStatus else 'DECORATE_ANIMATE', invert_checkbox=True)
+        op = r.operator('trifecta.textbox', icon='QUESTION', text='')
         op.text = "Don't be worried about the sliders automatically resetting. It was necessary to implement stereo flexes. The values mean nothing at all. Stereo sliders will appear as RED on a keyframe.\nWhen this button is HIGHLIGHTED, it indicates that Auto-Keyframing is enabled. Any changes you make will be saved.\nPressing this button will add a keyframe to all sliders. Useful for starting an animation sequence\nEnabling this button by stereo sliders will reveal the true value for sliders.\nFlex Controllers vs. Shapekeys: Flex Controllers simulate muscle strands being pulled, making it difficult to create a distorted face. Shapekeys can be easily stacked, so its easy to create a very deformed face.\nOptimizing mercenaries can give a significant performance boost by disabling the flex controllers, which will somewhat lock the face. Don't forget to restore the face on final render."
         op.icons = 'ERROR,REC,DECORATE_KEYFRAME,RESTRICT_VIEW_OFF,SHAPEKEY_DATA,MODIFIER_ON'
         op.size = '76,70,76,76,72,76'
@@ -732,7 +720,6 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
         prefs = context.preferences.addons[__package__].preferences
         props = context.scene.hisanimvars
         poselib = context.scene.poselibVars
-        obj = context.object
         layout = self.layout
         box = layout.box()
         row = box.row(align=True)
@@ -743,7 +730,7 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
         row.prop(props, 'use_skeys', toggle=True)
         row = box.row(align=True)
         if props.mode == 'SKEYS':
-            ob = context.object
+            ob = props.activeface
             key = ob.data.shape_keys
             row.template_list("MESH_UL_skeys_nodriver", "", key, "key_blocks", ob, "active_shape_key_index", rows=5)
             return
@@ -751,9 +738,8 @@ class FACEPOSER_PT_FACEPOSER(bpy.types.Panel):
         col.template_list('HISANIM_UL_SLIDERS', 'Sliders', props, 'sliders', props, 'sliderindex')
         col = row.column()
         col.operator('hisanim.fixfaceposer', icon='PANEL_CLOSE' if props.dragging else 'CHECKMARK', text='')
-        col.row().prop(bpy.context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
+        col.row().prop(context.scene.tool_settings, 'use_keyframe_insert_auto', text='')
         col.row().operator('hisanim.keyeverything', icon='DECORATE_KEYFRAME', text='')
-        col.row().operator('faceposer.refresh', text='', icon='FILE_REFRESH')
         col.row().operator('hisanim.resetface', icon='LOOP_BACK', text='')
         row = box.row(align=True)
         op = row.operator('hisanim.adjust', text='', icon='TRIA_LEFT')
@@ -796,7 +782,7 @@ class FACEPOSER_PT_POSELIBRARY(bpy.types.Panel):
     def draw(self, context):
         props = context.scene.hisanimvars
         poselib = context.scene.poselibVars
-        obj = context.object
+        obj = props.activeface
         layout = self.layout
         box = layout.box()
         row = box.row()
@@ -881,7 +867,7 @@ class FACEPOSER_PT_RANDOMIZER(bpy.types.Panel):
         prefs = context.preferences.addons[__package__].preferences
         props = context.scene.hisanimvars
         poselib = context.scene.poselibVars
-        obj = context.object
+        obj = props.activeface
         layout = self.layout
         box = layout.box()
         row = box.row()
@@ -891,7 +877,7 @@ class FACEPOSER_PT_RANDOMIZER(bpy.types.Panel):
         box.row().prop(props, 'randomstrength', slider=True)
         box.row().operator('hisanim.randomizeface')
         box.row().operator('hisanim.resetface')
-        box.row().prop(context.object.data, '["aaa_fs"]', text='Flex Scale')
+        box.row().prop(obj.data, '["aaa_fs"]', text='Flex Scale')
 
 class FACEPOSER_PT_LOCKLIST(bpy.types.Panel):
     bl_label = ''
@@ -923,11 +909,8 @@ class FACEPOSER_PT_LOCKLIST(bpy.types.Panel):
     def draw(self, context):
         prefs = context.preferences.addons[__package__].preferences
         props = context.scene.hisanimvars
-        poselib = context.scene.poselibVars
-        obj = context.object
         layout = self.layout
         box = layout.box()
-        data = context.object.data
         box.row().template_list('HISANIM_UL_LOCKSLIDER', 'Lock Sliders', props, 'sliders', props, 'sliderindex')
 
 def textBox(self, sentence: str, icon='NONE', line=56):

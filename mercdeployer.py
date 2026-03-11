@@ -108,8 +108,8 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
 
     def execute(self, context):
         map_to_do.clear()
-        prefs = bpy.context.preferences.addons[__package__].preferences
-        props = bpy.context.scene.hisanimvars
+        prefs = context.preferences.addons[__package__].preferences
+        props = context.scene.hisanimvars
         PATH = prefs.rigs[context.scene.hisanimvars.rigs].path
 
         if not os.path.exists(PATH):
@@ -267,16 +267,15 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                         matblacklist.append(mat)
                 
                 for NODE in mat.node_tree.nodes:
-
-                    if NODE.type == 'GROUP':
-                        if NODE.node_tree.name == 'TF2 BVLG':
-                            NODE.inputs['Rim boost'].default_value = NODE.inputs['Rim boost'].default_value * props.hisanimrimpower     
+                    if NODE.type != 'GROUP': continue
+                    if NODE.node_tree.name != 'VertexLitGeneric': continue
+                    NODE.inputs['$rimlightboost [value]'].default_value *= props.hisanimrimpower
 
                 matblacklist.append(mat)
 
         bpy.data.collections.remove(col)
         map_to_do.clear()
-        bpy.context.view_layer.active_layer_collection = bak
+        context.view_layer.active_layer_collection = bak
         bpy.data.orphans_purge(do_linked_ids=True, do_recursive=True)
         return {'FINISHED'}
     

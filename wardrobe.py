@@ -7,48 +7,12 @@ from . import bonemerge, mercdeployer, faceposer
 from .faceposer import faceslider
 from .preferences import ids
 
-def returnsearch(a):
-    path = str(Path(__file__).parent)
-    path = path + "/master.json"
-    if not bpy.context.scene.hisanimvars.hisanimweapons:
-        files = ["scout", "soldier", "pyro", "demo", "heavy", "engineer", "sniper", "medic", "spy", "allclass", "allclass2", "allclass3"]
-    else:
-        files = ['weapons']
-    cln = ["named", "unnamed"]
-    f = open(path)
-    cosmetics = json.loads(f.read())
-    f.close()
-    hits = []
-    for key in a:
-        for i in files:
-            for ii in cln:
-                for v in cosmetics[i][ii]:
-                    if key.casefold() in v.casefold() and not f'{v}_-_{i}' in hits:
-                        hits.append(f'{v}_-_{i}')
-                    
-    return hits
-
 def getRigs(self, context):
     prefs = context.preferences.addons[__package__].preferences
     rigs = prefs.rigs
 
     rig_list = [(rig.name, rig.name, '', '', n) for n, rig in enumerate(rigs)]
     return rig_list
-
-class HISANIM_OT_RemoveLightwarps(bpy.types.Operator): # be cycles compatible
-    bl_idname = 'hisanim.removelightwarps'
-    bl_label = 'Make Cycles compatible (Default)'
-    bl_description = 'Make the cosmetics Cycles compatible'
-    bl_options = {'UNDO'}
-    
-    def execute(self, execute):
-        props = bpy.context.scene.hisanimvars
-        if (NT := bpy.data.node_groups.get('VertexLitGeneric-WDRB')) == None:
-            self.report({'INFO'}, 'Cosmetic needed to proceed!')
-            return {'CANCELLED'}
-        NT.nodes['Group'].node_tree = bpy.data.node_groups['tf2combined-cycles']
-        props.toggle_mat = False
-        return {'FINISHED'}
         
 class searchHits(bpy.types.PropertyGroup):
     name: StringProperty()
@@ -126,7 +90,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     lockfilter: StringProperty()
     activeslider: StringProperty()
     activeface: PointerProperty(type=bpy.types.Object)
-    lastactiveface: PointerProperty(type=bpy.types.Object)
+    #lastactiveface: PointerProperty(type=bpy.types.Object)
     hierarchal_influence: BoolProperty(default=False, name='Hierarchal Influence', description='Activate the influence going down from the bone tree')
     sliders: CollectionProperty(type=faceposer.faceslider)
     sliderindex: IntProperty(options=set())
@@ -162,7 +126,7 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
     toggle_mat: BoolProperty(default=False)
     needs_override: BoolProperty()
     enable_faceposer: BoolProperty(default = False)
-    noKeyStatus: BoolProperty(default=False, name='Hide Keyframe Status', description='May improve performance')
+    noKeyStatus: BoolProperty(default=False, name='Show Keyframe Status', description='Disabling may improve performance on denser actions')
 
 class WDRB_OT_Select(bpy.types.Operator):
     bl_idname = 'wdrb.select'
@@ -171,10 +135,10 @@ class WDRB_OT_Select(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return bpy.context.scene.hisanimvars.stage == 'NONE'
+        return context.scene.hisanimvars.stage == 'NONE'
 
     def execute(self, context):
-        props = bpy.context.scene.hisanimvars
+        props = context.scene.hisanimvars
         props.loadout_name = 'Loadout Name'
         bpy.types.Scene.loadout_temp = []
         props.stage = 'SELECT'
@@ -186,7 +150,7 @@ class WDRB_OT_Cancel(bpy.types.Operator):
     bl_description = 'Cancel'
 
     def execute(self, context):
-        props = bpy.context.scene.hisanimvars
+        props = context.scene.hisanimvars
         props.stage = 'NONE'
         del bpy.types.Scene.loadout_temp
         loadout.update()
@@ -199,10 +163,10 @@ class WDRB_OT_Confirm(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return (bpy.context.scene.hisanimvars.loadout_name != '') * (len(bpy.types.Scene.loadout_temp) > 0) 
+        return (context.scene.hisanimvars.loadout_name != '') * (len(bpy.types.Scene.loadout_temp) > 0) 
     
     def invoke(self, context, event):
-        C = bpy.context
+        C = context
         scn = C.scene
         props = scn.hisanimvars
 
@@ -214,7 +178,7 @@ class WDRB_OT_Confirm(bpy.types.Operator):
             return self.execute(context)
 
     def execute(self, context):
-        props = bpy.context.scene.hisanimvars
+        props = context.scene.hisanimvars
         if not loadout.jsonExists():
             loadout.initJson()
         dictData = loadout.getJson()
@@ -297,7 +261,7 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                     #NODE.inputs['rim * ambient'].default_value = 1 # for better colors
                     NODE.inputs['$rimlightboost [value]'].default_value = NODE.inputs['$rimlightboost [value]'].default_value * context.scene.hisanimvars.hisanimrimpower
 
-        if bpy.context.scene.hisanimvars.bluteam: # this one speaks for itself
+        if context.scene.hisanimvars.bluteam: # this one speaks for itself
             found = False
             mat_str = False
             if skins:
@@ -316,9 +280,9 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
                 for n, material in enumerate(group):
                     justadded.material_slots[n].material = material
         bpy.data.orphans_purge(do_linked_ids=True, do_recursive=True)
-        if (bpy.context.object == None) or (justadded.parent == None): return {'FINISHED'}
+        if (context.object == None) or (justadded.parent == None): return {'FINISHED'}
 
-        select = bpy.context.object
+        select = context.object
         # if a Bonemerge compatible rig or mesh parented to one is selected, automatically bind the cosmetic
         # to the rig.
         if not select.select_get() or self.autobind:
@@ -348,7 +312,7 @@ class HISANIM_OT_Search(bpy.types.Operator):
         prefs = context.preferences.addons[__package__].preferences
         context.scene.hisanimvars.results.clear()
         context.scene.hisanimvars.searched = True
-        lookfor: str = bpy.context.scene.hisanimvars.query
+        lookfor: str = context.scene.hisanimvars.query
         lookfor = lookfor.split("|")
         lookfor.sort()
 
@@ -498,7 +462,6 @@ classes = [
     HISANIM_OT_PAINTCLEAR,
     HISANIM_OT_LOAD,
     HISANIM_OT_PAINTS,
-    HISANIM_OT_RemoveLightwarps,
     HISANIM_OT_Search,
     HISANIM_OT_ClearSearch,
     HISANIM_OT_relocatePaths,

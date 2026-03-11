@@ -30,6 +30,9 @@ def MAP(x,a,b,c,d, clamp=None):
     else:
         return y
 
+def get_frame(context):
+    return context.scene.frame_float if context.scene.show_subframe else context.scene.frame_current
+
 if bpy.app.version >= (4, 4, 0):
     def has_key(context, obj, slider) -> bool:
         from bpy_extras import anim_utils
@@ -64,34 +67,61 @@ else:
                 return True
         return False
 
-def get_frame(context):
-    return context.scene.frame_float if context.scene.show_subframe else context.scene.frame_current
+single_run = False
+
+def protect_single(func):
+    global single_run
+    def inner(a=None, b=None):
+        global single_run
+        return_val = func()
+        if return_val == False:
+            single_run = False
+    return inner
+
+last_select = None
 
 @persistent
+@protect_single
 def updatefaces(scn = None):
+    global single_run
+    global last_select
     '''
     Everytime an object gets selected, run this. However, if it is not
     recognized as a head, do nothing. If a face is selected,
     cycle through its keys and create sliders from them. Then, use those
     sliders to manipulate the keys.
     '''
-    #loadout.update()
+    if single_run:
+        return True
+    single_run = True
+
     props = bpy.context.scene.hisanimvars
-    props.needs_override = True
-    props.enable_faceposer = False
+    pose_props = bpy.context.scene.poselibVars
     context = bpy.context
-    if not hasattr(context, 'object'): return
-    if context.object == None: return
-    if context.object.data == None: return
-    data = context.object.data
+    obj = context.object
+    if obj == last_select:
+        return False
+    last_select = obj
+
+    if not hasattr(context, 'object'): return False
+
+    if obj == None:
+        if props.activeface is None:
+            props.enable_faceposer = False
+        return False
+    
+    data = obj.data
+    if data == None: return False
     
     if data.get('aaa_fs') == None:
-        return None
+        return False
+    
     props.enable_faceposer = True
+    props.needs_override = True
+    
     if data.animation_data != None:
-        if data.animation_data.drivers.find('["aaa_fs"]') != None: props.enable_faceposer = False
-    if data.get('flexcontrollers') == None:
-        data['flexcontrollers'] = {key[4:]: key for key in data.keys() if type(data[key]) == float}
+        if data.animation_data.drivers.find('["aaa_fs"]') != None:
+            props.enable_faceposer = False
 
     for i in mercdeployer.mercs:
         if i in data.name:
@@ -103,60 +133,193 @@ def updatefaces(scn = None):
             props.merc = data['merc']
         else:
             props.merc = ''
-    props.activeface = bpy.context.object
-    if props.activeface != props.lastactiveface:
-        props.sliders.clear()
-        k = sorted(data.keys())
-        z = list(zip(range(len(k)), k))
-        for i in range(len(data.keys())):
-            if type(data[z[i][1]]) != float: continue
-            newdata = data.id_properties_ui(z[i][1]).as_dict()
-            if 'left' in z[i][1]:
-                continue
-            if type(data[z[i][1]]) == bytes: continue
-            mini = newdata.get('min')
-            maxi = newdata.get('max')
-            new = props.sliders.add()
-            new.name = z[i][1]
-            new.mini = mini
-            new.maxi = maxi
-            if 'right' in z[i][1]: # if the slider is one half of another, make it recognized as a half, and define both haves
-                # in the slider.
-                new.split = True
-                new.R = z[i][1]
-                new.L = z[i+1][1]
+
+    if obj == props.activeface:
+        return False
+    if pose_props.stage == 'ADD':
+        bpy.ops.poselib.cancel()
+    if pose_props.stage == 'APPLY':
+        bpy.ops.poselib.cancelapply()
+    # face poser system 2.0 baybeee
+    if (flexcontrollers := data.get('flexcontrollers')) and (flexmap := data.get('flexmap')):
+        flexcontrollers: dict = flexcontrollers.to_dict()
+        flexmap: dict = flexmap.to_dict()
+        sliders = props.sliders
+        sliders.clear()
+
+        for flex_ui_name, flex_data in flexcontrollers.items():
+            #is stereo
+            if flex_data['type'] & 0b01:
+                left_prop = flexmap[flex_data['left']]
+                right_prop = flexmap[flex_data['right']]
+
+                right_prop_ui_settings = data.id_properties_ui(right_prop).as_dict()
+
+                min = right_prop_ui_settings.get('min')
+                max = right_prop_ui_settings.get('max')
+
+                new = sliders.add()
                 new.realvalue = False
-                new.name = z[i][1]
-                NAME = new.name.split('_')[-1]
-                for sectstr, sect in zip(['UPPER', 'MID', 'LOWER'], facesections):
-                    if NAME in sect:
-                        new.Type = sectstr
-                        break
+
+                new.name = flex_ui_name
+                new.display_name = flex_ui_name
+                new.split = True
+                new.L = left_prop
+                new.R = right_prop
+                new.mini = min
+                new.maxi = max
+
             else:
-                name = new.name[4:]
+                cont_prop = flexmap[flex_data['controller']]
+                cont_prop_ui_settings = data.id_properties_ui(cont_prop).as_dict()
+
+                min = cont_prop_ui_settings.get('min')
+                max = cont_prop_ui_settings.get('max')
+
+                new = sliders.add()
+                new.display_name = flex_data['controller']
+                new.name = cont_prop
+                new.mini = min
+                new.maxi = max
+
+                if abs(max - min)/2 > 1.0:
+                    new.realvalue = False
+
+            for sectstr, sect in zip(['UPPER', 'MID', 'LOWER'], facesections):
+                if flex_ui_name in sect:
+                    new.Type = sectstr
+                    break
+            # has nway
+            if flex_data['type'] & 0b10:
+                multi_prop = flexmap[flex_data['nway']]
+                multi_prop_ui_settings = data.id_properties_ui(multi_prop).as_dict()
+
+                min = multi_prop_ui_settings.get('min')
+                max = multi_prop_ui_settings.get('max')
+
+                new = sliders.add()
+                new.display_name = flex_data['nway']
+                new.name = multi_prop
+                new.mini = min
+                new.maxi = max
+
                 for sectstr, sect in zip(['UPPER', 'MID', 'LOWER'], facesections):
-                    if name in sect:
+                    if flex_data['nway'] in sect:
                         new.Type = sectstr
                         break
-        poselib.updateVCol()
-    
-    props.lastactiveface = props.activeface # use this to see if a new face has been selected. if the same face has been selected twice, do nothing.
+
+    else:
+        sliders = props.sliders
+        sliders.clear()
+
+        if (flex_controllers_map := data.get('flexcontrollers', None)) == None:
+            def filter_func(name: str):
+                split = name.split('_')
+                if len(split) < 2:
+                    return False
+                if len(split[0]) != 3:
+                    return False
+                if split[0].isalpha() and split[0].islower():
+                    return True
+                return False
+
+
+            keys = sorted(
+                filter(
+                    filter_func,
+                    data.keys()
+                )
+            )
+
+            flex_controllers_map = {key[4:]: key for key in keys}
+            data['flexcontrollers'] = flex_controllers_map
+
+        key_processing: list[str] = list(flex_controllers_map.keys())
+
+        while key_processing:
+            flex = key_processing.pop(0)
+
+            l_case = flex.startswith('left_')
+            r_case = flex.startswith('right_')
+            if l_case or r_case:
+                if l_case:
+                    other_flex = flex.replace('left_', 'right_')
+                    left_flex = flex
+                    right_flex = other_flex
+                else:
+                    other_flex = flex.replace('right_', 'left_')
+                    right_flex = flex
+                    left_flex = other_flex
+
+                if not other_flex in key_processing:
+                    print('TF2-Trifecta Face Poser: failed to find a pair for', flex)
+                    continue
+
+                key_processing.remove(other_flex)
+                
+                flex_mapped = flex_controllers_map[flex]
+                display_name = flex.split('_')[-1]
+                flex_ui_settings = data.id_properties_ui(flex_mapped).as_dict()
+
+                min = flex_ui_settings.get('min')
+                max = flex_ui_settings.get('max')
+
+                new = sliders.add()
+                new.split = True
+                new.name = flex_mapped
+                new.display_name = display_name
+                new.L = flex_controllers_map[left_flex]
+                new.R = flex_controllers_map[right_flex]
+                new.mini = min
+                new.maxi = max
+                # never show real value, as we always want to use the stereo slider controls by default
+                new.realvalue = False
+                
+                for sectstr, sect in zip(['UPPER', 'MID', 'LOWER'], facesections):
+                    if display_name in sect:
+                        new.Type = sectstr
+                        break
+
+            else:
+                flex_mapped = flex_controllers_map[flex]
+                display_name = flex
+                flex_ui_settings = data.id_properties_ui(flex_mapped).as_dict()
+
+                min = flex_ui_settings.get('min')
+                max = flex_ui_settings.get('max')
+
+                new = sliders.add()
+                new.display_name = display_name
+                new.name = flex_mapped
+                new.mini = min
+                new.maxi = max
+                new.realvalue = max <= 1.0
+                
+                for sectstr, sect in zip(['UPPER', 'MID', 'LOWER'], facesections):
+                    if display_name in sect:
+                        new.Type = sectstr
+                        break
+
+    poselib.updateVCol()
+    props.activeface = obj
+    return False
+    #props.lastactiveface = props.activeface # use this to see if a new face has been selected. if the same face has been selected twice, do nothing.
     
 
 class HISANIM_OT_SLIDEKEYFRAME(Operator):
     bl_idname = 'hisanim.keyslider'
     bl_label = 'Keyframe Slider'
     bl_description = 'Keyframe this slider'
-    delete: bpy.props.BoolProperty(default=False)
-    slider: bpy.props.StringProperty()
+    delete: BoolProperty(default=False)
+    slider: StringProperty()
 
     bl_options = {'UNDO'}
 
     def execute(self, context):
         props = context.scene.hisanimvars
         slider = props.sliders[self.slider]
-        is_keyed_on_frame = has_key(context, context.object, self.slider)
-        data = bpy.context.object.data
+        is_keyed_on_frame = has_key(context, props.activeface, self.slider)
+        data = props.activeface.data
         if slider.split:
             if is_keyed_on_frame:
                 data.keyframe_delete(data_path=f'["{slider.R}"]', frame=get_frame(context))
@@ -176,8 +339,8 @@ class HISANIM_OT_SLIDEKEYFRAME(Operator):
 class HISANIM_OT_SLIDERESET(Operator):
     bl_idname = 'hisanim.resetslider'
     bl_label = ''
-    slider = bpy.props.StringProperty()
-    stop: bpy.props.BoolProperty(default = False)
+    slider = StringProperty()
+    stop: BoolProperty(default = False)
 
     '''This operator decides what will happen to the sliders once
     the user stops manipulating them. It only deals with keyframing and resetting.
@@ -186,7 +349,8 @@ class HISANIM_OT_SLIDERESET(Operator):
     the face to its original position.'''
 
     def resetsliders(self, sliders, context):
-        face = context.object
+        props = context.scene.hisanimvars
+        face = props.activeface
         for i in sliders:
             if i.split:
                 face.data[i.R] = i.originalval
@@ -197,7 +361,8 @@ class HISANIM_OT_SLIDERESET(Operator):
 
     def modal(self, context, event):
         props = context.scene.hisanimvars
-        face = context.object
+        #face = context.object
+        face = props.activeface
         scn = context.scene
         if self.stop:
             return {'FINISHED'}
@@ -244,28 +409,31 @@ class HISANIM_OT_SLIDERESET(Operator):
 def slideupdate(self, value):
     scn = bpy.context.scene
     props = bpy.context.scene.hisanimvars
+    face = props.activeface
     if props.updating: return None # allow slider values to be reset back to 0 without undergoing any updates
     if props.dragging: # do this every time after once
+        #magnitude = max((self.maxi - self.mini) / 2, 1.0)
+        magnitude = abs(self.maxi)
         self.changed = True
         if not self.split:
-            props.activeface.data[self.name] = min(max(self.originalval + self.value, self.mini), self.maxi)
+            props.activeface.data[self.name] = min(max(self.originalval + self.value*magnitude, self.mini), self.maxi)
             if not self in scn.activesliders: scn.activesliders.append(self) # add sliders to a list of sliders being changed by the user
         else:
             Rmult = MAP(props.LR, -1, 0.0, 0.0, 1.0, True)
             Lmult = MAP(props.LR, 1.0, 0.0, 0.0, 1.0, True)
-            props.activeface.data[self.R] = min(max(self.originalval + (self.value * Rmult), self.mini), self.maxi)
-            props.activeface.data[self.L] = min(max(self.originalvalL + (self.value * Lmult), self.mini), self.maxi)
+            props.activeface.data[self.R] = min(max(self.originalval + (self.value * Rmult * magnitude), self.mini), self.maxi)
+            props.activeface.data[self.L] = min(max(self.originalvalL + (self.value * Lmult * magnitude), self.mini), self.maxi)
             if not self in scn.activesliders: scn.activesliders.append(self) # add sliders to a list of sliders being changed by the user
         
-        bpy.context.object.data.update() # update the face with the new face values
+        face.data.update() # update the face with the new face values
 
     else: # do this once
         for slide in props.sliders:
             if not slide.split:
-                slide.originalval = bpy.context.object.data[slide.name]
+                slide.originalval = face.data[slide.name]
             else:
-                slide.originalval = bpy.context.object.data[slide.R]
-                slide.originalvalL = bpy.context.object.data[slide.L]
+                slide.originalval = face.data[slide.R]
+                slide.originalvalL = face.data[slide.L]
         # define original values to add off of and produce a final result. an original value is the value of a slider before manipulating took place.
         # all must be initialized if one were to move, as the previous method did not work
         props.dragging = True
@@ -276,7 +444,7 @@ def slideupdate(self, value):
 class faceslider(bpy.types.PropertyGroup):
 
     def set_lock(self, value):
-        obj = bpy.context.object
+        obj = bpy.context.scene.hisanimvars.activeface
         if (locklist := obj.data.get('locklist')) == None:
             obj.data['locklist'] = {}
             locklist = obj.data['locklist']
@@ -294,7 +462,7 @@ class faceslider(bpy.types.PropertyGroup):
             return None
         
     def set_lockL(self, value):
-        obj = bpy.context.object
+        obj = bpy.context.scene.hisanimvars.activeface
         if (locklist := obj.data.get('locklist')) == None:
             obj.data['locklist'] = {}
             locklist = obj.data['locklist']
@@ -305,14 +473,17 @@ class faceslider(bpy.types.PropertyGroup):
         return None
     
     def get_lock(self):
-        obj = bpy.context.object
+        obj = bpy.context.scene.hisanimvars.activeface
         if (locklist := obj.data.get('locklist')) == None: return False
         locklist = obj.data['locklist']
-        if (lockstate := locklist.get(self.name)) == None: return False
+        if not self.split:
+            if (lockstate := locklist.get(self.name)) == None: return False
+        else:
+            if (lockstate := locklist.get(self.R)) == None: return False
         return lockstate
     
     def get_lockL(self):
-        obj = bpy.context.object
+        obj = bpy.context.scene.hisanimvars.activeface
         if (locklist := obj.data.get('locklist')) == None: return False
         locklist = obj.data['locklist']
         if (lockstate := locklist.get(self.L)) == None: return False
@@ -320,7 +491,7 @@ class faceslider(bpy.types.PropertyGroup):
 
     def Use(self, value):
         if not bpy.context.scene.poselibVars.adding: return None
-        data = bpy.context.object.data
+        data = bpy.context.scene.hisanimvars.activeface.data
         if self.split:
             if self.use:
                 data[self.R] = self.originalval
@@ -336,18 +507,19 @@ class faceslider(bpy.types.PropertyGroup):
         data.update()
 
 
-    name: bpy.props.StringProperty()
-    value: bpy.props.FloatProperty(name='', default=0.0, update=slideupdate, min=-1, max=1, options=set())
-    split: bpy.props.BoolProperty(name='')
-    mini: bpy.props.FloatProperty(options=set())
-    maxi: bpy.props.FloatProperty(options=set())
-    originalval: bpy.props.FloatProperty(options=set())
-    originalvalL: bpy.props.FloatProperty(options=set())
-    realvalue: bpy.props.BoolProperty(default=True, options=set())
-    R: bpy.props.StringProperty()
-    L: bpy.props.StringProperty()
-    changed: bpy.props.BoolProperty(default=False, options=set())
-    Type: bpy.props.EnumProperty(items=(
+    display_name: StringProperty(name='Display Name', default='')
+    name: StringProperty()
+    value: FloatProperty(name='', default=0.0, update=slideupdate, min=-1, max=1, options=set(), description='Sliders are additive, and will be reset!')
+    split: BoolProperty(name='')
+    mini: FloatProperty(options=set())
+    maxi: FloatProperty(options=set())
+    originalval: FloatProperty(options=set())
+    originalvalL: FloatProperty(options=set())
+    realvalue: BoolProperty(default=True, options=set())
+    R: StringProperty()
+    L: StringProperty()
+    changed: BoolProperty(default=False, options=set())
+    Type: EnumProperty(items=(
         ('NONE', 'None', '', '', 0),
         ('UPPER', 'Upper Face', '', '', 1),
         ('MID', 'Mid Face', '', '', 2),
@@ -355,9 +527,9 @@ class faceslider(bpy.types.PropertyGroup):
         ),
         name='type', options=set()
     )
-    locked: bpy.props.BoolProperty(name='', default = False, set=set_lock, get=get_lock, options=set())
-    lockedL: bpy.props.BoolProperty(default = False, name='', set=set_lockL, get=get_lockL, options=set())
-    use: bpy.props.BoolProperty(default=False, update=Use, options=set())
+    locked: BoolProperty(name='', default = False, set=set_lock, get=get_lock, options=set())
+    lockedL: BoolProperty(default = False, name='', set=set_lockL, get=get_lockL, options=set())
+    use: BoolProperty(default=False, update=Use, options=set())
 
 class HISANIM_OT_FIXFACEPOSER(Operator):
     bl_idname = 'hisanim.fixfaceposer'
@@ -371,7 +543,7 @@ class HISANIM_OT_FIXFACEPOSER(Operator):
     def execute(self, context):
         props = context.scene.hisanimvars
         props.dragging = False
-        bpy.context.scene.activesliders.clear()
+        context.scene.activesliders.clear()
         bpy.ops.hisanim.resetslider('INVOKE_DEFAULT', stop=True)
         return {'FINISHED'}
 
@@ -380,12 +552,12 @@ class HISANIM_OT_RANDOMIZEFACE(Operator):
     bl_label = 'Randomize Face'
     bl_description = 'Randomize the values of the facial sliders'
     bl_options = {'UNDO', 'REGISTER'}
-    seed: bpy.props.IntProperty(default=0)
-    time: bpy.props.IntProperty(default=0)
+    seed: IntProperty(default=0)
+    time: IntProperty(default=0)
 
     def execute(self, context):
         props = context.scene.hisanimvars
-        data = context.object.data
+        data = props.activeface.data
         for x, i in enumerate(data.keys()):
             if i == 'aaa_fs':
                 continue
@@ -406,17 +578,18 @@ class HISANIM_OT_RANDOMIZEFACE(Operator):
             if props.keyframe:
                 data.keyframe_insert(data_path=f'["{i}"]', frame = get_frame(context))
         
-        bpy.context.object.data.update()
+        props.activeface.data.update()
         return {'FINISHED'}
     
     def invoke(self, context, event):
         self.time = int(time.time())
         self.seed = 0
         self.execute(context) 
-        return bpy.context.window_manager.invoke_props_popup(self, event)
+        return context.window_manager.invoke_props_popup(self, event)
     
     def draw(self, context):
         layout = self.layout
+        layout.row().prop(self, 'time', text='Time')
         layout.row().prop(self, 'seed', text='Seed')
 
 class HISANIM_OT_resetface(Operator):
@@ -427,14 +600,18 @@ class HISANIM_OT_resetface(Operator):
 
     def execute(self, context):
         props = context.scene.hisanimvars
-        data = context.object.data
-        for x, i in enumerate(data.keys()):
-            if i == 'aaa_fs' or i == 'skdata':
+        data = props.activeface.data
+        if data.get('flexmap'):
+            flexes = list(data['flexmap'].values())
+        elif data.get('flexcontrollers'):
+            flexes = list(data['flexcontrollers'].values())
+
+        for flex in flexes:
+            if flex == 'aaa_fs':
                 continue
-            if type(data[i]) != float: continue
-            data[i] = 0.0
+            data[flex] = 0.0
             if props.keyframe:
-                data.keyframe_insert(data_path=f'["{i}"]', frame=get_frame(context))
+                data.keyframe_insert(data_path=f'["{flex}"]', frame=get_frame(context))
         
         data.update()
         return {'FINISHED'}
@@ -448,7 +625,7 @@ class HISANIM_OT_KEYEVERY(Operator):
     def execute(self, context):
         props = context.scene.hisanimvars
         sliders = props.sliders
-        data = context.object.data
+        data = props.activeface.data
         for i in sliders:
             item = i
             if props.up or props.mid or props.low:
@@ -478,10 +655,10 @@ class HISANIM_OT_adjust(Operator):
     bl_idname = 'hisanim.adjust'
     bl_label = 'Adjust'
     bl_description = 'Adjust the LR weight by 0.1'
-    amount: bpy.props.FloatProperty()
+    amount: FloatProperty()
 
     def execute(self, context):
-        props = bpy.context.scene.hisanimvars
+        props = context.scene.hisanimvars
         val = round(props.LR * 10, 1)
         if val % 1 == 0:
             props.LR = val/10 + self.amount
@@ -505,11 +682,14 @@ class HISANIM_OT_optimize(Operator):
         driv_props = bpy.types.Driver.bl_rna.properties
         var_props = bpy.types.DriverVariable.bl_rna.properties
         targ_props = bpy.types.DriverTarget.bl_rna.properties
+        props = context.scene.hisanimvars
+        #props = context.scene.hisanimvars
 
         mod_tally = 0
-        for obj in bpy.context.selected_objects:
-            D = obj.data
-            if D.get('skdata') != None: continue
+        for obj in set(context.selected_objects + [props.activeface]):
+            data = obj.data
+            if data.get('flexcontrollers') == None: continue
+            #if data.get('skdata') != None: continue
             if obj.type != 'MESH':
                 continue
             shapekey = {}
@@ -576,12 +756,8 @@ class HISANIM_OT_restore(Operator):
 
     def execute(self, context):
         mod_tally = 0
-        def apply_values(item, data: dict):
-            for key, value in sorted(data.items(), key=lambda a: 0 if a[0] == 'id_type' else 1):
-                if isinstance(value, (list, dict, tuple, set)): continue
-                #input((item, key, value))
-                setattr(item, key, value)
-        for obj in context.selected_objects:
+        props = context.scene.hisanimvars
+        for obj in set(context.selected_objects + [props.activeface]):
             if obj.type != 'MESH': continue
             D = obj.data
             skdata: bpy.types.Key = D.shape_keys
@@ -592,50 +768,6 @@ class HISANIM_OT_restore(Operator):
                 if driv.data_path.endswith('HA!'):
                     driv.data_path = driv.data_path[:-3]
                     driv.driver.expression = driv.driver.expression
-
-            '''if (drivers_list := skdata.get('drivers')) == None: continue
-
-            for path, driver in drivers_list:
-                if (existing := drivers.find(path)):
-                    drivers.remove(existing)
-                driver = driver.to_dict()
-                #input(driver)
-                new_driver: bpy.types.FCurve = drivers.new(path)
-                new_driver: bpy.types.Driver = new_driver.driver
-                apply_values(new_driver, driver)
-                variables = driver['variables']
-                for var in variables:
-                    new_var = new_driver.variables.new()
-                    apply_values(new_var, var)
-                    targets = var['targets']
-                    for n, targ in enumerate(targets):
-                        apply_values(new_var.targets[n], targ)
-
-            del skdata['drivers']'''
-
-
-            '''if D.get('skdata') == None: continue
-            if D.shape_keys == None: continue
-            kb = D.shape_keys.key_blocks
-            data = pickle.loads(obj.data['skdata'])
-            for key in data.keys():
-                if (skey := kb.get(key)) == None: continue
-                dat = data[key]
-                driv = skey.driver_add('value')
-                driv.driver.expression = dat['expression']
-                for v in dat['variables']:
-                    var = driv.driver.variables.new()
-                    var.type = 'SINGLE_PROP'
-                    var.name = v['name']
-                    var.targets[0].id_type = 'MESH'
-                    var.targets[0].id = obj.data
-                    var.targets[0].data_path = v['data_path']
-
-                    if v.get('arm'):
-                        var.targets[0].id_type = 'OBJECT'
-                        var.targets[0].id = bpy.data.objects[v['obj']]
-
-            del obj.data['skdata']'''
 
             if (mod := obj.modifiers.get('wrinkle')) == None:
                 mod_tally += 1
@@ -684,26 +816,6 @@ class HISANIM_OT_override(Operator):
     def draw(self, context):
         self.layout.prop(self, 'merc_list')
 
-class HISANIM_OT_refresh_face(Operator):
-    bl_idname = 'faceposer.refresh'
-    bl_label = 'Refresh Face Drivers'
-    bl_description = 'Use this tool if parts of the face do not work'
-
-    def execute(self, context):
-        script = context.object.get('script')
-        if script == None and context.object.parent != None:
-            script = context.object.parent.get('script')
-        if script != None:
-            script.as_module()
-            if context.preferences.filepaths.use_scripts_auto_execute == False:
-                self.report({'WARNING'}, 'Enable "Auto Run Python Scripts" in "Preferences > Save & Load" if you want this process to be automatic!')
-        else:
-            self.report({'WARNING'}, 'Failed to find face script for face! Try executing manually!')
-        
-        for driver in context.object.data.shape_keys.animation_data.drivers:
-            driver.driver.expression = driver.driver.expression
-        return {'FINISHED'}
-
 classes = [
     #faceslider,
     HISANIM_OT_SLIDERESET,
@@ -716,7 +828,6 @@ classes = [
     HISANIM_OT_optimize,
     HISANIM_OT_restore,
     HISANIM_OT_override,
-    HISANIM_OT_refresh_face
 ]
 
 def register():

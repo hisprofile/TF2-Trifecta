@@ -137,7 +137,7 @@ class HISANIM_PT_UPDATER(bpy.types.Panel): # the panel for the TF2 Collection Up
         version = bpy.app.version
         prefs = context.preferences.addons[__package__].preferences
         addon_fp = os.path.abspath(Path(__file__).parent)
-        props = bpy.context.scene.trifecta_updateprops
+        props = context.scene.trifecta_updateprops
         layout = self.layout
         if props.running:
             row = layout.row(align=True)
@@ -594,7 +594,7 @@ def download_file_from_google_drive_blank(context, operator: Operator):
 
         ##d = response
 
-        wm = bpy.context.window_manager
+        wm = context.window_manager
 
         # Start Download ###
         if response.status_code != 200:
@@ -787,7 +787,7 @@ class TRIFECTA_OT_DOWNLOAD_QUEUE(Operator):
         global Queue
         area = context.area
 
-        props = bpy.context.scene.trifecta_updateprops
+        props = context.scene.trifecta_updateprops
         prefs = context.preferences.addons[__package__].preferences
 
         props.active = False
@@ -867,7 +867,7 @@ class TRIFECTA_OT_GET_RIG(TRIFECTA_OT_genericText):
 
     def draw_extra(self, context):
         layout = self.layout
-        props = bpy.context.scene.trifecta_updateprops
+        props = context.scene.trifecta_updateprops
         prefs = context.preferences.addons[__package__].preferences
         col1 = layout.column()
         col2 = layout.column()
@@ -899,7 +899,7 @@ class TRIFECTA_OT_GET_BLEND(TRIFECTA_OT_genericText):
         global Queue
         queue = list()
         prefs = context.preferences.addons[__package__].preferences
-        props = bpy.context.scene.hisanimvars
+        props = context.scene.hisanimvars
         items_path = prefs.items_path
         if not os.path.exists(items_path):
             self.report({'ERROR'}, 'The path you set for your TF2 Items does not exist!')
@@ -928,7 +928,7 @@ class TRIFECTA_OT_DOWNLOAD_ALL(TRIFECTA_OT_genericText):
         global Queue
         queue = list()
         prefs = context.preferences.addons[__package__].preferences
-        props = bpy.context.scene.hisanimvars
+        props = context.scene.hisanimvars
         items_path = prefs.items_path.rstrip('\\/')
         if not os.path.exists(items_path):
             self.report({'ERROR'}, 'The path you set for your TF2 Items does not exist!')
