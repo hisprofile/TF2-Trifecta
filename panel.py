@@ -117,7 +117,7 @@ class HISANIM_UL_LOCKSLIDER(bpy.types.UIList):
             if item.split:
                 row = layout.row()
                 row.prop(item, 'locked', icon='LOCKED' if item.locked else 'UNLOCKED', text=item.display_name + ' R')
-                row.prop(item, 'lockedL', icon='LOCKED' if item.locked else 'UNLOCKED', text=item.display_name + ' L')
+                row.prop(item, 'lockedL', icon='LOCKED' if item.lockedL else 'UNLOCKED', text=item.display_name + ' L')
                 pass
             else:
                 row = layout.row()
