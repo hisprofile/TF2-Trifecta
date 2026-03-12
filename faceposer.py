@@ -65,6 +65,7 @@ else:
             return False
         
         curv = action.fcurves.find(f'["{slider}"]')
+        if curv == None: return False
 
         points: bpy.types.FCurveKeyframePoints = curv.keyframe_points
         p_array = np.zeros(len(points)*2, dtype=np.float32)
