@@ -5,6 +5,7 @@ from math import floor, ceil
 
 from bpy.types import Operator
 from bpy.props import *
+import numpy as np
 
 upperFace = ['BrowInV', 'BrowOutV', 'Frown', 'InnerSquint',
                 'OuterSquint', 'ScalpD', 'CloseLid',
@@ -48,10 +49,13 @@ if bpy.app.version >= (4, 4, 0):
 
         curv = channelbag.fcurves.find(f'["{slider}"]')
         if curv == None: return False
-        for point in curv.keyframe_points:
-            if get_frame(context) == point.co.x:
-                return True
-        return False
+
+        points: bpy.types.FCurveKeyframePoints = curv.keyframe_points
+        p_array = np.zeros(len(points)*2, dtype=np.float32)
+        points.foreach_get('co', p_array)
+        p_array = p_array.reshape((-1, 2))[:, 0]
+
+        return get_frame(context) in p_array
 else:
     def has_key(context, obj, slider) -> bool:
         data = obj.data
@@ -61,11 +65,13 @@ else:
             return False
         
         curv = action.fcurves.find(f'["{slider}"]')
-        if curv == None: return False
-        for point in curv.keyframe_points:
-            if get_frame(context) == point.co.x:
-                return True
-        return False
+
+        points: bpy.types.FCurveKeyframePoints = curv.keyframe_points
+        p_array = np.zeros(len(points)*2, dtype=np.float32)
+        points.foreach_get('co', p_array)
+        p_array = p_array.reshape((-1, 2))[:, 0]
+
+        return get_frame(context) in p_array
 
 single_run = False
 
@@ -318,7 +324,10 @@ class HISANIM_OT_SLIDEKEYFRAME(Operator):
     def execute(self, context):
         props = context.scene.hisanimvars
         slider = props.sliders[self.slider]
-        is_keyed_on_frame = has_key(context, props.activeface, self.slider)
+        if slider.split:
+            is_keyed_on_frame = has_key(context, props.activeface, slider.R) and has_key(context, props.activeface, slider.L)
+        else:
+            is_keyed_on_frame = has_key(context, props.activeface, self.slider)
         data = props.activeface.data
         if slider.split:
             if is_keyed_on_frame:
@@ -805,7 +814,8 @@ class HISANIM_OT_override(Operator):
 
     def execute(self, context):
         props = context.scene.hisanimvars
-        context.object.data['merc'] = self.merc_list
+        obj = props.activeface
+        obj.data['merc'] = self.merc_list
         props.merc = self.merc_list
         poselib.updateVCol()
         return {'FINISHED'}

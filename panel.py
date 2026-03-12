@@ -42,8 +42,11 @@ class HISANIM_UL_SLIDERS(bpy.types.UIList):
         props = context.scene.hisanimvars
         if context.scene.hisanimvars.noKeyStatus:
             is_keyed_on_frame = False
-        else:    
-            is_keyed_on_frame = has_key(context, props.activeface, item.name)
+        else:
+            if item.split:
+                is_keyed_on_frame = has_key(context, props.activeface, item.R) or has_key(context, props.activeface, item.L)
+            else:
+                is_keyed_on_frame = has_key(context, props.activeface, item.name)
         if context.scene.poselibVars.stage != 'SELECT':
             layout.row().label(text='Operation in progress.')
             return None
