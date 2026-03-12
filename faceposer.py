@@ -266,6 +266,8 @@ def updatefaces(scn = None):
                 
                 flex_mapped = flex_controllers_map[flex]
                 display_name = flex.split('_')[-1]
+                if data.get(flex_mapped) == None:
+                    continue
                 flex_ui_settings = data.id_properties_ui(flex_mapped).as_dict()
 
                 min = flex_ui_settings.get('min')
@@ -290,6 +292,8 @@ def updatefaces(scn = None):
             else:
                 flex_mapped = flex_controllers_map[flex]
                 display_name = flex
+                if data.get(flex_mapped) == None:
+                    continue
                 flex_ui_settings = data.id_properties_ui(flex_mapped).as_dict()
 
                 min = flex_ui_settings.get('min')
