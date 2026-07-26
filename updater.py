@@ -854,7 +854,7 @@ class TRIFECTA_OT_GET_RIG(TRIFECTA_OT_genericText):
             new = prefs.rigs.add()
             new.name = rigs_rev[self.rigs]
             new.path = new_path
-            context.scene.hisanimvars.rigs = newRigName
+            prefs.rigs_select = newRigName
         queue = [(rigs_rev[self.rigs], self.rigs, 'ZIP')]
         Queue = (iter(enumerate(queue)), 1)
         bpy.ops.trifecta.download_queue('EXEC_DEFAULT')
@@ -877,7 +877,7 @@ class TRIFECTA_OT_GET_RIG(TRIFECTA_OT_genericText):
         
         if not self.newRigEntry and len(prefs.rigs) > 0:
             col2.row().label(text='Choose a set of rigs to replace.')
-            col2.prop(context.scene.hisanimvars, 'rigs')
+            col2.prop(prefs, 'rigs_select')
         else:
             col1.prop(self, 'newRigPath')
         if len(prefs.rigs) < 1: return
@@ -946,7 +946,7 @@ class TRIFECTA_OT_DOWNLOAD_ALL(TRIFECTA_OT_genericText):
             )
             if not os.path.exists(new_rig_set.path):
                 os.makedirs(new_rig_set.path)
-            context.scene.hisanimvars.rigs = 'Standard Rigs'
+            prefs.rigs_select = 'Standard Rigs'
             queue.append(('standard_rigs', rigs_ids['hisanimations'], 'ZIP', ''))
 
         Queue = (iter(enumerate(queue)), len(queue))

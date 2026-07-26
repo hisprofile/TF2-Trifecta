@@ -68,6 +68,13 @@ def on_start():
     bpy.app.timers.unregister(on_start)
     return None
 
+def getRigs(self, context):
+    prefs = context.preferences.addons[__package__].preferences
+    rigs = prefs.rigs
+
+    rig_list = [(rig.name, rig.name, '', '', n) for n, rig in enumerate(rigs)]
+    return rig_list
+
 class AssetPaths(PropertyGroup):
     def get_path(self):
         return self.get("path", "")
@@ -217,6 +224,13 @@ def ensure_absolute_path(self, context):
     update_block = False
 
 class hisanimFilePaths(AddonPreferences):
+    def getRigs(self, context):
+        prefs = self
+        rigs = prefs.rigs
+
+        rig_list = [(rig.name, rig.name, '', '', n) for n, rig in enumerate(rigs)]
+        return rig_list
+
     bl_idname = __package__
     
     blends: CollectionProperty(type=blends)
@@ -234,6 +248,8 @@ class hisanimFilePaths(AddonPreferences):
     missing: bpy.props.BoolProperty(default=True, options=set())
     hide_update_msg: BoolProperty(default=False, name='Hide Future Prompts')
     update_notice: BoolProperty(default=True, name='Notify for Future Updates')
+
+    rigs_select: EnumProperty(items=getRigs, name='Rigs')
     
     def draw(self, context):
         prefs = context.preferences.addons[__package__].preferences

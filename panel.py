@@ -328,8 +328,8 @@ class TRIFECTA_PT_PANEL(bpy.types.Panel):
                     'heavy', 'engineer', 'medic', 'sniper', 'spy']
             if len(prefs.rigs) > 0:
                 row = layout.row()
-                row.prop(context.scene.hisanimvars, 'rigs')
-                if context.scene.hisanimvars.rigs == '': return
+                row.prop(prefs, 'rigs_select')
+                if prefs.rigs_select == '': return
                 for i in mercs:
                     row = layout.box().row(align=True)
                     row.label(text=i.title(), icon_value=icons.id(i))

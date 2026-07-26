@@ -427,7 +427,7 @@ def slideupdate(self, value):
     if props.updating: return None # allow slider values to be reset back to 0 without undergoing any updates
     if props.dragging: # do this every time after once
         #magnitude = max((self.maxi - self.mini) / 2, 1.0)
-        magnitude = abs(self.maxi)
+        magnitude = min(abs(self.maxi), 10)
         self.changed = True
         if not self.split:
             props.activeface.data[self.name] = min(max(self.originalval + self.value*magnitude, self.mini), self.maxi)

@@ -95,7 +95,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         prefs = context.preferences.addons[__package__].preferences
-        return prefs.rigs.get(context.scene.hisanimvars.rigs) != None
+        return prefs.rigs.get(prefs.rigs_select) != None
     
     def invoke(self, context, event):
         self._shift = event.shift
@@ -110,7 +110,7 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
         map_to_do.clear()
         prefs = context.preferences.addons[__package__].preferences
         props = context.scene.hisanimvars
-        PATH = prefs.rigs[context.scene.hisanimvars.rigs].path
+        PATH = prefs.rigs[prefs.rigs_select].path
 
         if not os.path.exists(PATH):
             self.report({'ERROR'}, f'Rig folder has a non-existant path!')
@@ -321,12 +321,13 @@ class MD_PT_spawnmenu(bpy.types.Panel):
             return None
         
         row = layout.row()
-        row.prop(context.scene.hisanimvars, 'rigs')
+        row.prop(prefs, 'rigs_select')
 
         row = layout.row()
+        
         row.prop(props, "bluteam", text='BLU Team')
-
-        layout.row().prop(props, "cosmeticcompatibility")
+        layout.row().prop(props, 'disable_wrinkle_in_viewport')
+        layout.row().prop(props, "cosmeticcompatibility", text='Simple Models')
         layout.row().prop(props, 'hisanimrimpower', slider=True)
         
         grid = layout.box().column_flow(columns=2, align=False)

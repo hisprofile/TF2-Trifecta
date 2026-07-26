@@ -6,13 +6,6 @@ from mathutils import *
 from . import bonemerge, mercdeployer, faceposer
 from .faceposer import faceslider
 from .preferences import ids
-
-def getRigs(self, context):
-    prefs = context.preferences.addons[__package__].preferences
-    rigs = prefs.rigs
-
-    rig_list = [(rig.name, rig.name, '', '', n) for n, rig in enumerate(rigs)]
-    return rig_list
         
 class searchHits(bpy.types.PropertyGroup):
     name: StringProperty()
@@ -121,7 +114,6 @@ class hisanimvars(bpy.types.PropertyGroup): # list of properties the addon needs
         name = 'Stages',
         default='NONE'
     )
-    rigs: EnumProperty(items=getRigs, name='Rigs')
     merc: StringProperty(default='')
     toggle_mat: BoolProperty(default=False)
     needs_override: BoolProperty()
@@ -308,6 +300,18 @@ class HISANIM_OT_Search(bpy.types.Operator):
     bl_description = "Go ahead, search"
     
     def execute(self, context):
+        def normalize_text(text):
+            og = text
+            import re
+            # Remove everything except alphanumeric characters and lowercase it
+            #text = re.sub(r'[-_]', ' ', text)
+            text = re.sub(r'[^a-zA-Z0-9 \-_]', '', text)
+            #return re.sub(r'[^a-zA-Z0-9 -_]+', '', text).lower()
+            perms = text + re.sub(r'[-_]', '', text) + re.sub(r'[-_]', ' ', text)
+            if "cover" in og:
+                print((perms, og))
+            return perms
+
         from .preferences import order
         prefs = context.preferences.addons[__package__].preferences
         context.scene.hisanimvars.results.clear()
@@ -321,16 +325,30 @@ class HISANIM_OT_Search(bpy.types.Operator):
             return {'CANCELLED'}
 
         for request in lookfor:
-            for nb, blend in sorted(filter(lambda a: a[1].no_search == False, enumerate(prefs.blends)), key=lambda a: order.get(a[1].tag, -1)):
+            blends = sorted(
+                filter(
+                    lambda a: a[1].no_search == False,
+                    enumerate(prefs.blends)
+                    ),
+                key=lambda a: order.get(a[1].tag, -1)
+            )
+            for nb, blend in blends:
                 #print(blend)
-                for na, asset in filter(lambda a: (request.lower() in a[1].name.lower()) or (request.lower() in blend.tag.lower()), enumerate(blend.assets)):
+                assets = filter(
+                    lambda a: 
+                        (request.lower() in a[1].name.lower())
+                        or (request.lower() in blend.tag.lower())
+                        or (request.lower() in normalize_text(a[1].name.lower()))
+                        , 
+                    enumerate(blend.assets)
+                )
+                for na, asset in assets:
                     #print(asset)
                     new = context.scene.hisanimvars.results.add()
                     new.name = asset.name
                     new.asset_reference = na
                     new.blend_reference = nb
                     new.tag = blend.tag
-        
         #hits = returnsearch(lookfor)
         #for hit in hits:
         #    new = context.scene.hisanimvars.results.add()
@@ -412,7 +430,7 @@ class HISANIM_OT_relocatePaths(bpy.types.Operator):
             if (lib := bpy.data.libraries.get(file)) != None:
                 lib.filepath = os.path.join(items_path, file)
                 lib.reload()
-        if (path := prefs.rigs.get(context.scene.hisanimvars.rigs)) == None: return {'FINISHED'}
+        if (path := prefs.rigs.get(prefs.rigs_select)) == None: return {'FINISHED'}
         for merc in TF2_V3:
             if (lib := bpy.data.libraries.get(merc)) != None:
                 lib.filepath = os.path.join(path.path, merc)
