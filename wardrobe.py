@@ -308,8 +308,6 @@ class HISANIM_OT_Search(bpy.types.Operator):
             text = re.sub(r'[^a-zA-Z0-9 \-_]', '', text)
             #return re.sub(r'[^a-zA-Z0-9 -_]+', '', text).lower()
             perms = text + re.sub(r'[-_]', '', text) + re.sub(r'[-_]', ' ', text)
-            if "cover" in og:
-                print((perms, og))
             return perms
 
         from .preferences import order
