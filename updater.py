@@ -603,7 +603,7 @@ def download_file_from_google_drive_blank(context, operator: Operator):
             raise InvalidResponse
         
         if operation == 'ZIP':
-            rigs = prefs.rigs[scn.hisanimvars.rigs]
+            rigs = prefs.rigs[prefs.rigs_select]
             destination = os.path.join(rigs.path, 'rigs.zip')
             folder = rigs.path
             
