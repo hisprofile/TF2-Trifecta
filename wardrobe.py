@@ -224,6 +224,8 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         if justadded == None:    
             self.report({'ERROR'}, f'"{obj_reference}" does not exist in {os.path.basename(blend.path)}')
             return {'CANCELLED'}
+
+        context.scene['tf2_dummy_safe'] = justadded
         
         justadded = justadded.make_local()
         justadded.data.make_local()
@@ -233,6 +235,8 @@ class HISANIM_OT_LOAD(bpy.types.Operator):
         if justadded.parent:
             justadded.parent.make_local()
             justadded.parent.data.make_local()
+
+        del context.scene['tf2_dummy_safe']
 
         skins = justadded.get('skin_groups')
 
