@@ -41,7 +41,11 @@ def recursive(d_block):
         if map_to_do.get(d_block): return
         user_map = bpy.data.user_map(subset=[d_block])
         IDs = user_map[d_block]
+        #print(d_block)
+        #map_to_do[d_block] = d_block.make_local()
+        bpy.context.scene['tf2_dummy_safe'] = d_block
         map_to_do[d_block] = d_block.make_local()
+        del bpy.context.scene['tf2_dummy_safe']
         for ID in IDs:
             if map_to_do.get(ID): continue
             recursive(ID)
@@ -178,8 +182,6 @@ class HISANIM_OT_LOADMERC(bpy.types.Operator):
                 if modifier.type != 'NODES': continue
                 if getattr(modifier.node_group, 'name', '') == 'Source Eye Props': continue
                 map_to_do[modifier.node_group] = modifier.node_group.make_local()
-
-
 
         for linked, local in list(map_to_do.items()):
             if getattr(linked, 'library', None) == None:
